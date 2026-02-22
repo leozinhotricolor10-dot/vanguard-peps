@@ -2138,7 +2138,7 @@ function App() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [prevView, setPrevView] = useState(null);
   const [notices, setNotices] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-notices')||JSON.stringify([{ id:1, type:'warn', text:'Devido à alta demanda de alguns produtos, recomendamos que você faça a reserva do seu pedido para não correr o risco de ficar sem.' }])); } catch { return [{ id:1, type:'warn', text:'Devido à alta demanda de alguns produtos, recomendamos que você faça a reserva do seu pedido para não correr o risco de ficar sem.' }]; } });
-  const [dismissedNotices, setDismissedNotices] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-dismissed-notices')||'[]'); } catch { return []; } });
+  const [dismissedNotices, setDismissedNotices] = useState([]);
   const [noticeInput, setNoticeInput] = useState({type:'warn',text:''});
   const [preorderModal, setPreorderModal] = useState(null); // {peptide}
   const [preorderForm, setPreorderForm] = useState({name:'',whatsapp:'',qty:1});
@@ -2533,9 +2533,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
   }
 
   function dismissNotice(id) {
-    const d = [...dismissedNotices, id];
-    setDismissedNotices(d);
-    localStorage.setItem('vg-dismissed-notices', JSON.stringify(d));
+    setDismissedNotices(d => [...d, id]);
   }
   function addNotice(notice) {
     const n = [...notices, { id: Date.now(), ...notice }];
