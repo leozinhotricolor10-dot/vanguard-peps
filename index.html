@@ -494,9 +494,8 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
 /* HERO BANNER */
 .hero-banner {
   position: relative;
-  width: calc(100% + 88px);
-  margin: -36px -44px 40px -44px;
-  height: clamp(340px, 52vh, 640px);
+  width: 100%;
+  height: clamp(400px, 58vh, 680px);
   display: flex;
   align-items: center;
   overflow: hidden;
@@ -504,7 +503,6 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
   background: #060e16;
   background-size: cover;
   background-position: center center;
-  background-attachment: local;
 }
 .hero-banner-overlay {
   position: absolute;
@@ -608,7 +606,7 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
 }
 .hero-badge span { color: var(--accent); }
 @media (max-width: 768px) {
-  .hero-banner { min-height: 380px; width: calc(100% + 32px); margin: -16px -16px 32px -16px; border-radius: 0 0 16px 16px; }
+  .hero-banner { min-height: 340px; width: 100%; border-radius: 0 0 16px 16px; }
   .hero-banner-content { padding: 36px 20px; }
   .hero-vials-stage { width: 100%; opacity: 0.25; }
   .hero-title { font-size: 1.9rem; }
@@ -885,7 +883,7 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
   .admin-table-row { grid-template-columns: 1fr !important; gap: 2px; padding: 12px 10px; font-size: 0.7rem; }
   .admin-table-row > * { padding: 1px 0; }
   .admin-action-btn { font-size: 0.62rem; padding: 8px 10px; }
-  .hero-banner { margin: -14px -12px 24px -12px !important; min-height: 310px; }
+  .hero-banner { width: 100% !important; min-height: 310px; }
   .cat-pills { display: none !important; }
   .carousel-card { min-width: 220px; }
   .bundles-grid { grid-template-columns: 1fr !important; }
@@ -3069,6 +3067,31 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
         </div>
       </nav>
 
+      {/* HERO BANNER — full width, fora do grid */}
+      {view === 'catalog' && !portalToken && (
+        <div className="hero-banner" style={{backgroundImage:`url(${BANNER_BG})`, backgroundSize:'cover', backgroundPosition:'center right'}}>
+          <div className="hero-banner-grid" />
+          <div className="hero-banner-overlay" />
+          <div className="hero-banner-content">
+            <div className="hero-eyebrow">Vanguard Labs · Research Grade</div>
+            <h1 className="hero-title">
+              Peptídeos de<br/>
+              <span>alta pureza.</span><br/>
+              Ciência real.
+            </h1>
+            <p className="hero-sub">
+              Compostos sintetizados com 99% de pureza para fins de pesquisa científica avançada. Entrega rápida, água bacteriostática inclusa.
+            </p>
+            <div className="hero-badges">
+              <div className="hero-badge"><span>✓</span> 99% Pureza</div>
+              <div className="hero-badge"><span>✓</span> BAC Water inclusa</div>
+              <div className="hero-badge"><span>✓</span> Entrega SP mesmo dia</div>
+              <div className="hero-badge"><span>✓</span> Research Use Only</div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="app">
         {/* SIDEBAR */}
         <aside>
@@ -3107,30 +3130,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
           <div className={`view ${view==="catalog"?"visible":""}`}>
 
 
-            {/* HERO BANNER */}
-            <div className="hero-banner" style={{backgroundImage:`url(${BANNER_BG})`, backgroundSize:'cover', backgroundPosition:'center right'}}>
-              <div className="hero-banner-grid" />
-              <div className="hero-banner-overlay" />
-
-              <div className="hero-banner-content">
-                <div className="hero-eyebrow">Vanguard Labs · Research Grade</div>
-                <h1 className="hero-title">
-                  Peptídeos de<br/>
-                  <span>alta pureza.</span><br/>
-                  Ciência real.
-                </h1>
-                <p className="hero-sub">
-                  Compostos sintetizados com 99% de pureza para fins de pesquisa científica avançada. Entrega rápida, água bacteriostática inclusa.
-                </p>
-                <div className="hero-badges">
-                  <div className="hero-badge"><span>✓</span> 99% Pureza</div>
-                  <div className="hero-badge"><span>✓</span> BAC Water inclusa</div>
-                  <div className="hero-badge"><span>✓</span> Entrega SP mesmo dia</div>
-                  <div className="hero-badge"><span>✓</span> Research Use Only</div>
-                </div>
-              </div>
-            </div>
-
+  
 
             {/* NOTICE BOARD */}
             {notices.filter(n=>!dismissedNotices.includes(n.id)).length > 0 && (
