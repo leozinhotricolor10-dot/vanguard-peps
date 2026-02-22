@@ -621,8 +621,8 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
   .hero-sub { font-size: 0.82rem; margin-bottom: 18px; }
 }
 @media (max-width: 600px) {
-  .hero-banner { height: 260px !important; width: 100% !important; max-width: 100vw !important; border-radius: 0 0 12px 12px; overflow: hidden; }
-  .hero-banner-content { padding: 20px 16px !important; max-width: 100%; box-sizing: border-box; }
+  .hero-banner { height: auto !important; min-height: 0 !important; width: 100% !important; max-width: 100vw !important; border-radius: 0 0 12px 12px; overflow: hidden; }
+  .hero-banner-content { padding: 28px 16px 32px !important; max-width: 100%; box-sizing: border-box; }
   .hero-vials-stage { display: none !important; }
   .hero-title { font-size: 1.35rem !important; letter-spacing: -0.5px; margin-bottom: 10px; }
   .hero-eyebrow { margin-bottom: 10px; }
@@ -819,7 +819,7 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
   main { padding: 14px 12px 76px 12px; }
   .products-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
   .product-card { padding: 10px 8px; }
-  .product-card-img { height: 130px !important; object-position: center top; }
+  .product-card-img { height: 140px !important; object-fit: contain !important; object-position: center center; }
   .product-img-wrap { height: 110px; }
   .product-img-wrap img { max-height: 100px; }
   .product-name { font-size: 0.72rem; margin: 7px 0 3px; line-height: 1.3; }
@@ -903,7 +903,9 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
   .admin-table-row { grid-template-columns: 1fr !important; gap: 2px; padding: 12px 10px; font-size: 0.7rem; }
   .admin-table-row > * { padding: 1px 0; }
   .admin-action-btn { font-size: 0.62rem; padding: 8px 10px; }
-  .cat-pills { display: none !important; }
+  aside { display: none !important; }
+  .cat-pills { display: flex !important; flex-wrap: nowrap; overflow-x: auto; gap: 8px; padding: 0 0 6px 0; scrollbar-width: none; margin-bottom: 14px; }
+  .cat-pills::-webkit-scrollbar { display: none; }
   .carousel-card { min-width: 220px; }
   .bundles-grid { grid-template-columns: 1fr !important; }
   .hero-cta-group { flex-direction: column; gap: 8px; }
@@ -3229,23 +3231,6 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
               {searchQuery && <button className="search-bar-clear" onClick={()=>setSearchQuery('')}>✕</button>}
             </div>
 
-            {/* CATEGORY PILLS */}
-            {!searchQuery && (
-              <div className="cat-pills" style={{overflowX:'auto',paddingBottom:4}}>
-                <button className={`cat-pill ${activeCat==='all'?'active':''}`} onClick={()=>setActiveCat('all')}>
-                  <span>⚡</span> Todos <span className="cat-pill-count">{products.length}</span>
-                </button>
-                {CATEGORIES.filter(c=>c.id!=='all').map(cat=>{
-                  const cnt = products.filter(p=>p.category===cat.id).length;
-                  return (
-                    <button key={cat.id} className={`cat-pill ${activeCat===cat.id?'active':''}`} onClick={()=>setActiveCat(cat.id)}>
-                      <span>{cat.icon}</span> {cat.name} <span className="cat-pill-count">{cnt}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
             {/* FEATURED CAROUSEL - only on all tab with no search */}
             {activeCat==='all' && !searchQuery && (() => {
               const hotProducts = products.filter(p=>p.hot);
@@ -3293,6 +3278,23 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                 </div>
               );
             })()}
+
+            {/* CATEGORY PILLS - below carousel, above products */}
+            {!searchQuery && (
+              <div className="cat-pills" style={{overflowX:'auto',paddingBottom:4}}>
+                <button className={`cat-pill ${activeCat==='all'?'active':''}`} onClick={()=>setActiveCat('all')}>
+                  <span>⚡</span> Todos <span className="cat-pill-count">{products.length}</span>
+                </button>
+                {CATEGORIES.filter(c=>c.id!=='all').map(cat=>{
+                  const cnt = products.filter(p=>p.category===cat.id).length;
+                  return (
+                    <button key={cat.id} className={`cat-pill ${activeCat===cat.id?'active':''}`} onClick={()=>setActiveCat(cat.id)}>
+                      <span>{cat.icon}</span> {cat.name} <span className="cat-pill-count">{cnt}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             {activeCat !== 'all' && !searchQuery && (
               <button className="detail-back" style={{marginBottom:20,display:'inline-flex'}} onClick={()=>setActiveCat('all')}>← Todos os produtos</button>
