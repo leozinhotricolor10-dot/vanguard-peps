@@ -614,10 +614,21 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
 }
 .hero-badge span { color: var(--accent); }
 @media (max-width: 768px) {
-  .hero-banner { min-height: 340px; width: 100%; border-radius: 0 0 16px 16px; }
-  .hero-banner-content { padding: 36px 20px; }
-  .hero-vials-stage { width: 100%; opacity: 0.42; }
-  .hero-title { font-size: 1.9rem; }
+  .hero-banner { height: 320px !important; width: 100%; border-radius: 0 0 16px 16px; }
+  .hero-banner-content { padding: 32px 24px; }
+  .hero-vials-stage { width: 100%; opacity: 0.35; }
+  .hero-title { font-size: 1.7rem; letter-spacing: -1px; }
+  .hero-sub { font-size: 0.82rem; margin-bottom: 18px; }
+}
+@media (max-width: 600px) {
+  .hero-banner { height: 260px !important; border-radius: 0 0 12px 12px; }
+  .hero-banner-content { padding: 20px 16px !important; max-width: 100%; }
+  .hero-vials-stage { display: none !important; }
+  .hero-title { font-size: 1.35rem !important; letter-spacing: -0.5px; margin-bottom: 10px; }
+  .hero-eyebrow { margin-bottom: 10px; }
+  .hero-sub { font-size: 0.78rem !important; margin-bottom: 14px; line-height: 1.55; }
+  .hero-badges { gap: 6px; }
+  .hero-badge { font-size: 0.52rem; padding: 4px 9px; }
 }
 
 /* PRE-ORDER */
@@ -891,12 +902,9 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
   .admin-table-row { grid-template-columns: 1fr !important; gap: 2px; padding: 12px 10px; font-size: 0.7rem; }
   .admin-table-row > * { padding: 1px 0; }
   .admin-action-btn { font-size: 0.62rem; padding: 8px 10px; }
-  .hero-banner { width: 100% !important; min-height: 310px; }
   .cat-pills { display: none !important; }
   .carousel-card { min-width: 220px; }
   .bundles-grid { grid-template-columns: 1fr !important; }
-  .hero-title { font-size: 1.55rem !important; }
-  .hero-sub { font-size: 0.76rem !important; }
   .hero-cta-group { flex-direction: column; gap: 8px; }
   .hero-cta-group > * { width: 100%; text-align: center; justify-content: center; }
   .faq-q { font-size: 0.8rem; }
