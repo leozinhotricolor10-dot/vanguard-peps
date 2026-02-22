@@ -2112,6 +2112,7 @@ function App() {
   const [adminTab, setAdminTab] = useState("pedidos");
   const [prodForm, setProdForm] = useState(null); // null = fechado, {} = novo, {id} = editando
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [nameModalInput, setNameModalInput] = useState("");
   const [showWelcome, setShowWelcome] = useState(() => !localStorage.getItem("vg-welcomed") && !localStorage.getItem("vg-nome"));
@@ -2361,10 +2362,15 @@ function App() {
     try {
       const r = await fetch(`https://viacep.com.br/ws/${clean}/json/`);
       const d = await r.json();
-      if (!d.erro) {
+      if (d.erro) {
+        showToast('CEP não encontrado. Verifique e tente novamente.', 'error');
+      } else {
         setCheckout(c => ({ ...c, estado: d.uf, cidade: d.localidade, bairro: d.bairro, rua: d.logradouro }));
+        showToast('Endereço preenchido automaticamente ✓');
       }
-    } catch {}
+    } catch {
+      showToast('Erro ao buscar CEP. Verifique sua conexão.', 'error');
+    }
   }
 
   function validateCheckout() {
@@ -2392,18 +2398,21 @@ function App() {
     saveCheckoutData(updated);
   }
 
-  function sendToWhatsApp() {
+  async function sendToWhatsApp() {
+    if (isSubmitting) return;
     if (!validateCheckout()) { showToast("Preencha todos os campos obrigatórios", "error"); return; }
     if (!disclaimer) { showToast("Confirme o aviso legal para prosseguir", "error"); return; }
-    const freight = calcFreight(checkout.estado, myTotal);
-    const totalFinal = myTotal + freight.value;
-    const itens = myOrders.map(o => {
-      const p = products.find(x => x.id === o.peptideId);
-      if (!p) return `• [produto removido] ×${o.qty}`;
-      return `• ${p.name} ×${o.qty} = R$ ${(p.price * o.qty).toLocaleString('pt-BR')}`;
-    }).join('\n');
-    const pagamentoLabel = checkout.pagamento === 'pix' ? 'PIX (à vista)' : checkout.pagamento === '2x' ? 'Cartão 2x (juros Mercado Pago)' : 'Cartão 3x (juros Mercado Pago)';
-    const msg =
+    setIsSubmitting(true);
+    try {
+      const freight = calcFreight(checkout.estado, myTotal);
+      const totalFinal = myTotal + freight.value;
+      const itens = myOrders.map(o => {
+        const p = products.find(x => x.id === o.peptideId);
+        if (!p) return `• [produto removido] ×${o.qty}`;
+        return `• ${p.name} ×${o.qty} = R$ ${(p.price * o.qty).toLocaleString('pt-BR')}`;
+      }).join('\n');
+      const pagamentoLabel = checkout.pagamento === 'pix' ? 'PIX (à vista)' : checkout.pagamento === '2x' ? 'Cartão 2x (juros Mercado Pago)' : 'Cartão 3x (juros Mercado Pago)';
+      const msg =
 `🧬 *PEDIDO VANGUARD PEPTIDES*
 
 👤 *Dados do Cliente*
@@ -2426,40 +2435,48 @@ ${itens}
 Subtotal: R$ ${myTotal.toLocaleString('pt-BR')}
 Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
 *Total: R$ ${totalFinal.toLocaleString('pt-BR')}*${checkout.observacoes ? '\n\n📝 *Obs:* ' + checkout.observacoes : ''}`;
-    window.open(`https://wa.me/447418333521?text=${encodeURIComponent(msg)}`, '_blank');
 
-    // Salvar pedido no Supabase para o admin acompanhar
-    const _now2 = new Date();
-    const _pad2 = n=>String(n).padStart(2,'0');
-    const orderId = `${_now2.getFullYear()}${_pad2(_now2.getMonth()+1)}${_pad2(_now2.getDate())}${_pad2(_now2.getHours())}${_pad2(_now2.getMinutes())}${_pad2(_now2.getSeconds())}`;
-    const orderItems = myOrders.map(o => {
-      const p = products.find(x => x.id === o.peptideId);
-      return { peptideId: o.peptideId, name: p ? p.name : o.peptideId, qty: o.qty, price: p ? p.price : 0 };
-    });
-    const freight2 = calcFreight(checkout.estado, myTotal);
-    if (sb) sb.from('orders').insert({
-      id: orderId,
-      buyer_name: checkout.nomeCompleto,
-      phone: checkout.telefone,
-      email: checkout.email,
-      cpf: checkout.cpf,
-      address: { rua: checkout.rua, numero: checkout.numero, complemento: checkout.complemento,
-                  bairro: checkout.bairro, cidade: checkout.cidade, estado: checkout.estado, cep: checkout.cep },
-      items: orderItems,
-      subtotal: myTotal,
-      freight: freight2.value,
-      total: myTotal + freight2.value,
-      payment: checkout.pagamento,
-      notes: checkout.observacoes,
-      status: 'pendente'
-    }).then(({ error }) => { if (error) console.warn('[Supabase] Order save error:', error.message); });
+      // Salvar pedido no Supabase ANTES de abrir WhatsApp
+      const _now2 = new Date();
+      const _pad2 = n=>String(n).padStart(2,'0');
+      const orderId = `${_now2.getFullYear()}${_pad2(_now2.getMonth()+1)}${_pad2(_now2.getDate())}${_pad2(_now2.getHours())}${_pad2(_now2.getMinutes())}${_pad2(_now2.getSeconds())}`;
+      const orderItems = myOrders.map(o => {
+        const p = products.find(x => x.id === o.peptideId);
+        return { peptideId: o.peptideId, name: p ? p.name : o.peptideId, qty: o.qty, price: p ? p.price : 0 };
+      });
+      if (sb) {
+        const { error } = await sb.from('orders').insert({
+          id: orderId,
+          buyer_name: checkout.nomeCompleto,
+          phone: checkout.telefone,
+          email: checkout.email,
+          cpf: checkout.cpf,
+          address: { rua: checkout.rua, numero: checkout.numero, complemento: checkout.complemento,
+                      bairro: checkout.bairro, cidade: checkout.cidade, estado: checkout.estado, cep: checkout.cep },
+          items: orderItems,
+          subtotal: myTotal,
+          freight: freight.value,
+          total: totalFinal,
+          payment: checkout.pagamento,
+          notes: checkout.observacoes,
+          status: 'pendente'
+        });
+        if (error) {
+          showToast("Erro ao salvar pedido. Verifique sua conexão e tente novamente.", "error");
+          return;
+        }
+      }
 
-    // Limpar carrinho do cliente após envio
-    persistOrders(orders.filter(o => o._supabase || o.buyerName.toLowerCase() !== myName.toLowerCase()));
-    setCheckoutOpen(false);
-    setDisclaimer(false);
-    showToast("Pedido enviado! 🎉");
-    setView("catalog");
+      // Só abre WhatsApp e limpa carrinho após save confirmado
+      window.open(`https://wa.me/447418333521?text=${encodeURIComponent(msg)}`, '_blank');
+      persistOrders(orders.filter(o => o._supabase || o.buyerName.toLowerCase() !== myName.toLowerCase()));
+      setCheckoutOpen(false);
+      setDisclaimer(false);
+      showToast("Pedido enviado! 🎉");
+      setView("catalog");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function dismissNotice(id) {
@@ -2816,22 +2833,19 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
     }
   }
 
-  function adminRemove(orderId) {
+  async function adminRemove(orderId) {
     const order = orders.find(o => o.id === orderId);
-    // Devolve estoque de cada item do pedido ao banco
     if (order && sb) {
       const items = order._items || [{ peptideId: order.peptideId, qty: order.qty }];
-      items.forEach(item => {
+      // Restaura estoque de todos os itens de forma atômica
+      await Promise.all(items.map(async item => {
         if (item.peptideId && item.qty > 0 && stock[item.peptideId] != null) {
-          sb.rpc('increment_stock', { p_product_id: item.peptideId, p_qty: item.qty })
-            .then(({ data: newQty }) => {
-              if (newQty != null) setStock(prev => ({ ...prev, [item.peptideId]: newQty }));
-            });
+          const { data: newQty } = await sb.rpc('increment_stock', { p_product_id: item.peptideId, p_qty: item.qty });
+          if (newQty != null) setStock(prev => ({ ...prev, [item.peptideId]: newQty }));
         }
-      });
-      // Remove do Supabase
-      sb.from('orders').delete().eq('id', orderId)
-        .then(({ error }) => { if (error) console.warn('[Supabase] Delete order error:', error.message); });
+      }));
+      const { error } = await sb.from('orders').delete().eq('id', orderId);
+      if (error) console.warn('[Supabase] Delete order error:', error.message);
     }
     persistOrders(orders.filter(o => o.id !== orderId));
     showToast("Pedido removido", "info");
@@ -3096,8 +3110,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                 </div>
               </div>
 
-              <button className="modal-confirm-btn" onClick={sendToWhatsApp} disabled={myOrders.length===0}>
-                ENVIAR PEDIDO VIA WHATSAPP →
+              <button className="modal-confirm-btn" onClick={sendToWhatsApp} disabled={myOrders.length===0||isSubmitting} style={{opacity:isSubmitting?0.7:1}}>
+                {isSubmitting ? 'SALVANDO PEDIDO...' : 'ENVIAR PEDIDO VIA WHATSAPP →'}
               </button>
               <button className="modal-cancel-btn" onClick={()=>setCheckoutOpen(false)}>cancelar</button>
             </div>
@@ -3504,7 +3518,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                   </div>
                   <div className="article-page-title">{art.title}</div>
                   <div className="article-page-subtitle">{art.subtitle}</div>
-                  <div className="article-body" dangerouslySetInnerHTML={{__html: art.body}} />
+                  <div className="article-body" style={{whiteSpace:'pre-wrap'}}>{art.body}</div>
                   {related && (
                     <div className="article-cta">
                       <div className="article-cta-title">🧪 PRODUTO RELACIONADO</div>
@@ -3893,10 +3907,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                       </div>
                       <button className="prod-edit-btn" onClick={()=>setProdForm({...p, price: p.price.toString()})}>editar</button>
                       <button className="prod-del-btn" onClick={()=>{
-                        if(window.confirm(`Remover "${p.name}"?`)){
-                          persistProducts(products.filter(x=>x.id!==p.id));
-                          showToast("Produto removido", "info");
-                        }
+                        if(!window.confirm(`Remover "${p.name}"?`)) return;
+                        const pendingOrders = orders.filter(o => o.peptideId === p.id || (o._items||[]).some(i=>i.peptideId===p.id));
+                        if(pendingOrders.length > 0 && !window.confirm(`⚠️ Este produto tem ${pendingOrders.length} pedido(s) pendente(s). Deseja remover mesmo assim?`)) return;
+                        if(sb) sb.from('products').delete().eq('id', p.id).then(({error})=>{ if(error) console.warn('[Supabase] Delete product error:', error.message); });
+                        persistProducts(products.filter(x=>x.id!==p.id));
+                        showToast("Produto removido", "info");
                       }}>excluir</button>
                     </div>
                   ))}
