@@ -819,6 +819,7 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
   main { padding: 14px 12px 76px 12px; }
   .products-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
   .product-card { padding: 10px 8px; }
+  .product-card-img { height: 130px !important; object-position: center top; }
   .product-img-wrap { height: 110px; }
   .product-img-wrap img { max-height: 100px; }
   .product-name { font-size: 0.72rem; margin: 7px 0 3px; line-height: 1.3; }
@@ -2140,6 +2141,7 @@ function App() {
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [carouselIdx, setCarouselIdx] = useState(0);
+  const [carouselTouchX, setCarouselTouchX] = useState(null);
 
 
 
@@ -3254,7 +3256,15 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                   <div className="featured-title">🔥 Em Destaque</div>
                   <div className="featured-sub">Os mais procurados da semana</div>
                   <div className="carousel-wrap">
-                    <div className="carousel-track-outer">
+                    <div className="carousel-track-outer"
+                      onTouchStart={e=>setCarouselTouchX(e.touches[0].clientX)}
+                      onTouchEnd={e=>{
+                        if(carouselTouchX===null) return;
+                        const dx = e.changedTouches[0].clientX - carouselTouchX;
+                        if(dx < -40) setCarouselIdx(i=>Math.min(maxIdx,i+1));
+                        else if(dx > 40) setCarouselIdx(i=>Math.max(0,i-1));
+                        setCarouselTouchX(null);
+                      }}>
                       <div className="carousel-track" style={{transform:`translateX(calc(-${carouselIdx * 274}px))`}}>
                         {hotProducts.map((p,i)=>(
                           <div key={p.id} className="carousel-card" onClick={()=>{ setSelectedProduct(p); setView('detail', p); }}>
