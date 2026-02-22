@@ -906,6 +906,25 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
 @media (max-width: 360px) { .products-grid { grid-template-columns: 1fr !important; } }
 .mobile-bottom-nav { display: none; }
 
+/* ── WELCOME / NAME MODAL ── */
+.welcome-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(10px); animation: fadeIn 0.2s ease; }
+.welcome-modal { background: var(--card); border: 1px solid var(--border); border-radius: 24px; padding: 36px 30px; width: 100%; max-width: 400px; text-align: center; }
+.welcome-logo { font-family: 'Space Mono', monospace; font-size: 0.6rem; letter-spacing: 4px; color: var(--accent); margin-bottom: 20px; text-transform: uppercase; }
+.welcome-title { font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 800; margin-bottom: 10px; }
+.welcome-sub { font-size: 0.86rem; color: var(--muted); line-height: 1.65; margin-bottom: 24px; }
+.welcome-input { width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--fg); font-size: 1rem; padding: 13px 16px; border-radius: 12px; outline: none; box-sizing: border-box; margin-bottom: 14px; transition: border-color 0.2s; font-family: 'DM Sans', sans-serif; }
+.welcome-input:focus { border-color: rgba(0,229,195,0.5); }
+.welcome-btn { width: 100%; padding: 14px; background: var(--accent); border: none; color: #000; font-family: 'Syne', sans-serif; font-size: 0.9rem; font-weight: 800; border-radius: 12px; cursor: pointer; transition: opacity 0.2s, transform 0.15s; }
+.welcome-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+.welcome-btn:not(:disabled):hover { opacity: 0.88; transform: translateY(-1px); }
+.welcome-skip { margin-top: 12px; background: none; border: none; color: var(--muted); font-size: 0.78rem; cursor: pointer; text-decoration: underline; display: block; width: 100%; }
+/* ── LOADING OVERLAY ── */
+.loading-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 9998; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+.loading-logo { font-family: 'Syne', sans-serif; font-size: 1.5rem; font-weight: 800; color: var(--accent); letter-spacing: 2px; }
+.loading-spinner { width: 36px; height: 36px; border: 3px solid rgba(0,229,195,0.15); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.75s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
+
 </style>
 </head>
 <body>
@@ -2081,6 +2100,10 @@ function App() {
   const [adminTab, setAdminTab] = useState("pedidos");
   const [prodForm, setProdForm] = useState(null); // null = fechado, {} = novo, {id} = editando
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [showNameModal, setShowNameModal] = useState(false);
+  const [nameModalInput, setNameModalInput] = useState("");
+  const [showWelcome, setShowWelcome] = useState(() => !localStorage.getItem("vg-welcomed"));
+  const [isLoading, setIsLoading] = useState(!!sb);
   const [checkout, setCheckout] = useState(() => {
     try { return JSON.parse(localStorage.getItem('vg-checkout') || 'null') || { nomeCompleto:'', cpf:'', telefone:'', email:'', cep:'', estado:'', cidade:'', bairro:'', rua:'', numero:'', complemento:'', pagamento:'', observacoes:'' }; } catch { return { nomeCompleto:'', cpf:'', telefone:'', email:'', cep:'', estado:'', cidade:'', bairro:'', rua:'', numero:'', complemento:'', pagamento:'', observacoes:'' }; }
   });
@@ -2148,6 +2171,7 @@ function App() {
         }));
       }
       sb.from('products').select('*').order('sort_order', { ascending: true }).then(({ data, error }) => {
+        setIsLoading(false);
         if (error) { console.warn('[Supabase] Products fetch error:', error.message); return; }
         if (data && data.length > 0) {
           const converted = convertProducts(data);
@@ -2177,7 +2201,7 @@ function App() {
     // 1) Fetch current stock from Supabase and merge with local defaults
     if (!sb) return;
     try { sb.from('stock').select('product_id, quantity').then(({ data, error }) => {
-      if (error) { console.warn('[Supabase] Fetch error:', error.message); return; }
+      if (error) { console.warn('[Supabase] Fetch error:', error.message); showToast('Problema de conexão — usando dados locais', 'error'); return; }
       if (data && data.length > 0) {
         const remote = {};
         data.forEach(row => { remote[row.product_id] = row.quantity; });
@@ -2594,6 +2618,21 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
   }
 
   function saveName(n) { setMyName(n); localStorage.setItem("vg-nome", n); }
+
+  function handleWelcomeConfirm() {
+    const n = nameModalInput.trim();
+    if (!n) return;
+    saveName(n);
+    localStorage.setItem("vg-welcomed", "1");
+    setShowWelcome(false);
+  }
+
+  function handleNameConfirm() {
+    const n = nameModalInput.trim();
+    if (!n) return;
+    saveName(n);
+    setShowNameModal(false);
+  }
 
   // Cart for current user
   const myOrders = useMemo(() => orders.filter(o => !o._supabase && o.buyerName.toLowerCase() === myName.toLowerCase()), [orders, myName]);
@@ -3468,8 +3507,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
             {!myName && (
               <div className="cart-empty">
                 <div className="cart-empty-icon">👤</div>
-                <div className="cart-empty-title">Digite seu nome na sidebar</div>
-                <div className="cart-empty-sub">Precisamos identificar seu pedido.</div>
+                <div className="cart-empty-title">Quem é você?</div>
+                <div className="cart-empty-sub">Precisamos do seu nome para identificar o pedido.</div>
+                <button className="btn-primary" style={{marginTop:18,maxWidth:200,margin:'18px auto 0',display:'block'}}
+                  onClick={()=>{ setNameModalInput(myName); setShowNameModal(true); }}>
+                  Inserir meu nome
+                </button>
               </div>
             )}
 
@@ -4356,7 +4399,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
         <button className={view==="calc"?"active":""} onClick={()=>setView("calc")}>
           <span className="mob-icon">💊</span>CALC
         </button>
-        <button className={view==="cart"?"active":""} onClick={()=>setView("cart")}>
+        <button className={view==="cart"?"active":""} onClick={()=>{ if(!myName){ setNameModalInput(""); setShowNameModal(true); } else setView("cart"); }}>
           <span className="mob-icon">🛒</span>CARRINHO
           {cartCount > 0 && <span className="mob-cart-badge">{cartCount}</span>}
         </button>
@@ -4367,6 +4410,55 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
           <span className="mob-icon">⚙️</span>ADMIN
         </button>
       </div>
+
+      {/* ── LOADING OVERLAY ── */}
+      {isLoading && !showWelcome && (
+        <div className="loading-overlay">
+          <div className="loading-logo">VANGUARD</div>
+          <div className="loading-spinner"></div>
+          <div className="loading-text">Carregando produtos...</div>
+        </div>
+      )}
+
+      {/* ── WELCOME MODAL (primeira visita) ── */}
+      {showWelcome && (
+        <div className="welcome-overlay">
+          <div className="welcome-modal">
+            <div className="welcome-logo">💊 Vanguard Peptides</div>
+            <div className="welcome-title">Bem-vindo!</div>
+            <div className="welcome-sub">Para agilizar o atendimento e identificar seu pedido, informe como quer ser chamado.</div>
+            <input className="welcome-input" type="text" placeholder="Seu nome" value={nameModalInput}
+              onChange={e=>setNameModalInput(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&handleWelcomeConfirm()}
+              autoFocus />
+            <button className="welcome-btn" onClick={handleWelcomeConfirm} disabled={!nameModalInput.trim()}>
+              Entrar no catálogo →
+            </button>
+            <button className="welcome-skip" onClick={()=>{ localStorage.setItem("vg-welcomed","1"); setShowWelcome(false); }}>
+              Pular por agora
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── NAME MODAL (mobile sem nome) ── */}
+      {showNameModal && (
+        <div className="welcome-overlay" onClick={()=>setShowNameModal(false)}>
+          <div className="welcome-modal" onClick={e=>e.stopPropagation()}>
+            <div className="welcome-logo">👤 Identificação</div>
+            <div className="welcome-title">Seu nome</div>
+            <div className="welcome-sub">Precisamos do seu nome para identificar o pedido no sistema.</div>
+            <input className="welcome-input" type="text" placeholder="Como quer ser chamado?" value={nameModalInput}
+              onChange={e=>setNameModalInput(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&handleNameConfirm()}
+              autoFocus />
+            <button className="welcome-btn" onClick={handleNameConfirm} disabled={!nameModalInput.trim()}>
+              Confirmar
+            </button>
+          </div>
+        </div>
+      )}
+
       </>}
     </div>
   );
