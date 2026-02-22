@@ -2105,6 +2105,7 @@ function App() {
   }, []);  // eslint-disable-line
   const [myName, setMyName] = useState(() => localStorage.getItem("vg-nome") || "");
   const [toast, setToast]   = useState(null);
+  const toastTimerRef = React.useRef(null);
   const [modal, setModal]   = useState(null);
   const [formQty, setFormQty] = useState(1);
   const [formName, setFormName] = useState("");
@@ -2124,15 +2125,13 @@ function App() {
   const [notifyInputs, setNotifyInputs] = useState({});
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [prevView, setPrevView] = useState(null);
-  const [notices, setNotices] = useState(()=>JSON.parse(localStorage.getItem('vg-notices')||JSON.stringify([
-    { id:1, type:'warn', text:'Devido à alta demanda de alguns produtos, recomendamos que você faça a reserva do seu pedido para não correr o risco de ficar sem.' }
-  ])));
-  const [dismissedNotices, setDismissedNotices] = useState(()=>JSON.parse(localStorage.getItem('vg-dismissed-notices')||'[]'));
+  const [notices, setNotices] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-notices')||JSON.stringify([{ id:1, type:'warn', text:'Devido à alta demanda de alguns produtos, recomendamos que você faça a reserva do seu pedido para não correr o risco de ficar sem.' }])); } catch { return [{ id:1, type:'warn', text:'Devido à alta demanda de alguns produtos, recomendamos que você faça a reserva do seu pedido para não correr o risco de ficar sem.' }]; } });
+  const [dismissedNotices, setDismissedNotices] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-dismissed-notices')||'[]'); } catch { return []; } });
   const [noticeInput, setNoticeInput] = useState({type:'warn',text:''});
   const [preorderModal, setPreorderModal] = useState(null); // {peptide}
   const [preorderForm, setPreorderForm] = useState({name:'',whatsapp:'',qty:1});
   const [preorderDone, setPreorderDone] = useState(false);
-  const [preorders, setPreorders] = useState(()=>JSON.parse(localStorage.getItem('vg-preorders')||'[]'));
+  const [preorders, setPreorders] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-preorders')||'[]'); } catch { return []; } });
   const [portalToken, setPortalToken] = useState(()=>{
     const params = new URLSearchParams(window.location.search);
     return params.get('preorder') || null;
@@ -2154,6 +2153,7 @@ function App() {
 
   function cycleStatus(orderId) {
     const cycle = ['pendente','pago','enviado','entregue'];
+    const prev = orders;
     const updated = orders.map(o => {
       if (o.id !== orderId) return o;
       const idx = cycle.indexOf(o.status || 'pendente');
@@ -2164,27 +2164,66 @@ function App() {
     const newStatus = updated.find(o => o.id === orderId)?.status;
     if (sb && newStatus) {
       sb.from('orders').update({ status: newStatus }).eq('id', orderId)
-        .then(({ error }) => { if (error) console.warn('[Supabase] Order status error:', error.message); });
+        .then(({ error }) => {
+          if (error) {
+            console.warn('[Supabase] Order status error:', error.message);
+            showToast('Erro ao atualizar status. Revertendo...', 'error');
+            persistOrders(prev);
+          }
+        });
     }
   }
 
   function persistOrders(o) { setOrders(o); saveOrders(o); }
+
+  async function clearAllOrders() {
+    if (!window.confirm("Apagar TODOS os pedidos? O estoque será restaurado automaticamente.")) return;
+    const prevOrders = orders;
+    const prevStock = stock;
+    try {
+      if (sb) {
+        const supabaseOrders = orders.filter(o => o._supabase);
+        for (const o of supabaseOrders) {
+          const items = o._items || [{ peptideId: o.peptideId, qty: o.qty }];
+          for (const item of items) {
+            if (item.peptideId && item.qty > 0 && stock[item.peptideId] != null) {
+              const { data: nq, error: incErr } = await sb.rpc('increment_stock', { p_product_id: item.peptideId, p_qty: item.qty });
+              if (incErr) throw new Error(incErr.message);
+              if (nq != null) setStock(prev => ({ ...prev, [item.peptideId]: nq }));
+            }
+          }
+          const { error: delErr } = await sb.from('orders').delete().eq('id', o.id);
+          if (delErr) throw new Error(delErr.message);
+        }
+      }
+      persistOrders([]);
+      showToast("Pedidos apagados", "info");
+    } catch (err) {
+      console.warn('[clearAllOrders] Error:', err.message);
+      showToast('Erro ao apagar pedidos. Revertendo...', 'error');
+      persistOrders(prevOrders);
+      setStock(prevStock);
+    }
+  }
   function persistProducts(p) { setProducts(p); saveProducts(p); }
   function persistStock(s) { setStock(s); saveStock(s); }
 
   // ── Supabase: carregar products + realtime ────────────────────────────────
   React.useEffect(() => {
     if (!sb) return;
+    // Safety timeout: if Supabase hangs, stop showing loading overlay after 8s
+    const loadingTimeout = setTimeout(() => setIsLoading(false), 8000);
     try {
       function convertProducts(data) {
         return data.map(p => ({
-          id: p.id, sku: p.sku, name: p.name, desc: p.description,
-          category: p.category, price: Number(p.price),
+          id: p.id, sku: p.sku || '', name: p.name || '', desc: p.description || '',
+          category: p.category || 'emagrecedores', price: Number(p.price) || 0,
           hot: p.hot || false, badge: p.badge || null,
           compounds: p.compounds || null,
         }));
       }
       sb.from('products').select('*').order('sort_order', { ascending: true }).then(({ data, error }) => {
+        clearTimeout(loadingTimeout);
         setIsLoading(false);
         if (error) { console.warn('[Supabase] Products fetch error:', error.message); return; }
         if (data && data.length > 0) {
@@ -2206,8 +2245,8 @@ function App() {
         .subscribe((status) => {
           if (status === 'SUBSCRIBED') console.log('[Supabase] Produtos em tempo real conectados!');
         });
-      return () => sb.removeChannel(prodChannel);
-    } catch(e) { console.warn('[Supabase] Products effect error:', e.message); }
+      return () => { clearTimeout(loadingTimeout); sb.removeChannel(prodChannel); };
+    } catch(e) { clearTimeout(loadingTimeout); setIsLoading(false); console.warn('[Supabase] Products effect error:', e.message); }
   }, []);
 
   // ── Supabase: sync stock on mount + real-time subscription ────────────────
@@ -2254,9 +2293,9 @@ function App() {
         // Converter formato Supabase → formato do site
         const converted = data.map(o => ({
           id: o.id,
-          peptideId: o.items && o.items[0] ? o.items[0].peptideId : '',
-          buyerName: o.buyer_name,
-          qty: o.items ? o.items.reduce((s, i) => s + i.qty, 0) : 1,
+          peptideId: o.items && o.items[0] ? (o.items[0].peptideId || '') : '',
+          buyerName: o.buyer_name || '',
+          qty: o.items ? o.items.reduce((s, i) => s + (i.qty || 0), 0) : 1,
           createdAt: o.created_at,
           status: o.status || 'pendente',
           // Campos extras para exibição
@@ -2283,15 +2322,15 @@ function App() {
       if (data && data.length > 0) {
         const converted = data.map(po => ({
           id: po.id,
-          token: po.token,
-          productId: po.product_id,
-          productName: po.product_name,
-          name: po.name,
-          whatsapp: po.whatsapp,
-          qty: po.qty,
-          status: po.status,
-          date: po.date,
-          ts: po.ts,
+          token: po.token || '',
+          productId: po.product_id || '',
+          productName: po.product_name || '',
+          name: po.name || '',
+          whatsapp: po.whatsapp || '',
+          qty: po.qty || 1,
+          status: po.status || 'pending',
+          date: po.date || '',
+          ts: po.ts || Date.now(),
           notifiedAt: po.notified_at ? new Date(po.notified_at).getTime() : null,
           reminderSent: po.reminder_sent || false,
         }));
@@ -2306,8 +2345,8 @@ function App() {
         if (payload.new) {
           const o = payload.new;
           const converted = {
-            id: o.id, peptideId: o.items && o.items[0] ? o.items[0].peptideId : '',
-            buyerName: o.buyer_name, qty: o.items ? o.items.reduce((s,i)=>s+i.qty,0) : 1,
+            id: o.id, peptideId: o.items && o.items[0] ? (o.items[0].peptideId || '') : '',
+            buyerName: o.buyer_name || '', qty: o.items ? o.items.reduce((s,i)=>s+(i.qty||0),0) : 1,
             createdAt: o.created_at, status: o.status || 'pendente',
             _supabase: true, _items: o.items, _total: o.total,
             _phone: o.phone, _email: o.email, _address: o.address,
@@ -2375,14 +2414,15 @@ function App() {
 
   function validateCheckout() {
     const errs = {};
-    if (!checkout.nomeCompleto.trim()) errs.nomeCompleto = true;
-    if (!/^\d{11}$/.test(checkout.cpf.replace(/\D/g,''))) errs.cpf = true;
-    if (!checkout.telefone.trim()) errs.telefone = true;
-    if (!/^\d{8}$/.test(checkout.cep.replace(/\D/g,''))) errs.cep = true;
-    if (!checkout.rua.trim()) errs.rua = true;
-    if (!checkout.numero.trim()) errs.numero = true;
-    if (!checkout.cidade.trim()) errs.cidade = true;
-    if (!checkout.estado.trim()) errs.estado = true;
+    if (!(checkout.nomeCompleto || '').trim()) errs.nomeCompleto = true;
+    if (!/^\d{11}$/.test((checkout.cpf || '').replace(/\D/g,''))) errs.cpf = true;
+    if (!(checkout.telefone || '').trim()) errs.telefone = true;
+    if (checkout.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(checkout.email.trim())) errs.email = true;
+    if (!/^\d{8}$/.test((checkout.cep || '').replace(/\D/g,''))) errs.cep = true;
+    if (!(checkout.rua || '').trim()) errs.rua = true;
+    if (!(checkout.numero || '').trim()) errs.numero = true;
+    if (!(checkout.cidade || '').trim()) errs.cidade = true;
+    if (!(checkout.estado || '').trim()) errs.estado = true;
     if (!checkout.pagamento) errs.pagamento = true;
     setCheckoutErrors(errs);
     return Object.keys(errs).length === 0;
@@ -2409,7 +2449,7 @@ function App() {
       const itens = myOrders.map(o => {
         const p = products.find(x => x.id === o.peptideId);
         if (!p) return `• [produto removido] ×${o.qty}`;
-        return `• ${p.name} ×${o.qty} = R$ ${(p.price * o.qty).toLocaleString('pt-BR')}`;
+        return `• ${p.name} ×${o.qty||0} = R$ ${(p.price * (o.qty||0)).toLocaleString('pt-BR')}`;
       }).join('\n');
       const pagamentoLabel = checkout.pagamento === 'pix' ? 'PIX (à vista)' : checkout.pagamento === '2x' ? 'Cartão 2x (juros Mercado Pago)' : 'Cartão 3x (juros Mercado Pago)';
       const msg =
@@ -2469,7 +2509,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
 
       // Só abre WhatsApp e limpa carrinho após save confirmado
       window.open(`https://wa.me/447418333521?text=${encodeURIComponent(msg)}`, '_blank');
-      persistOrders(orders.filter(o => o._supabase || o.buyerName.toLowerCase() !== myName.toLowerCase()));
+      persistOrders(orders.filter(o => o._supabase || (o.buyerName || '').toLowerCase() !== myName.toLowerCase()));
+      localStorage.removeItem('vg-checkout');
       setCheckoutOpen(false);
       setDisclaimer(false);
       showToast("Pedido enviado! 🎉");
@@ -2503,7 +2544,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
   function savePreorder(peptide, form) {
     const token = generateToken();
     const entry = {
-      id: Date.now(),
+      id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
       token,
       productId: peptide.id,
       productName: peptide.name,
@@ -2578,7 +2619,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
     const expireAt = now + 24*60*60*1000;
     const updated = preorders.map(p => p.id===po.id ? {...p, status:'notified', notifiedAt:now, reminderSent:false} : p);
     persistPreorders(updated);
-    const firstName = po.name.split(' ')[0];
+    const firstName = (po.name || 'Cliente').split(' ')[0];
     const portalLink = window.location.origin + window.location.pathname + '?preorder=' + po.token;
     const msg = encodeURIComponent(
       '🎉 *Produto disponível!*\n\n' +
@@ -2588,9 +2629,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
       '👇 Clique para concluir sua compra:\n' +
       portalLink
     );
-    const wnum = po.whatsapp.replace(/\D/g,'');
+    const wnum = (po.whatsapp || '').replace(/\D/g,'');
     window.open('https://wa.me/55' + wnum + '?text=' + msg, '_blank');
-    showToast('WhatsApp aberto para ' + po.name, 'success');
+    showToast('WhatsApp aberto para ' + (po.name || 'cliente'), 'success');
   }
 
   function sendReminder(po) {
@@ -2599,11 +2640,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
     const portalLinkR = window.location.origin + window.location.pathname + '?preorder=' + po.token;
     const msg = encodeURIComponent(
       '⏰ *Lembrete — Sua reserva expira em 2 horas!*\n\n' +
-      'Olá ' + po.name.split(' ')[0] + ', não esqueça de confirmar sua compra de *' + po.productName + '* (×' + po.qty + ').\n\n' +
+      'Olá ' + (po.name || 'Cliente').split(' ')[0] + ', não esqueça de confirmar sua compra de *' + po.productName + '* (×' + po.qty + ').\n\n' +
       '👇 Acesse agora para finalizar:\n' +
       portalLinkR
     );
-    const wnum = po.whatsapp.replace(/\D/g,'');
+    const wnum = (po.whatsapp || '').replace(/\D/g,'');
     window.open('https://wa.me/55' + wnum + '?text=' + msg, '_blank');
   }
 
@@ -2643,8 +2684,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
   }
 
   function showToast(msg, type = "success") {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     setToast({ msg, type });
-    setTimeout(() => setToast(null), 3000);
+    toastTimerRef.current = setTimeout(() => setToast(null), 3000);
   }
 
   function saveName(n) { setMyName(n); localStorage.setItem("vg-nome", n); }
@@ -2665,9 +2707,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
   }
 
   // Cart for current user
-  const myOrders = useMemo(() => orders.filter(o => !o._supabase && o.buyerName.toLowerCase() === myName.toLowerCase()), [orders, myName]);
-  const myTotal  = useMemo(() => myOrders.reduce((s, o) => s + o.qty * (products.find(p => p.id === o.peptideId)?.price || 0), 0), [myOrders]);
-  const cartCount = myOrders.reduce((s, o) => s + o.qty, 0);
+  const myOrders = useMemo(() => orders.filter(o => !o._supabase && (o.buyerName || '').toLowerCase() === myName.toLowerCase()), [orders, myName]);
+  const myTotal  = useMemo(() => myOrders.reduce((s, o) => s + (o.qty || 0) * (products.find(p => p.id === o.peptideId)?.price || 0), 0), [myOrders]);
+  const cartCount = myOrders.reduce((s, o) => s + (o.qty || 0), 0);
 
   function openModal(peptide) {
     setModal({ peptide });
@@ -2680,7 +2722,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
     if (!name || formQty < 1) return;
     // Stock validation
     const avail = availableStock(modal.peptide.id);
-    const existing = orders.find(o => !o._supabase && o.peptideId === modal.peptide.id && o.buyerName.toLowerCase() === name.toLowerCase());
+    const existing = orders.find(o => !o._supabase && o.peptideId === modal.peptide.id && (o.buyerName || '').toLowerCase() === name.toLowerCase());
     const alreadyInCart = existing ? existing.qty : 0;
     if (avail > 0 && (alreadyInCart + formQty) > avail) {
       showToast(`Estoque insuficiente — apenas ${avail - alreadyInCart} unidade(s) disponível(is)`, 'error');
@@ -2688,7 +2730,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
     }
     let newOrders;
     if (existing) {
-      newOrders = orders.map(o => o === existing ? { ...o, qty: o.qty + formQty } : o);
+      newOrders = orders.map(o => o === existing ? { ...o, qty: (o.qty || 0) + formQty } : o);
       showToast(`${modal.peptide.name} atualizado no carrinho ✓`);
     } else {
       const _now = new Date();
@@ -2741,12 +2783,14 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
     if (newQty <= 0) {
       // Devolver ao estoque via RPC
       if (sb && stock[order.peptideId] != null) {
-        sb.rpc('increment_stock', { p_product_id: order.peptideId, p_qty: order.qty })
-          .then(({ data: newQty2 }) => {
-            const newStock = { ...stock, [order.peptideId]: newQty2 };
-            localStorage.setItem('vg-stock', JSON.stringify(newStock));
-            setStock(newStock);
-          });
+        const { data: newQty2, error: incErr } = await sb.rpc('increment_stock', { p_product_id: order.peptideId, p_qty: order.qty });
+        if (incErr) {
+          console.warn('[Supabase] increment_stock error:', incErr.message);
+        } else if (newQty2 != null) {
+          const newStock = { ...stock, [order.peptideId]: newQty2 };
+          localStorage.setItem('vg-stock', JSON.stringify(newStock));
+          setStock(newStock);
+        }
       } else {
         const newStock = { ...stock };
         if (newStock[order.peptideId] != null) newStock[order.peptideId] += order.qty;
@@ -2771,12 +2815,14 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
           setStock(newStock);
         } else {
           // Reduzir unidade: devolve ao estoque no banco
-          sb.rpc('increment_stock', { p_product_id: order.peptideId, p_qty: Math.abs(delta) })
-            .then(({ data: newQty2 }) => {
-              const newStock = { ...stock, [order.peptideId]: newQty2 };
-              localStorage.setItem('vg-stock', JSON.stringify(newStock));
-              setStock(newStock);
-            });
+          const { data: newQty2, error: incErr2 } = await sb.rpc('increment_stock', { p_product_id: order.peptideId, p_qty: Math.abs(delta) });
+          if (incErr2) {
+            console.warn('[Supabase] increment_stock error:', incErr2.message);
+          } else if (newQty2 != null) {
+            const newStock = { ...stock, [order.peptideId]: newQty2 };
+            localStorage.setItem('vg-stock', JSON.stringify(newStock));
+            setStock(newStock);
+          }
         }
       } else {
         const newStock = { ...stock };
@@ -2788,16 +2834,18 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
     }
   }
 
-  function removeFromCart(orderId) {
+  async function removeFromCart(orderId) {
     const order = orders.find(o => o.id === orderId);
     if (order) {
       if (sb && stock[order.peptideId] != null) {
-        sb.rpc('increment_stock', { p_product_id: order.peptideId, p_qty: order.qty })
-          .then(({ data: newQty2 }) => {
-            const newStock = { ...stock, [order.peptideId]: newQty2 };
-            localStorage.setItem('vg-stock', JSON.stringify(newStock));
-            setStock(newStock);
-          });
+        const { data: newQty2, error: incErr } = await sb.rpc('increment_stock', { p_product_id: order.peptideId, p_qty: order.qty });
+        if (incErr) {
+          console.warn('[Supabase] increment_stock error:', incErr.message);
+        } else if (newQty2 != null) {
+          const newStock = { ...stock, [order.peptideId]: newQty2 };
+          localStorage.setItem('vg-stock', JSON.stringify(newStock));
+          setStock(newStock);
+        }
       } else {
         const newStock = { ...stock };
         if (newStock[order.peptideId] != null) newStock[order.peptideId] += order.qty;
@@ -2811,7 +2859,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
 
   async function handleAdminUnlock() {
     const lockKey = 'vg-admin-lock';
-    const lockData = JSON.parse(localStorage.getItem(lockKey) || '{"attempts":0,"until":0}');
+    let lockData; try { lockData = JSON.parse(localStorage.getItem(lockKey) || '{"attempts":0,"until":0}'); } catch { lockData = { attempts: 0, until: 0 }; }
     if (Date.now() < lockData.until) {
       const mins = Math.ceil((lockData.until - Date.now()) / 60000);
       showToast(`Bloqueado. Tente em ${mins} min.`, "error"); return;
@@ -2835,7 +2883,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
 
   async function adminRemove(orderId) {
     const order = orders.find(o => o.id === orderId);
-    if (order && sb) {
+    const prevOrders = orders;
+    const prevStock = stock;
+    if (order && sb && order._supabase) {
       const items = order._items || [{ peptideId: order.peptideId, qty: order.qty }];
       // Restaura estoque de todos os itens de forma atômica
       await Promise.all(items.map(async item => {
@@ -2845,7 +2895,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
         }
       }));
       const { error } = await sb.from('orders').delete().eq('id', orderId);
-      if (error) console.warn('[Supabase] Delete order error:', error.message);
+      if (error) {
+        console.warn('[Supabase] Delete order error:', error.message);
+        showToast('Erro ao remover pedido no servidor. Verifique as permissões do banco.', 'error');
+        setStock(prevStock);
+        return;
+      }
     }
     persistOrders(orders.filter(o => o.id !== orderId));
     showToast("Pedido removido", "info");
@@ -2878,10 +2933,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
   // ── totals for admin ──
   const totalRevenue = useMemo(() => orders.reduce((s, o) => {
     if (o._supabase && o._total != null) return s + o._total;
-    return s + o.qty * (products.find(p => p.id === o.peptideId)?.price || 0);
+    return s + (o.qty || 0) * (products.find(p => p.id === o.peptideId)?.price || 0);
   }, 0), [orders, products]);
-  const totalUnits   = useMemo(() => orders.reduce((s, o) => s + o.qty, 0), [orders]);
-  const totalBuyers  = useMemo(() => new Set(orders.map(o => o.buyerName.toLowerCase())).size, [orders]);
+  const totalUnits   = useMemo(() => orders.reduce((s, o) => s + (o.qty || 0), 0), [orders]);
+  const totalBuyers  = useMemo(() => new Set(orders.map(o => (o.buyerName || '').toLowerCase())).size, [orders]);
 
   // ── cat groups ──
   const catGroups = CATEGORIES.filter(c => c.id !== "all").map(c => ({
@@ -2890,14 +2945,14 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
   })).filter(g => g.peptides.length);
 
   function peptideCartQty(peptideId) {
-    return myOrders.filter(o => o.peptideId === peptideId).reduce((s, o) => s + o.qty, 0);
+    return myOrders.filter(o => o.peptideId === peptideId).reduce((s, o) => s + (o.qty || 0), 0);
   }
 
   // Expiry + reminder check every 60s
   React.useEffect(() => {
     const id = setInterval(() => {
       const now = Date.now();
-      const list = JSON.parse(localStorage.getItem('vg-preorders')||'[]');
+      let list; try { list = JSON.parse(localStorage.getItem('vg-preorders')||'[]'); } catch { list = []; }
       let changed = false;
       const updated = list.map(po => {
         if (po.status === 'notified' && po.notifiedAt) {
@@ -3059,7 +3114,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
               <div className="checkout-section">
                 <div className="checkout-section-title">💰 Resumo do Pedido</div>
                 <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',color:'var(--muted)',marginBottom:8}}>
-                  <span>Subtotal ({myOrders.reduce((s,o)=>s+o.qty,0)} itens)</span>
+                  <span>Subtotal ({myOrders.reduce((s,o)=>s+(o.qty||0),0)} itens)</span>
                   <span style={{color:'var(--text)',fontFamily:"'Space Mono',monospace"}}>R$ {myTotal.toLocaleString('pt-BR')}</span>
                 </div>
                 <div className={`freight-box ${isFree?'free':'paid'}`}>
@@ -3274,7 +3329,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                             <div className="product-hot-badge" style={{top:10,left:10,right:'auto'}}>🔥 HOT</div>
                             <div className="carousel-card-body">
                               <div className="carousel-card-name">{p.name}</div>
-                              <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:8}}>{p.desc.substring(0,60)}...</div>
+                              <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:8}}>{(p.desc||'').substring(0,60)}{(p.desc||'').length>60?'...':''}</div>
                               <div className="carousel-card-price">R$ {p.price.toLocaleString('pt-BR')}</div>
                             </div>
                           </div>
@@ -3317,7 +3372,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
             <div className="products-grid">
               {(()=>{
                 let filtered = activeCat === 'all' ? products : products.filter(p=>p.category===activeCat);
-                if (searchQuery) filtered = products.filter(p=>p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.desc.toLowerCase().includes(searchQuery.toLowerCase()));
+                if (searchQuery) filtered = products.filter(p=>(p.name||'').toLowerCase().includes(searchQuery.toLowerCase()) || (p.desc||'').toLowerCase().includes(searchQuery.toLowerCase()));
                 return filtered.map(peptide => {
                 const inCartQty = peptideCartQty(peptide.id);
                 const cartOrder = myOrders.find(o => o.peptideId === peptide.id);
@@ -3362,7 +3417,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                               <button className="notify-send-btn" onClick={()=>{
                                 const val = document.getElementById(`notify-${peptide.id}`).value.trim();
                                 if (!val) return;
-                                const list = JSON.parse(localStorage.getItem('vg-notify')||'[]');
+                                let list; try { list = JSON.parse(localStorage.getItem('vg-notify')||'[]'); } catch { list = []; }
                                 list.push({ product: peptide.name, contact: val, date: new Date().toLocaleDateString('pt-BR') });
                                 localStorage.setItem('vg-notify', JSON.stringify(list));
                                 setNotifyInputs(n=>({...n,[peptide.id]:'sent'}));
@@ -3579,7 +3634,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                             <span className="qty-control-num" style={{fontSize:"0.9rem",minWidth:24}}>{order.qty}</span>
                             <button className="qty-control-btn" onClick={()=>updateQtyInCart(order.id, +1)} disabled={availableStock(order.peptideId)===0} style={{opacity:availableStock(order.peptideId)===0?0.3:1}}>+</button>
                           </div>
-                          <div className="cart-item-price">R$ {(p.price * order.qty).toLocaleString("pt-BR")}</div>
+                          <div className="cart-item-price">R$ {(p.price * (order.qty||0)).toLocaleString("pt-BR")}</div>
                           <button className="cart-item-remove" onClick={()=>removeFromCart(order.id)} title="Remover">✕</button>
                         </div>
                       );
@@ -3592,8 +3647,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                       if (!p) return null;
                       return (
                         <div key={order.id} className="cart-summary-row">
-                          <span>{p.name} ×{order.qty}</span>
-                          <span>R$ {(p.price * order.qty).toLocaleString("pt-BR")}</span>
+                          <span>{p.name} ×{order.qty || 0}</span>
+                          <span>R$ {(p.price * (order.qty||0)).toLocaleString("pt-BR")}</span>
                         </div>
                       );
                     })}
@@ -3617,6 +3672,16 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
 
           {/* ADMIN */}
           <div className={`view ${view==="admin"?"visible":""}`}>
+            {!adminUnlocked ? (
+              <div style={{textAlign:'center',padding:'60px 20px'}}>
+                <div style={{fontSize:'3rem',marginBottom:16}}>🔒</div>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:'1.2rem',fontWeight:700,marginBottom:12}}>Acesso restrito</div>
+                <div style={{color:'var(--muted)',fontSize:'0.85rem',marginBottom:24}}>Esta área é exclusiva para administradores.</div>
+                <button onClick={handleAdminUnlock} style={{padding:'12px 32px',background:'var(--accent)',border:'none',borderRadius:10,color:'#000',fontWeight:700,cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.75rem',letterSpacing:'0.05em'}}>
+                  🔑 ENTRAR COMO ADMIN
+                </button>
+              </div>
+            ) : <>
             <div className="page-tag">▸ ADMINISTRADOR</div>
             <div className="page-title">Painel Admin</div>
 
@@ -3642,24 +3707,25 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
             {adminTab==="pedidos" && <>
               <div className="admin-actions">
                 <button className="admin-action-btn" onClick={copyWhatsApp}>📋 Copiar lista WhatsApp</button>
-                <button className="admin-action-btn danger" onClick={async ()=>{ if(window.confirm("Apagar TODOS os pedidos? O estoque será restaurado automaticamente.")){ if (sb) { const supabaseOrders = orders.filter(o => o._supabase); for (const o of supabaseOrders) { const items = o._items || [{ peptideId: o.peptideId, qty: o.qty }]; for (const item of items) { if (item.peptideId && item.qty > 0 && stock[item.peptideId] != null) { const { data: nq } = await sb.rpc('increment_stock', { p_product_id: item.peptideId, p_qty: item.qty }); if (nq != null) setStock(prev => ({ ...prev, [item.peptideId]: nq })); } } await sb.from('orders').delete().eq('id', o.id); } } persistOrders([]); showToast("Pedidos apagados", "info"); }}}>🗑️ Limpar tudo</button>
+                <button className="admin-action-btn danger" onClick={clearAllOrders}>🗑️ Limpar tudo</button>
               </div>
-              {orders.length === 0 && (
-                <div style={{textAlign:"center",color:"var(--muted)",padding:40,fontSize:"0.85rem"}}>Nenhum pedido ainda</div>
-              )}
-              {orders.length > 0 && (() => {
-                const filteredOrders = adminStatusFilter === 'all' ? orders : orders.filter(o => (o.status||'pendente') === adminStatusFilter);
+              {(() => {
+                const adminOrders = sb ? orders.filter(o => o._supabase) : orders;
+                const filteredOrders = adminStatusFilter === 'all' ? adminOrders : adminOrders.filter(o => (o.status||'pendente') === adminStatusFilter);
                 const statusCounts = {
-                  pendente: orders.filter(o=>(o.status||'pendente')==='pendente').length,
-                  pago: orders.filter(o=>o.status==='pago').length,
-                  enviado: orders.filter(o=>o.status==='enviado').length,
-                  entregue: orders.filter(o=>o.status==='entregue').length,
+                  pendente: adminOrders.filter(o=>(o.status||'pendente')==='pendente').length,
+                  pago: adminOrders.filter(o=>o.status==='pago').length,
+                  enviado: adminOrders.filter(o=>o.status==='enviado').length,
+                  entregue: adminOrders.filter(o=>o.status==='entregue').length,
                 };
+                if (adminOrders.length === 0) return (
+                  <div style={{textAlign:"center",color:"var(--muted)",padding:40,fontSize:"0.85rem"}}>Nenhum pedido ainda</div>
+                );
                 return (
                 <div>
                   <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
                     {[
-                      {id:'all',label:'Todos',count:orders.length},
+                      {id:'all',label:'Todos',count:adminOrders.length},
                       {id:'pendente',label:'🟡 Pendente',count:statusCounts.pendente},
                       {id:'pago',label:'✅ Pago',count:statusCounts.pago},
                       {id:'enviado',label:'📦 Enviado',count:statusCounts.enviado},
@@ -3699,15 +3765,15 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                             onClick={()=>cycleStatus(order.id)}
                             title="Clique para avançar status"
                           >
-                            {order.status==='pendente'  ? '🟡 PENDENTE'
-                           : order.status==='pago'      ? '✅ PAGO'
-                           : order.status==='enviado'   ? '📦 ENVIADO'
+                            {(order.status||'pendente')==='pendente'  ? '🟡 PENDENTE'
+                           : (order.status||'pendente')==='pago'      ? '✅ PAGO'
+                           : (order.status||'pendente')==='enviado'   ? '📦 ENVIADO'
                            : '🎉 ENTREGUE'}
                             <span className="status-cycle">▶</span>
                           </span>
                         </div>
-                        <div className="admin-row-qty">×{order.qty}</div>
-                        <div className="admin-row-total">R$ {(p.price*order.qty).toLocaleString("pt-BR")}</div>
+                        <div className="admin-row-qty">×{order.qty || 0}</div>
+                        <div className="admin-row-total">R$ {(p.price*(order.qty||0)).toLocaleString("pt-BR")}</div>
                         <div><button className="admin-remove-btn" onClick={()=>adminRemove(order.id)}>remover</button></div>
                       </div>
                     );
@@ -3723,7 +3789,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
 
               {/* LISTA DE AVISOS DE REPOSIÇÃO */}
               {(() => {
-                const notifyList = JSON.parse(localStorage.getItem('vg-notify')||'[]');
+                let notifyList; try { notifyList = JSON.parse(localStorage.getItem('vg-notify')||'[]'); } catch { notifyList = []; }
                 if (!notifyList.length) return null;
                 function removeNotify(idx) {
                   const updated = notifyList.filter((_,i2)=>i2!==idx);
@@ -3781,6 +3847,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                             const v = e.target.value;
                             if (v === '') {
                               const ns = {...stock}; delete ns[p.id]; persistStock(ns);
+                              if (sb) sb.from('stock').delete().eq('product_id', p.id).then(({ error }) => { if (error) console.warn('[Supabase] Delete stock error:', error.message); });
+                              showToast(`Estoque de "${p.name}" removido (sem controle)`, 'info');
                             } else {
                               const n = parseInt(v); if(!isNaN(n) && n>=0) persistStock({...stock, [p.id]: n});
                             }
@@ -3938,7 +4006,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                   persistArticles(articles.map(a => a.id===editingArt.id ? {...a,...form} : a));
                   showToast("Artigo atualizado ✓");
                 } else {
-                  const id = 'art-' + Date.now();
+                  const id = 'art-' + Date.now() + '-' + Math.random().toString(36).slice(2,7);
                   const today = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'});
                   persistArticles([{id, emoji:form.emoji||'📄', tag:form.tag||'Geral', title:form.title, subtitle:form.subtitle||'', date:today, relatedProductId:form.relatedProductId||'', body:form.body||''}, ...articles]);
                   showToast("Artigo publicado ✓");
@@ -4032,7 +4100,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
               const byProduct = {};
               preorders.filter(po=>['pending','notified'].includes(po.status||'pending')).forEach(po => {
                 if (!byProduct[po.productName]) byProduct[po.productName] = 0;
-                byProduct[po.productName] += po.qty;
+                byProduct[po.productName] += (po.qty || 0);
               });
 
               return <>
@@ -4182,26 +4250,26 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
             {adminTab==="financeiro" && (()=>{
               const fmt = v => `R$ ${v.toLocaleString('pt-BR')}`;
               const ordsByStatus = s => orders.filter(o=>(o.status||'pendente')===s);
-              const revByStatus = s => ordsByStatus(s).reduce((a,o)=>{ const p=products.find(x=>x.id===o.peptideId); return a+(p?p.price*o.qty:0); },0);
+              const revByStatus = s => ordsByStatus(s).reduce((a,o)=>{ const p=products.find(x=>x.id===o.peptideId); return a+(p?p.price*(o.qty||0):0); },0);
               const confirmed = revByStatus('pago') + revByStatus('enviado') + revByStatus('entregue');
               const pending   = revByStatus('pendente');
               const totalOrds = orders.length;
               const ticket    = totalOrds ? Math.round((confirmed+pending)/totalOrds) : 0;
-              const preorderProj = preorders.reduce((a,po)=>{ const p=products.find(x=>x.id===po.productId); return a+(p?p.price*po.qty:0); },0);
+              const preorderProj = preorders.reduce((a,po)=>{ const p=products.find(x=>x.id===po.productId); return a+(p?p.price*(po.qty||0):0); },0);
 
               const prodRev = {}; const prodQty = {};
-              orders.forEach(o=>{ const p=products.find(x=>x.id===o.peptideId); if(!p) return; prodRev[p.name]=(prodRev[p.name]||0)+p.price*o.qty; prodQty[p.name]=(prodQty[p.name]||0)+o.qty; });
+              orders.forEach(o=>{ const p=products.find(x=>x.id===o.peptideId); if(!p) return; prodRev[p.name]=(prodRev[p.name]||0)+p.price*(o.qty||0); prodQty[p.name]=(prodQty[p.name]||0)+(o.qty||0); });
               const rankList = Object.entries(prodRev).sort((a,b)=>b[1]-a[1]);
               const maxRev = rankList[0]?rankList[0][1]:1;
 
               const poByProd = {};
-              preorders.forEach(po=>{ const p=products.find(x=>x.id===po.productId); if(!p) return; if(!poByProd[p.name]) poByProd[p.name]={qty:0,proj:0}; poByProd[p.name].qty+=po.qty; poByProd[p.name].proj+=p.price*po.qty; });
+              preorders.forEach(po=>{ const p=products.find(x=>x.id===po.productId); if(!p) return; if(!poByProd[p.name]) poByProd[p.name]={qty:0,proj:0}; poByProd[p.name].qty+=(po.qty||0); poByProd[p.name].proj+=p.price*(po.qty||0); });
 
               const days7 = Array.from({length:7},(_,i)=>{ const d=new Date(); d.setDate(d.getDate()-(6-i)); return d; });
               const trendData = days7.map(d=>{
                 const ds = d.toLocaleDateString('pt-BR');
-                const rev = orders.filter(o=>new Date(o.createdAt).toLocaleDateString('pt-BR')===ds)
-                  .reduce((a,o)=>{ const p=products.find(x=>x.id===o.peptideId); return a+(p?p.price*o.qty:0); },0);
+                const rev = orders.filter(o=>o.createdAt && new Date(o.createdAt).toLocaleDateString('pt-BR')===ds)
+                  .reduce((a,o)=>{ const p=products.find(x=>x.id===o.peptideId); return a+(p?p.price*(o.qty||0):0); },0);
                 return { label: d.toLocaleDateString('pt-BR',{weekday:'short'}), rev };
               });
               const maxTrend = Math.max(...trendData.map(d=>d.rev),1);
@@ -4292,6 +4360,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                 </>
               );
             })()}
+            </>}
+          </div>
 
           {/* CALCULADORA */}
           <div className={`view ${view==="calc"?"visible":""}`}>
