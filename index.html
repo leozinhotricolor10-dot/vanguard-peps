@@ -2102,7 +2102,7 @@ function App() {
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
   const [nameModalInput, setNameModalInput] = useState("");
-  const [showWelcome, setShowWelcome] = useState(() => !localStorage.getItem("vg-welcomed"));
+  const [showWelcome, setShowWelcome] = useState(() => !localStorage.getItem("vg-welcomed") && !localStorage.getItem("vg-nome"));
   const [isLoading, setIsLoading] = useState(!!sb);
   const [checkout, setCheckout] = useState(() => {
     try { return JSON.parse(localStorage.getItem('vg-checkout') || 'null') || { nomeCompleto:'', cpf:'', telefone:'', email:'', cep:'', estado:'', cidade:'', bairro:'', rua:'', numero:'', complemento:'', pagamento:'', observacoes:'' }; } catch { return { nomeCompleto:'', cpf:'', telefone:'', email:'', cep:'', estado:'', cidade:'', bairro:'', rua:'', numero:'', complemento:'', pagamento:'', observacoes:'' }; }
