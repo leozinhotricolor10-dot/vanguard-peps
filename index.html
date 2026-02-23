@@ -2468,7 +2468,8 @@ function App() {
     setIsSubmitting(true);
     try {
       const freight = calcFreight(checkout.estado, myTotal);
-      const totalFinal = myTotal + freight.value;
+      const pixDiscount = checkout.pagamento === 'pix' ? Math.round(myTotal * 0.1) : 0;
+      const totalFinal = myTotal - pixDiscount + freight.value;
       const itens = myOrders.map(o => {
         const p = products.find(x => x.id === o.peptideId);
         if (!p) return `• [produto removido] ×${o.qty}`;
@@ -2495,7 +2496,7 @@ ${itens}
 💳 *Pagamento:* ${pagamentoLabel}
 
 💰 *Resumo*
-Subtotal: R$ ${myTotal.toLocaleString('pt-BR')}
+Subtotal: R$ ${myTotal.toLocaleString('pt-BR')}${pixDiscount > 0 ? '\n💚 Desconto PIX (10%): -R$ '+pixDiscount.toLocaleString('pt-BR') : ''}
 Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
 *Total: R$ ${totalFinal.toLocaleString('pt-BR')}*${checkout.observacoes ? '\n\n📝 *Obs:* ' + checkout.observacoes : ''}`;
 
@@ -3019,7 +3020,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
       {/* CHECKOUT MODAL */}
       {checkoutOpen && (() => {
         const freight = calcFreight(checkout.estado, myTotal);
-        const totalFinal = myTotal + freight.value;
+        const pixDiscount = checkout.pagamento === 'pix' ? Math.round(myTotal * 0.1) : 0;
+        const totalFinal = myTotal - pixDiscount + freight.value;
         const isFree = freight.value === 0;
         return (
           <div className="modal-overlay" onClick={e=>{ if(e.target===e.currentTarget) setCheckoutOpen(false); }}>
@@ -3112,7 +3114,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                 <div className="checkout-section-title">💳 Forma de Pagamento</div>
                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8}}>
                   {[
-                    { id:'pix',  icon:'⚡', label:'PIX', sub:'À vista' },
+                    { id:'pix',  icon:'⚡', label:'PIX', sub:'À vista · 10% OFF' },
                     { id:'2x',   icon:'💳', label:'2x Cartão', sub:'Juros Mercado Pago' },
                     { id:'3x',   icon:'💳', label:'3x Cartão', sub:'Juros Mercado Pago' },
                   ].map(opt => (
@@ -3125,7 +3127,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                       }}>
                       <div style={{fontSize:'1.3rem', marginBottom:4}}>{opt.icon}</div>
                       <div style={{fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'0.82rem', color: checkout.pagamento===opt.id ? 'var(--accent)' : 'var(--text)'}}>{opt.label}</div>
-                      <div style={{fontSize:'0.65rem', color:'var(--muted)', marginTop:2}}>{opt.sub}</div>
+                      <div style={{fontSize:'0.65rem', color: opt.id==='pix' ? 'var(--accent)' : 'var(--muted)', marginTop:2, fontWeight: opt.id==='pix' ? 700 : 400}}>{opt.sub}</div>
+                      {opt.id==='pix' && checkout.pagamento!=='pix' && (
+                        <div style={{fontSize:'0.6rem',color:'var(--accent)',marginTop:4,fontFamily:"'Space Mono',monospace"}}>economize R$ {Math.round(myTotal*0.1).toLocaleString('pt-BR')}</div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -3138,6 +3143,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                   <span>Subtotal ({myOrders.reduce((s,o)=>s+(o.qty||0),0)} itens)</span>
                   <span style={{color:'var(--text)',fontFamily:"'Space Mono',monospace"}}>R$ {myTotal.toLocaleString('pt-BR')}</span>
                 </div>
+                {pixDiscount > 0 && (
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',marginBottom:8,padding:'8px 12px',background:'rgba(0,229,195,0.06)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:8}}>
+                    <span style={{color:'var(--accent)'}}>💚 Desconto PIX (10%)</span>
+                    <span style={{color:'var(--accent)',fontFamily:"'Space Mono',monospace",fontWeight:700}}>-R$ {pixDiscount.toLocaleString('pt-BR')}</span>
+                  </div>
+                )}
                 <div className={`freight-box ${isFree?'free':'paid'}`}>
                   <div className="freight-label">
                     <strong>{isFree ? '🎉 Frete Grátis' : '🚚 Frete'}</strong>
