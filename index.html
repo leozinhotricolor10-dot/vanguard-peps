@@ -2151,6 +2151,7 @@ function App() {
   const [openFaq, setOpenFaq] = useState(null);
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [artForm, setArtForm] = useState(null);
+  const [adminPoForm, setAdminPoForm] = useState(null);
   const [disclaimer, setDisclaimer] = useState(false);
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -4119,9 +4120,63 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
 
               return <>
                 <div className="admin-actions" style={{flexWrap:'wrap',gap:8}}>
+                  <button className="admin-action-btn" onClick={()=>setAdminPoForm({productId:'',name:'',whatsapp:'',qty:1})}>＋ Nova Reserva Manual</button>
                   <button className="admin-action-btn" onClick={checkPreorderExpiry}>🔄 Verificar prazos</button>
                   <button className="admin-action-btn danger" onClick={()=>{ if(window.confirm("Limpar pré-orders concluídas/expiradas/canceladas?")){ const toDelete = preorders.filter(po=>['completed','expired','cancelled'].includes(po.status||'pending')); toDelete.forEach(po=>{ if(sb) sb.from('preorders').delete().eq('id',po.id).then(({error})=>{ if(error) console.warn('[Supabase] Delete preorder error:',error.message); }); }); persistPreorders(preorders.filter(po=>['pending','notified'].includes(po.status||'pending'))); showToast("Histórico limpo","info"); }}}>🗑️ Limpar concluídas</button>
                 </div>
+
+                {/* FORMULÁRIO MANUAL */}
+                {adminPoForm !== null && (
+                  <div style={{background:'rgba(0,229,195,0.05)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:12,padding:'16px 18px',marginBottom:16}}>
+                    <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.65rem",color:'var(--accent)',letterSpacing:'1.5px',marginBottom:12}}>＋ NOVA RESERVA MANUAL</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                      <div>
+                        <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:4}}>Produto</div>
+                        <select value={adminPoForm.productId} onChange={e=>setAdminPoForm(f=>({...f,productId:e.target.value}))}
+                          style={{width:'100%',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 10px',color:'var(--text)',fontSize:'0.8rem',fontFamily:"'DM Sans',sans-serif"}}>
+                          <option value="">Selecione...</option>
+                          {products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:4}}>Quantidade</div>
+                        <input type="number" min="1" value={adminPoForm.qty}
+                          onChange={e=>setAdminPoForm(f=>({...f,qty:parseInt(e.target.value)||1}))}
+                          style={{width:'100%',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 10px',color:'var(--text)',fontSize:'0.8rem'}} />
+                      </div>
+                      <div>
+                        <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:4}}>Nome do cliente</div>
+                        <input value={adminPoForm.name} onChange={e=>setAdminPoForm(f=>({...f,name:e.target.value}))}
+                          placeholder="Ex: Gustavo"
+                          style={{width:'100%',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 10px',color:'var(--text)',fontSize:'0.8rem'}} />
+                      </div>
+                      <div>
+                        <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:4}}>WhatsApp</div>
+                        <input value={adminPoForm.whatsapp} onChange={e=>setAdminPoForm(f=>({...f,whatsapp:e.target.value}))}
+                          placeholder="74999710520"
+                          style={{width:'100%',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 10px',color:'var(--text)',fontSize:'0.8rem'}} />
+                      </div>
+                    </div>
+                    <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+                      <button onClick={()=>setAdminPoForm(null)}
+                        style={{padding:'7px 16px',background:'none',border:'1px solid var(--border)',borderRadius:8,color:'var(--muted)',fontSize:'0.75rem',cursor:'pointer'}}>
+                        Cancelar
+                      </button>
+                      <button onClick={()=>{
+                        const p = products.find(x=>x.id===adminPoForm.productId);
+                        if(!p) { showToast('Selecione um produto','error'); return; }
+                        if(!(adminPoForm.name||'').trim()) { showToast('Informe o nome','error'); return; }
+                        if(!(adminPoForm.whatsapp||'').trim()) { showToast('Informe o WhatsApp','error'); return; }
+                        savePreorder(p, adminPoForm);
+                        setAdminPoForm(null);
+                        showToast('Reserva criada ✓','success');
+                      }}
+                        style={{padding:'7px 20px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>
+                        Salvar Reserva
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {/* Product demand chips */}
                 {Object.keys(byProduct).length > 0 && (
