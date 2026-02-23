@@ -2475,7 +2475,7 @@ function App() {
         if (!p) return `• [produto removido] ×${o.qty}`;
         return `• ${p.name} ×${o.qty||0} = R$ ${(p.price * (o.qty||0)).toLocaleString('pt-BR')}`;
       }).join('\n');
-      const pagamentoLabel = checkout.pagamento === 'pix' ? 'PIX (à vista)' : checkout.pagamento === '2x' ? 'Cartão 2x (juros Mercado Pago)' : 'Cartão 3x (juros Mercado Pago)';
+      const pagamentoLabel = checkout.pagamento === 'pix' ? 'PIX (à vista)' : 'Cartão 2x (juros Mercado Pago)';
       const msg =
 `🧬 *PEDIDO VANGUARD PEPTIDES*
 
@@ -3112,27 +3112,36 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
               {/* Pagamento */}
               <div className="checkout-section">
                 <div className="checkout-section-title">💳 Forma de Pagamento</div>
-                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:8}}>
-                  {[
-                    { id:'pix',  icon:'⚡', label:'PIX', sub:'À vista · 10% OFF' },
-                    { id:'2x',   icon:'💳', label:'2x Cartão', sub:'Juros Mercado Pago' },
-                    { id:'3x',   icon:'💳', label:'3x Cartão', sub:'Juros Mercado Pago' },
-                  ].map(opt => (
-                    <div key={opt.id} onClick={()=>updateCheckout('pagamento', opt.id)}
-                      style={{
-                        border: `1px solid ${checkout.pagamento===opt.id ? 'rgba(0,229,195,0.4)' : (checkoutErrors.pagamento ? 'rgba(255,107,53,0.5)' : 'var(--border)')}`,
-                        borderRadius:10, padding:'12px 10px', cursor:'pointer', textAlign:'center',
-                        background: checkout.pagamento===opt.id ? 'rgba(0,229,195,0.07)' : 'rgba(255,255,255,0.02)',
-                        transition:'all 0.18s'
-                      }}>
-                      <div style={{fontSize:'1.3rem', marginBottom:4}}>{opt.icon}</div>
-                      <div style={{fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'0.82rem', color: checkout.pagamento===opt.id ? 'var(--accent)' : 'var(--text)'}}>{opt.label}</div>
-                      <div style={{fontSize:'0.65rem', color: opt.id==='pix' ? 'var(--accent)' : 'var(--muted)', marginTop:2, fontWeight: opt.id==='pix' ? 700 : 400}}>{opt.sub}</div>
-                      {opt.id==='pix' && checkout.pagamento!=='pix' && (
-                        <div style={{fontSize:'0.6rem',color:'var(--accent)',marginTop:4,fontFamily:"'Space Mono',monospace"}}>economize R$ {Math.round(myTotal*0.1).toLocaleString('pt-BR')}</div>
-                      )}
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+
+                  {/* PIX — destaque */}
+                  <div onClick={()=>updateCheckout('pagamento','pix')} style={{
+                    border: `2px solid ${checkout.pagamento==='pix' ? 'var(--accent)' : (checkoutErrors.pagamento ? 'rgba(255,107,53,0.5)' : 'rgba(0,229,195,0.35)')}`,
+                    borderRadius:12, padding:'14px 10px', cursor:'pointer', textAlign:'center',
+                    background: checkout.pagamento==='pix' ? 'rgba(0,229,195,0.12)' : 'rgba(0,229,195,0.04)',
+                    transition:'all 0.18s', position:'relative', overflow:'hidden'
+                  }}>
+                    <div style={{position:'absolute',top:6,right:8,background:'var(--accent)',color:'#000',fontSize:'0.55rem',fontWeight:700,fontFamily:"'Space Mono',monospace",padding:'2px 6px',borderRadius:20}}>10% OFF</div>
+                    <div style={{fontSize:'1.5rem', marginBottom:4}}>⚡</div>
+                    <div style={{fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:'0.9rem', color:'var(--accent)'}}>PIX</div>
+                    <div style={{fontSize:'0.65rem', color:'var(--accent)', marginTop:2, fontWeight:700}}>À vista</div>
+                    <div style={{fontSize:'0.62rem',color:'var(--accent)',marginTop:6,fontFamily:"'Space Mono',monospace",opacity:0.85}}>
+                      economize R$ {Math.round(myTotal*0.1).toLocaleString('pt-BR')}
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Cartão 2x */}
+                  <div onClick={()=>updateCheckout('pagamento','2x')} style={{
+                    border: `1px solid ${checkout.pagamento==='2x' ? 'rgba(0,229,195,0.4)' : (checkoutErrors.pagamento ? 'rgba(255,107,53,0.5)' : 'var(--border)')}`,
+                    borderRadius:12, padding:'14px 10px', cursor:'pointer', textAlign:'center',
+                    background: checkout.pagamento==='2x' ? 'rgba(0,229,195,0.07)' : 'rgba(255,255,255,0.02)',
+                    transition:'all 0.18s'
+                  }}>
+                    <div style={{fontSize:'1.5rem', marginBottom:4}}>💳</div>
+                    <div style={{fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'0.9rem', color: checkout.pagamento==='2x' ? 'var(--accent)' : 'var(--text)'}}>2x Cartão</div>
+                    <div style={{fontSize:'0.65rem', color:'var(--muted)', marginTop:2}}>Juros Mercado Pago</div>
+                  </div>
+
                 </div>
               </div>
 
