@@ -50,6 +50,11 @@ body::before {
 @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.8); } }
 @keyframes slideIn { from { opacity:0; transform: translateY(24px) scale(0.97); } to { opacity:1; transform: translateY(0) scale(1); } }
 @keyframes popIn { from { opacity:0; transform: scale(0.85); } to { opacity:1; transform: scale(1); } }
+@keyframes pixPulse {
+  0%, 100% { box-shadow: 0 0 6px rgba(0,229,195,0.4), 0 0 18px rgba(0,229,195,0.15), inset 0 0 8px rgba(0,229,195,0.04); border-color: rgba(0,229,195,0.45); }
+  50%       { box-shadow: 0 0 14px rgba(0,229,195,0.75), 0 0 36px rgba(0,229,195,0.3), inset 0 0 14px rgba(0,229,195,0.08); border-color: var(--accent); }
+}
+.pix-card { animation: pixPulse 2s ease-in-out infinite; }
 
 /* NAV */
 nav {
@@ -3115,11 +3120,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                 <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
 
                   {/* PIX — destaque */}
-                  <div onClick={()=>updateCheckout('pagamento','pix')} style={{
-                    border: `2px solid ${checkout.pagamento==='pix' ? 'var(--accent)' : (checkoutErrors.pagamento ? 'rgba(255,107,53,0.5)' : 'rgba(0,229,195,0.35)')}`,
+                  <div onClick={()=>updateCheckout('pagamento','pix')} className="pix-card" style={{
+                    border: `2px solid ${checkoutErrors.pagamento ? 'rgba(255,107,53,0.5)' : 'rgba(0,229,195,0.45)'}`,
                     borderRadius:12, padding:'14px 10px', cursor:'pointer', textAlign:'center',
                     background: checkout.pagamento==='pix' ? 'rgba(0,229,195,0.12)' : 'rgba(0,229,195,0.04)',
-                    transition:'all 0.18s', position:'relative', overflow:'hidden'
+                    transition:'background 0.18s', position:'relative', overflow:'hidden'
                   }}>
                     <div style={{position:'absolute',top:6,right:8,background:'var(--accent)',color:'#000',fontSize:'0.55rem',fontWeight:700,fontFamily:"'Space Mono',monospace",padding:'2px 6px',borderRadius:20}}>10% OFF</div>
                     <div style={{fontSize:'1.5rem', marginBottom:4}}>⚡</div>
