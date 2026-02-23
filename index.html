@@ -2346,8 +2346,13 @@ function App() {
           notifiedAt: po.notified_at ? new Date(po.notified_at).getTime() : null,
           reminderSent: po.reminder_sent || false,
         }));
-        setPreorders(converted);
-        localStorage.setItem('vg-preorders', JSON.stringify(converted));
+        setPreorders(prev => {
+          // Manter pré-orders locais que ainda não chegaram ao Supabase (INSERT pode ter falhado)
+          const localOnly = prev.filter(p => !converted.find(c => c.id === p.id));
+          const merged = [...localOnly, ...converted];
+          localStorage.setItem('vg-preorders', JSON.stringify(merged));
+          return merged;
+        });
       }
     });
 
@@ -2576,7 +2581,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
       product_name: entry.productName, name: entry.name, whatsapp: entry.whatsapp,
       qty: entry.qty, status: entry.status, date: entry.date, ts: entry.ts,
       notified_at: null, reminder_sent: false
-    }).then(({ error }) => { if (error) console.warn('[Supabase] Preorder save error:', error.message); });
+    }).then(({ error }) => { if (error) { console.warn('[Supabase] Preorder save error:', error.message); showToast('Erro ao salvar pré-order no servidor: ' + error.message, 'error'); } });
     // Notify STORE about new pre-order
     const reservaNum = '#' + (Date.now()+'').slice(-6);
     const msg = encodeURIComponent(
