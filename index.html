@@ -4120,7 +4120,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
               return <>
                 <div className="admin-actions" style={{flexWrap:'wrap',gap:8}}>
                   <button className="admin-action-btn" onClick={checkPreorderExpiry}>🔄 Verificar prazos</button>
-                  <button className="admin-action-btn danger" onClick={()=>{ if(window.confirm("Limpar pré-orders concluídas/expiradas/canceladas?")){ persistPreorders(preorders.filter(po=>['pending','notified'].includes(po.status||'pending'))); showToast("Histórico limpo","info"); }}}>🗑️ Limpar concluídas</button>
+                  <button className="admin-action-btn danger" onClick={()=>{ if(window.confirm("Limpar pré-orders concluídas/expiradas/canceladas?")){ const toDelete = preorders.filter(po=>['completed','expired','cancelled'].includes(po.status||'pending')); toDelete.forEach(po=>{ if(sb) sb.from('preorders').delete().eq('id',po.id).then(({error})=>{ if(error) console.warn('[Supabase] Delete preorder error:',error.message); }); }); persistPreorders(preorders.filter(po=>['pending','notified'].includes(po.status||'pending'))); showToast("Histórico limpo","info"); }}}>🗑️ Limpar concluídas</button>
                 </div>
 
                 {/* Product demand chips */}
@@ -4218,7 +4218,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                           </div>
                           <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.72rem",color:"#888"}}>×{po.qty}</div>
                           <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.65rem",color:s.color,fontWeight:700}}>{s.txt}</div>
-                          <button className="admin-remove-btn" onClick={()=>persistPreorders(preorders.filter(x=>x.id!==po.id))}>✕</button>
+                          <button className="admin-remove-btn" onClick={()=>removePreorder(po.id)}>✕</button>
                         </div>
                       );
                     })}
