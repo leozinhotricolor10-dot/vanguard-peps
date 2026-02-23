@@ -3766,13 +3766,19 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                     <span></span>
                   </div>
                   {filteredOrders.map(order => {
-                    const p = products.find(x => x.id === order.peptideId);
-                    if (!p) return null;
+                    const items = order._items && order._items.length > 0 ? order._items : [{peptideId: order.peptideId, qty: order.qty || 1}];
+                    const firstP = products.find(x => x.id === items[0].peptideId);
+                    if (!firstP) return null;
+                    const orderTotal = order._total || items.reduce((s,i) => { const p2 = products.find(x=>x.id===i.peptideId); return s + (p2 ? p2.price*(i.qty||1) : 0); }, 0);
+                    const totalQty = items.reduce((s,i) => s + (i.qty||1), 0);
                     return (
                       <div key={order.id} className="admin-table-row">
                         <div>
                           {order.id && <div className="order-id-badge">#{order.id}</div>}
-                          <div className="admin-row-name">{p.name}</div>
+                          {items.length > 1
+                            ? items.map((it,idx) => { const p2 = products.find(x=>x.id===it.peptideId); return <div key={idx} className="admin-row-name" style={{fontSize:'0.75rem'}}>{p2?p2.name:it.peptideId} ×{it.qty||1}</div>; })
+                            : <div className="admin-row-name">{firstP.name}</div>
+                          }
                           <div className="admin-row-buyer">{order.buyerName}</div>
                         </div>
                         <div>
@@ -3789,8 +3795,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                             <span className="status-cycle">▶</span>
                           </span>
                         </div>
-                        <div className="admin-row-qty">×{order.qty || 0}</div>
-                        <div className="admin-row-total">R$ {(p.price*(order.qty||0)).toLocaleString("pt-BR")}</div>
+                        <div className="admin-row-qty">×{totalQty}</div>
+                        <div className="admin-row-total">R$ {orderTotal.toLocaleString("pt-BR")}</div>
                         <div><button className="admin-remove-btn" onClick={()=>adminRemove(order.id)}>remover</button></div>
                       </div>
                     );
