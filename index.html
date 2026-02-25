@@ -986,6 +986,7 @@ const CATEGORIES = [
   { id: "longevidade",  name: "Longevidade",          icon: "⚡", color: "rgba(0,168,255,0.15)" },
   { id: "libido",       name: "Libido",               icon: "💆", color: "rgba(236,72,153,0.15)" },
   { id: "neuro",        name: "Neuro & Foco",         icon: "🧠", color: "rgba(99,102,241,0.2)" },
+  { id: "insumos",      name: "Insumos & Acessórios", icon: "🧪", color: "rgba(100,200,150,0.15)" },
 ];
 
 const DEFAULT_PEPTIDES = [
@@ -998,6 +999,8 @@ const DEFAULT_PEPTIDES = [
   { id: "epithalon",   sku: "EPT10",  name: "Epithalon 10mg",      desc: "Longevidade celular, telômeros, sono e energia",                 category: "longevidade",   price: 249, hot: false, badge: null },
   { id: "pt141",       sku: "PT141",  name: "PT-141 10mg",         desc: "Modulador de libido masculino e feminino",                       category: "libido",        price: 280, hot: false, badge: null },
   { id: "selank",      sku: "SLK5",   name: "Selank 5mg",          desc: "Ansiolítico peptídico, foco e clareza mental",                   category: "neuro",         price: 199, hot: false, badge: "✨ Novo" },
+  { id: "agua-bact",   sku: "AGUA5",  name: "Água Bacteriostática 5ml", desc: "Solvente estéril para reconstituição de peptídeos — compatível com todos os produtos do catálogo", category: "insumos", price: 25, hot: false, badge: null },
+  { id: "kit-reconst", sku: "KIT01",  name: "Kit de Reconstituição", desc: "Água bacteriostática + lenços de álcool + frasco vazio estéril — tudo que você precisa para reconstituir seus peptídeos com segurança", category: "insumos", price: 49, hot: false, badge: "📦 Kit Completo" },
 ];
 
 // Combos Bundle & Save
@@ -2158,6 +2161,7 @@ function App() {
   const [artForm, setArtForm] = useState(null);
   const [adminPoForm, setAdminPoForm] = useState(null);
   const [orderDetail, setOrderDetail] = useState(null);
+  const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms'
   const [disclaimer, setDisclaimer] = useState(false);
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -4615,6 +4619,44 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
         </div>
       )}
 
+      {/* LEGAL MODAL */}
+      {legalModal && (
+        <div className="modal-overlay" onClick={()=>setLegalModal(null)}>
+          <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:520,maxHeight:'80vh',overflowY:'auto'}}>
+            {legalModal==='privacy' && <>
+              <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px',marginBottom:12}}>POLÍTICA DE PRIVACIDADE</div>
+              <div style={{fontSize:'0.82rem',lineHeight:1.8,color:'var(--muted)'}}>
+                <p style={{marginBottom:10}}><strong style={{color:'var(--text)'}}>Coleta de dados:</strong> Coletamos nome, CPF, telefone, e-mail e endereço exclusivamente para processamento dos pedidos.</p>
+                <p style={{marginBottom:10}}><strong style={{color:'var(--text)'}}>Uso dos dados:</strong> Seus dados são usados apenas para entrega e comunicação sobre seu pedido. Não compartilhamos com terceiros.</p>
+                <p style={{marginBottom:10}}><strong style={{color:'var(--text)'}}>Armazenamento:</strong> Os dados são armazenados de forma segura e podem ser solicitados para exclusão a qualquer momento via <a href="mailto:admin@vanguardpep.com" style={{color:'var(--accent)'}}>admin@vanguardpep.com</a>.</p>
+                <p style={{marginBottom:10}}><strong style={{color:'var(--text)'}}>LGPD:</strong> Em conformidade com a Lei Geral de Proteção de Dados (Lei 13.709/2018). Para exercer seus direitos, entre em contato pelo e-mail acima.</p>
+                <p><strong style={{color:'var(--text)'}}>Contato DPO:</strong> admin@vanguardpep.com</p>
+              </div>
+            </>}
+            {legalModal==='terms' && <>
+              <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px',marginBottom:12}}>TERMOS DE USO</div>
+              <div style={{fontSize:'0.82rem',lineHeight:1.8,color:'var(--muted)'}}>
+                <p style={{marginBottom:10}}><strong style={{color:'var(--text)'}}>Finalidade:</strong> Todos os produtos comercializados pela Vanguard Labs são destinados exclusivamente a pesquisa científica in vitro. Não são medicamentos nem suplementos.</p>
+                <p style={{marginBottom:10}}><strong style={{color:'var(--text)'}}>Responsabilidade:</strong> O comprador assume total responsabilidade pelo uso, armazenamento e manuseio dos produtos adquiridos.</p>
+                <p style={{marginBottom:10}}><strong style={{color:'var(--text)'}}>Idade mínima:</strong> Venda restrita a maiores de 18 anos.</p>
+                <p style={{marginBottom:10}}><strong style={{color:'var(--text)'}}>Pagamento:</strong> Os pedidos são confirmados após envio via WhatsApp e confirmação do pagamento.</p>
+                <p style={{marginBottom:10}}><strong style={{color:'var(--text)'}}>Entrega:</strong> Prazos são estimados e podem variar conforme localidade e transportadora.</p>
+                <p><strong style={{color:'var(--text)'}}>Contato:</strong> admin@vanguardpep.com</p>
+              </div>
+            </>}
+            {legalModal==='research' && <>
+              <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px',marginBottom:12}}>RESEARCH USE ONLY</div>
+              <div style={{fontSize:'0.82rem',lineHeight:1.8,color:'var(--muted)'}}>
+                <p style={{marginBottom:10}}>Os peptídeos disponibilizados pela Vanguard Labs são produzidos e comercializados <strong style={{color:'var(--text)'}}>exclusivamente para fins de pesquisa científica</strong>.</p>
+                <p style={{marginBottom:10}}>Estes produtos <strong style={{color:'var(--text)'}}>NÃO foram avaliados pela ANVISA</strong> para uso humano ou animal. Não são medicamentos, suplementos alimentares ou produtos terapêuticos registrados.</p>
+                <p>Ao adquirir qualquer produto, o comprador declara estar ciente desta condição e assume total responsabilidade pelo uso.</p>
+              </div>
+            </>}
+            <button onClick={()=>setLegalModal(null)} style={{width:'100%',marginTop:20,padding:'10px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem'}}>Fechar</button>
+          </div>
+        </div>
+      )}
+
       {/* ADD TO CART MODAL */}
       {modal && (
         <div className="modal-overlay" onClick={()=>setModal(null)}>
@@ -4683,13 +4725,18 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
           suplementos alimentares ou produtos terapêuticos. O uso é de total responsabilidade do comprador.<br/>
           Consulte sempre um profissional de saúde habilitado.
         </div>
+        <div style={{marginBottom:14,fontFamily:"'Space Mono',monospace",fontSize:"0.65rem",color:"var(--muted)"}}>
+          📧 <a href="mailto:admin@vanguardpep.com" style={{color:"var(--accent)",textDecoration:"none",opacity:0.85}}>admin@vanguardpep.com</a>
+          <span style={{margin:"0 10px",opacity:0.3}}>·</span>
+          <a href="https://wa.me/447418333521" target="_blank" style={{color:"var(--accent)",textDecoration:"none",opacity:0.85}}>💬 WhatsApp</a>
+        </div>
         <div className="footer-links">
-          <a className="footer-link" href="#">Política de Privacidade</a>
-          <a className="footer-link" href="#">Termos de Uso</a>
-          <a className="footer-link" href="#">Research Use Only</a>
+          <a className="footer-link" href="#" onClick={e=>{e.preventDefault();setLegalModal('privacy');}}>Política de Privacidade</a>
+          <a className="footer-link" href="#" onClick={e=>{e.preventDefault();setLegalModal('terms');}}>Termos de Uso</a>
+          <a className="footer-link" href="#" onClick={e=>{e.preventDefault();setLegalModal('research');}}>Research Use Only</a>
           <a className="footer-link" href="https://wa.me/447418333521" target="_blank">Contato</a>
         </div>
-        <div className="footer-copy">© {new Date().getFullYear()} Vanguard Peptides · vanguardpep.com</div>
+        <div className="footer-copy">© {new Date().getFullYear()} Vanguard Labs · vanguardpep.com</div>
       </footer>
       {/* ── MOBILE BOTTOM NAV ── */}
       <div className="mobile-bottom-nav">
