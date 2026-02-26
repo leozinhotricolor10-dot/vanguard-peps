@@ -750,6 +750,14 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
 .fin-trend-bar-fill { width: 100%; background: linear-gradient(0deg, var(--accent), rgba(0,229,195,0.3)); border-radius: 4px 4px 0 0; min-height: 3px; transition: height 0.4s ease; }
 .fin-trend-label { font-family: 'Space Mono', monospace; font-size: 0.52rem; color: var(--muted); }
 .fin-trend-val { font-size: 0.62rem; color: var(--accent); font-weight: 700; }
+.fin-luc-row { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.fin-luc-name { flex: 1; min-width: 120px; font-size: 0.85rem; font-weight: 600; }
+.fin-luc-qty { font-family: 'Space Mono', monospace; font-size: 0.68rem; color: var(--muted); min-width: 32px; }
+.fin-luc-rev { font-family: 'Space Mono', monospace; font-size: 0.68rem; color: var(--text); min-width: 90px; text-align: right; }
+.fin-luc-custo { font-family: 'Space Mono', monospace; font-size: 0.63rem; color: var(--muted); min-width: 90px; text-align: right; }
+.fin-luc-lucro { font-family: 'Space Mono', monospace; font-size: 0.72rem; font-weight: 700; min-width: 90px; text-align: right; }
+.fin-luc-margem { font-family: 'Space Mono', monospace; font-size: 0.72rem; font-weight: 700; min-width: 40px; text-align: right; border-radius: 4px; padding: 1px 6px; background: rgba(255,255,255,0.05); }
+.fin-luc-no-cost { font-size: 0.65rem; color: var(--muted); font-style: italic; }
 /* ESGOTADO */
 .product-card.esgotado { opacity: 1; border-color: rgba(255,165,0,0.25); }
 .esgotado-badge { position: absolute; top: 12px; right: 12px; background: rgba(255,60,60,0.15); border: 1px solid rgba(255,60,60,0.4); color: #ff5050; font-family: 'Space Mono', monospace; font-size: 0.6rem; font-weight: 700; letter-spacing: 1.5px; padding: 3px 9px; border-radius: 6px; }
@@ -4416,18 +4424,63 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
             {/* TAB: FINANCEIRO */}
             {adminTab==="financeiro" && (()=>{
               const fmt = v => `R$ ${v.toLocaleString('pt-BR')}`;
-              const ordsByStatus = s => orders.filter(o=>(o.status||'pendente')===s);
-              const revByStatus = s => ordsByStatus(s).reduce((a,o)=>{ const p=products.find(x=>x.id===o.peptideId); return a+(p?p.price*(o.qty||0):0); },0);
+
+              // Revenue using _total (real amount paid) or calculate from _items
+              const sbOrders = orders.filter(o => o._supabase);
+              const ordsByStatus = s => sbOrders.filter(o=>(o.status||'pendente')===s);
+              const revForOrds = ords => ords.reduce((a,o)=>{
+                if(o._total) return a + o._total;
+                const items = o._items && o._items.length ? o._items : [{peptideId:o.peptideId, qty:o.qty||1}];
+                return a + items.reduce((s2,it)=>{ const p=products.find(x=>x.id===it.peptideId); return s2+(p?p.price*(it.qty||1):0); },0);
+              },0);
+              const revByStatus = s => revForOrds(ordsByStatus(s));
               const confirmed = revByStatus('pago') + revByStatus('enviado') + revByStatus('entregue');
               const pending   = revByStatus('pendente');
-              const totalOrds = orders.length;
+              const totalOrds = sbOrders.length;
               const ticket    = totalOrds ? Math.round((confirmed+pending)/totalOrds) : 0;
               const preorderProj = preorders.reduce((a,po)=>{ const p=products.find(x=>x.id===po.productId); return a+(p?p.price*(po.qty||0):0); },0);
 
-              const prodRev = {}; const prodQty = {};
-              orders.forEach(o=>{ const p=products.find(x=>x.id===o.peptideId); if(!p) return; prodRev[p.name]=(prodRev[p.name]||0)+p.price*(o.qty||0); prodQty[p.name]=(prodQty[p.name]||0)+(o.qty||0); });
-              const rankList = Object.entries(prodRev).sort((a,b)=>b[1]-a[1]);
-              const maxRev = rankList[0]?rankList[0][1]:1;
+              // COGS — confirmed orders where product has _custoVial
+              const confirmedOrds = [...ordsByStatus('pago'), ...ordsByStatus('enviado'), ...ordsByStatus('entregue')];
+              const cogsForOrds = ords => ords.reduce((a,o)=>{
+                const items = o._items && o._items.length ? o._items : [{peptideId:o.peptideId, qty:o.qty||1}];
+                return a + items.reduce((s2,it)=>{ const p=products.find(x=>x.id===it.peptideId); return s2+(p&&p._custoVial?p._custoVial*(it.qty||1):0); },0);
+              },0);
+              const cogs = cogsForOrds(confirmedOrds);
+              const hasCost = cogs > 0;
+              const lucroLiq = confirmed - cogs;
+              const margemMedia = confirmed > 0 && hasCost ? Math.round((lucroLiq/confirmed)*100) : null;
+
+              // Per-product data for confirmed orders
+              const prodData = {};
+              confirmedOrds.forEach(o=>{
+                const items = o._items && o._items.length ? o._items : [{peptideId:o.peptideId, qty:o.qty||1}];
+                items.forEach(it=>{
+                  const p=products.find(x=>x.id===it.peptideId); if(!p) return;
+                  if(!prodData[p.id]) prodData[p.id]={name:p.name,rev:0,cogs:0,qty:0,price:p.price,custo:p._custoVial||0};
+                  prodData[p.id].rev += p.price*(it.qty||1);
+                  prodData[p.id].cogs += (p._custoVial||0)*(it.qty||1);
+                  prodData[p.id].qty += (it.qty||1);
+                });
+              });
+              const prodLucList = Object.values(prodData).sort((a,b)=>b.rev-a.rev);
+
+              // Ranking across all statuses
+              const allProdRev = {}; const allProdQty = {};
+              sbOrders.forEach(o=>{
+                const items = o._items && o._items.length ? o._items : [{peptideId:o.peptideId, qty:o.qty||1}];
+                items.forEach(it=>{ const p=products.find(x=>x.id===it.peptideId); if(!p) return; allProdRev[p.name]=(allProdRev[p.name]||0)+p.price*(it.qty||1); allProdQty[p.name]=(allProdQty[p.name]||0)+(it.qty||1); });
+              });
+              const allRankList = Object.entries(allProdRev).sort((a,b)=>b[1]-a[1]);
+              const allMaxRev = allRankList[0]?allRankList[0][1]:1;
+
+              // Estoque valorizado (stock × custo/vial)
+              const estoqueValorizado = products.reduce((a,p)=>a+(p._custoVial||0)*(p.stock||0),0);
+
+              // Taxa de conversão pré-orders
+              const poTotal = preorders.length;
+              const poConcluidas = preorders.filter(po=>po.status==='completed').length;
+              const taxaConversao = poTotal > 0 ? Math.round((poConcluidas/poTotal)*100) : 0;
 
               const poByProd = {};
               preorders.forEach(po=>{ const p=products.find(x=>x.id===po.productId); if(!p) return; if(!poByProd[p.name]) poByProd[p.name]={qty:0,proj:0}; poByProd[p.name].qty+=(po.qty||0); poByProd[p.name].proj+=p.price*(po.qty||0); });
@@ -4435,14 +4488,14 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
               const days7 = Array.from({length:7},(_,i)=>{ const d=new Date(); d.setDate(d.getDate()-(6-i)); return d; });
               const trendData = days7.map(d=>{
                 const ds = d.toLocaleDateString('pt-BR');
-                const rev = orders.filter(o=>o.createdAt && new Date(o.createdAt).toLocaleDateString('pt-BR')===ds)
-                  .reduce((a,o)=>{ const p=products.find(x=>x.id===o.peptideId); return a+(p?p.price*(o.qty||0):0); },0);
-                return { label: d.toLocaleDateString('pt-BR',{weekday:'short'}), rev };
+                const dayOrds = sbOrders.filter(o=>o.createdAt && new Date(o.createdAt).toLocaleDateString('pt-BR')===ds);
+                return { label: d.toLocaleDateString('pt-BR',{weekday:'short'}), rev: revForOrds(dayOrds) };
               });
               const maxTrend = Math.max(...trendData.map(d=>d.rev),1);
 
               return (
                 <>
+                  {/* Cards principais */}
                   <div className="fin-cards">
                     <div className="fin-card green">
                       <div className="fin-card-label">Faturamento Confirmado</div>
@@ -4454,6 +4507,33 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                       <div className="fin-card-value">{fmt(pending)}</div>
                       <div className="fin-card-sub">{ordsByStatus('pendente').length} pedido{ordsByStatus('pendente').length!==1?'s':''} pendente{ordsByStatus('pendente').length!==1?'s':''}</div>
                     </div>
+                    {hasCost ? <>
+                      <div className="fin-card" style={{borderColor:'rgba(76,255,176,0.3)',background:'rgba(76,255,176,0.04)'}}>
+                        <div className="fin-card-label">Lucro Líquido</div>
+                        <div className="fin-card-value" style={{color:lucroLiq>=0?'#4cffb0':'#ff5050'}}>{fmt(Math.round(lucroLiq))}</div>
+                        <div className="fin-card-sub">CMV: {fmt(Math.round(cogs))}</div>
+                      </div>
+                      <div className="fin-card" style={{borderColor:'rgba(255,150,0,0.3)',background:'rgba(255,150,0,0.04)'}}>
+                        <div className="fin-card-label">Margem Média</div>
+                        <div className="fin-card-value" style={{color:'#ff9600'}}>{margemMedia}%</div>
+                        <div className="fin-card-sub">Sobre faturamento confirmado</div>
+                      </div>
+                    </> : <>
+                      <div className="fin-card purple">
+                        <div className="fin-card-label">Projeção Pré-Orders</div>
+                        <div className="fin-card-value">{fmt(preorderProj)}</div>
+                        <div className="fin-card-sub">{preorders.length} reserva{preorders.length!==1?'s':''} em fila</div>
+                      </div>
+                      <div className="fin-card blue">
+                        <div className="fin-card-label">Ticket Médio</div>
+                        <div className="fin-card-value">{fmt(ticket)}</div>
+                        <div className="fin-card-sub">{totalOrds} pedido{totalOrds!==1?'s':''} no total</div>
+                      </div>
+                    </>}
+                  </div>
+
+                  {/* Segunda linha quando há dados de custo */}
+                  {hasCost && <div className="fin-cards" style={{gridTemplateColumns:'repeat(3,1fr)'}}>
                     <div className="fin-card purple">
                       <div className="fin-card-label">Projeção Pré-Orders</div>
                       <div className="fin-card-value">{fmt(preorderProj)}</div>
@@ -4464,8 +4544,14 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                       <div className="fin-card-value">{fmt(ticket)}</div>
                       <div className="fin-card-sub">{totalOrds} pedido{totalOrds!==1?'s':''} no total</div>
                     </div>
-                  </div>
+                    <div className="fin-card" style={{borderColor:'rgba(0,200,100,0.3)',background:'rgba(0,200,100,0.04)'}}>
+                      <div className="fin-card-label">Estoque Valorizado</div>
+                      <div className="fin-card-value" style={{color:'#00c864'}}>{fmt(Math.round(estoqueValorizado))}</div>
+                      <div className="fin-card-sub">Custo do estoque atual</div>
+                    </div>
+                  </div>}
 
+                  {/* Por Status */}
                   <div className="fin-section">
                     <div className="fin-section-title">Por Status</div>
                     <div className="fin-status-grid">
@@ -4480,22 +4566,66 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                     </div>
                   </div>
 
+                  {/* Lucratividade por Produto — só aparece quando há _custoVial */}
+                  {hasCost && prodLucList.length > 0 && (
+                    <div className="fin-section">
+                      <div className="fin-section-title">Lucratividade por Produto</div>
+                      {prodLucList.map(p=>{
+                        const lucro = p.rev - p.cogs;
+                        const margem = p.rev > 0 && p.cogs > 0 ? Math.round((lucro/p.rev)*100) : null;
+                        return (
+                          <div className="fin-luc-row" key={p.name}>
+                            <div className="fin-luc-name">{p.name}</div>
+                            <div className="fin-luc-qty">×{p.qty}</div>
+                            <div className="fin-luc-rev">{fmt(Math.round(p.rev))}</div>
+                            {p.custo > 0 ? <>
+                              <div className="fin-luc-custo">CMV {fmt(Math.round(p.cogs))}</div>
+                              <div className="fin-luc-lucro" style={{color:lucro>=0?'#4cffb0':'#ff5050'}}>{fmt(Math.round(lucro))}</div>
+                              <div className="fin-luc-margem" style={{color:margem>=30?'#4cffb0':margem>=15?'#ffc107':'#ff5050'}}>{margem}%</div>
+                            </> : <div className="fin-luc-no-cost">custo não definido</div>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {/* Ranking de Produtos */}
                   <div className="fin-section">
                     <div className="fin-section-title">Ranking de Produtos</div>
-                    {rankList.length === 0
+                    {allRankList.length === 0
                       ? <div style={{color:"var(--muted)",fontSize:"0.85rem"}}>Nenhum pedido ainda</div>
-                      : rankList.map(([name,rev],i)=>(
+                      : allRankList.map(([name,rev],i)=>(
                         <div className="fin-rank-row" key={name}>
                           <div className="fin-rank-pos">#{i+1}</div>
                           <div className="fin-rank-name">{name}</div>
-                          <div className="fin-rank-bar-wrap"><div className="fin-rank-bar" style={{width:`${(rev/maxRev)*100}%`}} /></div>
-                          <div className="fin-rank-qty">×{prodQty[name]}</div>
+                          <div className="fin-rank-bar-wrap"><div className="fin-rank-bar" style={{width:`${(rev/allMaxRev)*100}%`}} /></div>
+                          <div className="fin-rank-qty">×{allProdQty[name]}</div>
                           <div className="fin-rank-rev">{fmt(rev)}</div>
                         </div>
                       ))
                     }
                   </div>
 
+                  {/* Taxa de Conversão Pré-Orders */}
+                  <div className="fin-section">
+                    <div className="fin-section-title">Taxa de Conversão — Pré-Orders</div>
+                    <div style={{padding:'16px 20px',background:'var(--card)',border:'1px solid var(--border)',borderRadius:12}}>
+                      <div style={{display:'flex',alignItems:'center',gap:20}}>
+                        <div style={{flex:1}}>
+                          <div style={{height:8,background:'rgba(255,255,255,0.06)',borderRadius:4,overflow:'hidden'}}>
+                            <div style={{height:'100%',width:`${taxaConversao}%`,background:'linear-gradient(90deg,var(--accent),#00ffd6)',borderRadius:4,transition:'width 0.6s ease'}} />
+                          </div>
+                          <div style={{display:'flex',justifyContent:'space-between',marginTop:8,fontSize:'0.72rem',color:'var(--muted)'}}>
+                            <span>✅ {poConcluidas} convertidas</span>
+                            <span>⏳ {poTotal - poConcluidas} abertas/expiradas</span>
+                          </div>
+                        </div>
+                        <div style={{fontFamily:"'Syne',sans-serif",fontSize:'2rem',fontWeight:800,color:'var(--accent)',minWidth:70,textAlign:'right'}}>{taxaConversao}%</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Projeção Pré-Orders por Produto */}
                   <div className="fin-section">
                     <div className="fin-section-title">Projeção Pré-Orders por Produto</div>
                     {Object.keys(poByProd).length === 0
@@ -4510,6 +4640,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                     }
                   </div>
 
+                  {/* Últimos 7 Dias */}
                   <div className="fin-section">
                     <div className="fin-section-title">Últimos 7 Dias</div>
                     <div className="fin-trend-grid">
