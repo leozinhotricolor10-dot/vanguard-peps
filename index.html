@@ -4831,7 +4831,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               const desconto  = parseFloat(importForm.desconto) || 0;
               const overheadBrl = freteUsd * cambio + fedexBrl;
 
-              const validItems = importForm.items.filter(it => it.sku && it.boxes && it.priceUsd);
+              const validItems = importForm.items.map((it,i)=>({...it,_idx:i})).filter(it => it.sku && it.boxes && it.priceUsd);
               const totalOrderUsd = validItems.reduce((s,it) => s + (parseFloat(it.boxes)||0)*(parseFloat(it.priceUsd)||0)*(1 - desconto/100), 0);
 
               const calcs = validItems.map(it => {
@@ -4966,7 +4966,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     ))}
                   </div>
                   {importForm.items.map((it,idx) => {
-                    const calc = calcs.find(c=>c.sku===it.sku&&c.boxes===it.boxes&&c.priceUsd===it.priceUsd);
+                    const calc = calcs.find(c=>c._idx===idx);
                     return (
                       <div key={idx} style={{display:'grid',gridTemplateColumns:'90px 1fr 60px 70px 80px 80px 90px 32px',gap:6,marginBottom:6,alignItems:'center'}}>
                         <input style={{...inputStyle,fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',textTransform:'uppercase'}} placeholder="RT15" value={it.sku}
