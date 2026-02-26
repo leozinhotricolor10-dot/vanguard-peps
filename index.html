@@ -4708,7 +4708,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                   const updated = { ...it, [field]: val };
                   if (field === 'sku') {
                     const cat = ADINA_CATALOG[val.toUpperCase()];
-                    if (cat) { updated.name = cat.name; updated.spec = cat.spec; updated.priceUsd = String(cat.priceUsd); updated.sku = val.toUpperCase(); }
+                    if (cat) {
+                      updated.name = cat.name; updated.spec = cat.spec; updated.priceUsd = String(cat.priceUsd); updated.sku = val.toUpperCase();
+                      const existing = products.find(p => p.sku === val.toUpperCase() || p.name.toLowerCase().includes(cat.name.toLowerCase()) || cat.name.toLowerCase().includes(p.name.toLowerCase()));
+                      if (existing && existing.price) updated.precoSugOverride = String(existing.price);
+                    }
                   }
                   return updated;
                 });
