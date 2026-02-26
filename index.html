@@ -3328,16 +3328,29 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   </div>
 
                   {/* Cartão 2x */}
-                  <div onClick={()=>updateCheckout('pagamento','2x')} style={{
-                    border: `1px solid ${checkout.pagamento==='2x' ? 'rgba(0,229,195,0.4)' : (checkoutErrors.pagamento ? 'rgba(255,107,53,0.5)' : 'var(--border)')}`,
-                    borderRadius:12, padding:'14px 10px', cursor:'pointer', textAlign:'center',
-                    background: checkout.pagamento==='2x' ? 'rgba(0,229,195,0.07)' : 'rgba(255,255,255,0.02)',
-                    transition:'all 0.18s'
-                  }}>
-                    <div style={{fontSize:'1.5rem', marginBottom:4}}>💳</div>
-                    <div style={{fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'0.9rem', color: checkout.pagamento==='2x' ? 'var(--accent)' : 'var(--text)'}}>2x Cartão</div>
-                    <div style={{fontSize:'0.65rem', color:'var(--muted)', marginTop:2}}>Juros Mercado Pago</div>
-                  </div>
+                  {(() => {
+                    const MP_TAXA_2X = 0.0697; // taxa MP para 2x (ajuste conforme sua conta)
+                    const totalComJuros = Math.round(myTotal * (1 + MP_TAXA_2X));
+                    const juros = totalComJuros - myTotal;
+                    const parcela = Math.round(totalComJuros / 2);
+                    return (
+                      <div onClick={()=>updateCheckout('pagamento','2x')} style={{
+                        border: `1px solid ${checkout.pagamento==='2x' ? 'rgba(0,229,195,0.4)' : (checkoutErrors.pagamento ? 'rgba(255,107,53,0.5)' : 'var(--border)')}`,
+                        borderRadius:12, padding:'14px 10px', cursor:'pointer', textAlign:'center',
+                        background: checkout.pagamento==='2x' ? 'rgba(0,229,195,0.07)' : 'rgba(255,255,255,0.02)',
+                        transition:'all 0.18s'
+                      }}>
+                        <div style={{fontSize:'1.5rem', marginBottom:4}}>💳</div>
+                        <div style={{fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'0.9rem', color: checkout.pagamento==='2x' ? 'var(--accent)' : 'var(--text)'}}>2x Cartão</div>
+                        <div style={{fontSize:'0.72rem', fontWeight:700, color:'var(--text)', marginTop:4, fontFamily:"'Space Mono',monospace"}}>
+                          2x R$ {parcela.toLocaleString('pt-BR')}
+                        </div>
+                        <div style={{fontSize:'0.58rem', color:'#ff7a7a', marginTop:3}}>
+                          +R$ {juros.toLocaleString('pt-BR')} de juros MP
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                 </div>
               </div>
