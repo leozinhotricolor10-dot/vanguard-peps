@@ -978,6 +978,58 @@ const PRODUCT_IMAGES = {
 <script type="text/babel">
 const { useState, useMemo } = React;
 
+// ── Catálogo Adina (148 produtos) ─────────────────────────────────────────────
+const ADINA_CATALOG = {
+  'SM2':{name:'Semaglutide',spec:'2mg',priceUsd:28},'SM5':{name:'Semaglutide',spec:'5mg',priceUsd:38},'SM10':{name:'Semaglutide',spec:'10mg',priceUsd:55},'SM15':{name:'Semaglutide',spec:'15mg',priceUsd:65},'SM20':{name:'Semaglutide',spec:'20mg',priceUsd:75},'SM30':{name:'Semaglutide',spec:'30mg',priceUsd:90},
+  'TR5':{name:'Tirzepatide',spec:'5mg',priceUsd:40},'TR10':{name:'Tirzepatide',spec:'10mg',priceUsd:55},'TR15':{name:'Tirzepatide',spec:'15mg',priceUsd:70},'TR20':{name:'Tirzepatide',spec:'20mg',priceUsd:85},'TR30':{name:'Tirzepatide',spec:'30mg',priceUsd:100},'TR40':{name:'Tirzepatide',spec:'40mg',priceUsd:120},'TR50':{name:'Tirzepatide',spec:'50mg',priceUsd:140},'TR60':{name:'Tirzepatide',spec:'60mg',priceUsd:160},'TR100':{name:'Tirzepatide',spec:'100mg',priceUsd:240},
+  'RT5':{name:'Retatrutide',spec:'5mg',priceUsd:50},'RT10':{name:'Retatrutide',spec:'10mg',priceUsd:90},'RT15':{name:'Retatrutide',spec:'15mg',priceUsd:120},'RT20':{name:'Retatrutide',spec:'20mg',priceUsd:150},'RT30':{name:'Retatrutide',spec:'30mg',priceUsd:185},'RT40':{name:'Retatrutide',spec:'40mg',priceUsd:235},'RT50':{name:'Retatrutide',spec:'50mg',priceUsd:285},'RT60':{name:'Retatrutide',spec:'60mg',priceUsd:320},
+  'H10':{name:'HGH 191AA',spec:'10iu',priceUsd:48},'H12':{name:'HGH 191AA',spec:'12iu',priceUsd:55},'H15':{name:'HGH 191AA',spec:'15iu',priceUsd:68},'H24':{name:'HGH 191AA',spec:'24iu',priceUsd:100},'H36':{name:'HGH 191AA',spec:'36iu',priceUsd:150},
+  'MT1':{name:'MT-1',spec:'10mg',priceUsd:45},'ML10':{name:'MT-2 Melanotan',spec:'10mg',priceUsd:45},'P41':{name:'PT-141',spec:'10mg',priceUsd:50},'GND2':{name:'Gonadorelin',spec:'2mg',priceUsd:40},
+  'DS5':{name:'DSIP',spec:'5mg',priceUsd:40},'DS10':{name:'DSIP',spec:'10mg',priceUsd:75},'DS15':{name:'DSIP',spec:'15mg',priceUsd:105},
+  'SK5':{name:'Selank',spec:'5mg',priceUsd:44},'SK10':{name:'Selank',spec:'10mg',priceUsd:70},'SK30':{name:'Selank',spec:'30mg',priceUsd:105},'NSK30':{name:'NA Selank Amidate',spec:'30mg',priceUsd:150},
+  'OT2':{name:'Oxytocin',spec:'2mg',priceUsd:30},'OT5':{name:'Oxytocin',spec:'5mg',priceUsd:60},'OT10':{name:'Oxytocin',spec:'10mg',priceUsd:90},
+  'ET10':{name:'Epithalon',spec:'10mg',priceUsd:40},'ET40':{name:'Epithalon',spec:'40mg',priceUsd:110},'ET50':{name:'Epithalon',spec:'50mg',priceUsd:140},
+  'BC5':{name:'BPC-157',spec:'5mg',priceUsd:45},'BC10':{name:'BPC-157',spec:'10mg',priceUsd:68},'BC20':{name:'BPC-157',spec:'20mg',priceUsd:100},
+  'BB10':{name:'BPC 5mg+TB 5mg',spec:'10mg',priceUsd:98},'BB20':{name:'BPC 10mg+TB 10mg',spec:'20mg',priceUsd:160},
+  'AE1':{name:'ACE-031',spec:'1mg',priceUsd:50},'AR50':{name:'AICAR',spec:'50mg',priceUsd:55},'AR100':{name:'AICAR',spec:'100mg',priceUsd:105},
+  'AP2':{name:'Adipotide',spec:'2mg',priceUsd:70},'AP5':{name:'Adipotide',spec:'5mg',priceUsd:130},
+  'XA5':{name:'Semax',spec:'5mg',priceUsd:44},'XA10':{name:'Semax',spec:'10mg',priceUsd:70},'XA30':{name:'Semax',spec:'30mg',priceUsd:105},'NXA30':{name:'NA Semax Amidate',spec:'30mg',priceUsd:150},'XS20':{name:'Semax+Selank Blend',spec:'20mg',priceUsd:105},
+  '2S10':{name:'SS-31',spec:'10mg',priceUsd:85},'2S50':{name:'SS-31',spec:'50mg',priceUsd:240},
+  'G25':{name:'GHRP-2',spec:'5mg',priceUsd:30},'G210':{name:'GHRP-2',spec:'10mg',priceUsd:50},'G65':{name:'GHRP-6',spec:'5mg',priceUsd:30},'G610':{name:'GHRP-6',spec:'10mg',priceUsd:50},
+  'CND2':{name:'CJC-1295 no DAC',spec:'2mg',priceUsd:40},'CND5':{name:'CJC-1295 no DAC',spec:'5mg',priceUsd:70},'CND10':{name:'CJC-1295 no DAC',spec:'10mg',priceUsd:130},'CP10':{name:'CJC-1295 no DAC+Ipa',spec:'10mg',priceUsd:90},
+  'CD2':{name:'CJC-1295 DAC',spec:'2mg',priceUsd:80},'CD5':{name:'CJC-1295 DAC',spec:'5mg',priceUsd:130},'CD10':{name:'CJC-1295 DAC',spec:'10mg',priceUsd:230},
+  'BT5':{name:'TB-500',spec:'5mg',priceUsd:70},'BT10':{name:'TB-500',spec:'10mg',priceUsd:115},'B10F':{name:'TB-500 Fragment',spec:'10mg',priceUsd:100},
+  'FM2':{name:'MGF',spec:'2mg',priceUsd:40},'FMP2':{name:'PEG MGF',spec:'2mg',priceUsd:80},
+  'SMO5':{name:'Sermorelin',spec:'5mg',priceUsd:65},'SMO10':{name:'Sermorelin',spec:'10mg',priceUsd:120},
+  'G10K':{name:'HCG',spec:'10000IU',priceUsd:120},'G5K':{name:'HCG',spec:'5000IU',priceUsd:65},'G2K':{name:'HCG',spec:'2000IU',priceUsd:48},
+  '5AD':{name:'AOD9604',spec:'5mg',priceUsd:85},'10AD':{name:'AOD9604',spec:'10mg',priceUsd:160},
+  'IG01':{name:'IGF-1LR3',spec:'0.1mg',priceUsd:50},'IG1':{name:'IGF-1LR3',spec:'1mg',priceUsd:170},
+  'TSM5':{name:'Tesamorelin',spec:'5mg',priceUsd:100},'TSM10':{name:'Tesamorelin',spec:'10mg',priceUsd:160},'TSM20':{name:'Tesamorelin',spec:'20mg',priceUsd:280},
+  'IP5':{name:'Ipamorelin',spec:'5mg',priceUsd:40},'IP10':{name:'Ipamorelin',spec:'10mg',priceUsd:60},
+  'HX2':{name:'Hexarelin',spec:'2mg',priceUsd:42},'HX5':{name:'Hexarelin',spec:'5mg',priceUsd:75},'HX10':{name:'Hexarelin',spec:'10mg',priceUsd:150},
+  'CU50':{name:'GHK-Cu',spec:'50mg',priceUsd:35},'CU100':{name:'GHK-Cu',spec:'100mg',priceUsd:60},'GH50':{name:'GHK Basic',spec:'50mg',priceUsd:50},'AU100':{name:'AHK-CU',spec:'100mg',priceUsd:75},
+  'KS5':{name:'KissPeptin-10',spec:'5mg',priceUsd:55},'KS10':{name:'KissPeptin-10',spec:'10mg',priceUsd:90},
+  'TY10':{name:'Thymalin',spec:'10mg',priceUsd:65},'TA5':{name:'Thymosin Alpha-1',spec:'5mg',priceUsd:85},'TA10':{name:'Thymosin Alpha-1',spec:'10mg',priceUsd:135},
+  'MS10':{name:'MOTS-c',spec:'10mg',priceUsd:60},'MS40':{name:'MOTS-c',spec:'40mg',priceUsd:165},
+  'F410':{name:'FOXO4',spec:'10mg',priceUsd:280},'LL37':{name:'LL37',spec:'5mg',priceUsd:80},'MT10':{name:'Melatonin',spec:'10mg',priceUsd:60},
+  'FR2':{name:'HGH Fragment 176-191',spec:'2mg',priceUsd:55},'FR5':{name:'HGH Fragment 176-191',spec:'5mg',priceUsd:90},'FR10':{name:'HGH Fragment 176-191',spec:'10mg',priceUsd:150},
+  'DR5':{name:'Dermorphin',spec:'5mg',priceUsd:55},'GTT':{name:'Glutathione',spec:'1500mg',priceUsd:90},
+  '5AM':{name:'5-Amino-1MQ',spec:'5mg',priceUsd:60},'10AM':{name:'5-Amino-1MQ',spec:'10mg',priceUsd:100},'50AM':{name:'5-Amino-1MQ',spec:'50mg',priceUsd:150},
+  'CGL5':{name:'Cagrilintide',spec:'5mg',priceUsd:100},'CGL10':{name:'Cagrilintide',spec:'10mg',priceUsd:175},'CGL20':{name:'Cagrilintide',spec:'20mg',priceUsd:240},
+  'RA10':{name:'Ara-290',spec:'10mg',priceUsd:63},'NP810':{name:'SNAP-8',spec:'10mg',priceUsd:50},
+  'MDT5':{name:'Mazdutide',spec:'5mg',priceUsd:100},'MDT10':{name:'Mazdutide',spec:'10mg',priceUsd:150},
+  'NJ3100':{name:'NAD+',spec:'100mg',priceUsd:50},'NJ500':{name:'NAD+',spec:'500mg',priceUsd:90},'NJ1000':{name:'NAD+',spec:'1000mg',priceUsd:160},
+  'BBG70':{name:'BPC+GHK-Cu+TB-500 Blend',spec:'70mg',priceUsd:180},'SUR10':{name:'Survodutide',spec:'10mg',priceUsd:260},
+  'CS10':{name:'Cagrilintide+Semaglutide',spec:'10mg',priceUsd:150},'RC10':{name:'Retatrutide+Cagrilintide',spec:'10mg',priceUsd:170},
+  'VP5':{name:'VIP',spec:'5mg',priceUsd:100},'VP10':{name:'VIP',spec:'10mg',priceUsd:150},
+  'KP5':{name:'KPV',spec:'5mg',priceUsd:45},'KP10':{name:'KPV',spec:'10mg',priceUsd:65},
+  'PE10':{name:'PE 22-28',spec:'10mg',priceUsd:100},'NET5':{name:'N-Acetyl Epitalon Amidate',spec:'5mg',priceUsd:80},
+  'KL80':{name:'BPC+GHK+TB500+KPV Blend',spec:'80mg',priceUsd:190},
+  'LL5':{name:'Liraglutide',spec:'5mg',priceUsd:75},'LL10':{name:'Liraglutide',spec:'10mg',priceUsd:120},'LL30':{name:'Liraglutide',spec:'30mg',priceUsd:180},
+  'BA10':{name:'Bac Water',spec:'10mL',priceUsd:15},'BA03':{name:'Bac Water',spec:'3mL',priceUsd:10},
+  'AA10':{name:'Acetic Acid Water',spec:'10mL',priceUsd:15},'AA03':{name:'Acetic Acid Water',spec:'3mL',priceUsd:10},
+};
+
 const CATEGORIES = [
   { id: "all",          name: "Todos",               icon: "🧬", color: "rgba(0,229,195,0.15)" },
   { id: "emagrecedores",name: "Emagrecedores",        icon: "💉", color: "rgba(0,229,195,0.15)" },
@@ -2162,6 +2214,8 @@ function App() {
   const [adminPoForm, setAdminPoForm] = useState(null);
   const [orderDetail, setOrderDetail] = useState(null);
   const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms'
+  const [importForm, setImportForm] = useState({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:''}] });
+  const [importHistory, setImportHistory] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-imports')||'[]'); } catch { return []; } });
   const [disclaimer, setDisclaimer] = useState(false);
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -3752,6 +3806,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
               <button className={`admin-tab ${adminTab==="preorders"?"active":""}`} onClick={()=>setAdminTab("preorders")}>📋 PRÉ-ORDERS</button>
               <button className={`admin-tab ${adminTab==="avisos"?"active":""}`} onClick={()=>setAdminTab("avisos")}>📢 AVISOS</button>
               <button className={`admin-tab ${adminTab==="financeiro"?"active":""}`} onClick={()=>setAdminTab("financeiro")}>💰 FINANCEIRO</button>
+              <button className={`admin-tab ${adminTab==="importacao"?"active":""}`} onClick={()=>setAdminTab("importacao")}>📦 IMPORTAÇÃO</button>
             </div>
 
             {/* TAB: PEDIDOS */}
@@ -4471,6 +4526,155 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                   </div>
                 </>
               );
+            })()}
+
+            {/* TAB: IMPORTAÇÃO */}
+            {adminTab==="importacao" && (()=>{
+              const cambio    = parseFloat(importForm.cambio)   || 0;
+              const freteUsd  = parseFloat(importForm.freteUsd) || 0;
+              const fedexBrl  = parseFloat(importForm.fedexBrl) || 0;
+              const overheadBrl = freteUsd * cambio + fedexBrl;
+
+              const validItems = importForm.items.filter(it => it.sku && it.boxes && it.priceUsd);
+              const totalOrderUsd = validItems.reduce((s,it) => s + (parseFloat(it.boxes)||0)*(parseFloat(it.priceUsd)||0), 0);
+
+              const calcs = validItems.map(it => {
+                const boxes     = parseFloat(it.boxes)    || 0;
+                const priceUsd  = parseFloat(it.priceUsd) || 0;
+                const vials     = boxes * 10;
+                const itemUsd   = boxes * priceUsd;
+                const share     = totalOrderUsd > 0 ? itemUsd / totalOrderUsd : 0;
+                const overAlloc = overheadBrl * share;
+                const custoVial = (priceUsd / 10) * cambio + (vials > 0 ? overAlloc / vials : 0);
+                const precoSug  = custoVial > 0 ? Math.ceil(custoVial / 0.20) : 0;
+                return { ...it, vials, itemUsd, share, custoVial, precoSug };
+              });
+
+              function updateItem(idx, field, val) {
+                const items = importForm.items.map((it,i) => {
+                  if (i !== idx) return it;
+                  const updated = { ...it, [field]: val };
+                  if (field === 'sku') {
+                    const cat = ADINA_CATALOG[val.toUpperCase()];
+                    if (cat) { updated.name = cat.name; updated.spec = cat.spec; updated.priceUsd = String(cat.priceUsd); updated.sku = val.toUpperCase(); }
+                  }
+                  return updated;
+                });
+                setImportForm(f => ({ ...f, items }));
+              }
+
+              function addItem() { setImportForm(f => ({ ...f, items: [...f.items, {sku:'',name:'',spec:'',boxes:'',priceUsd:''}] })); }
+              function removeItem(idx) { setImportForm(f => ({ ...f, items: f.items.filter((_,i)=>i!==idx) })); }
+
+              function applyPrices() {
+                if (calcs.length === 0) { showToast('Nenhum item calculado','error'); return; }
+                // Match by name+spec to catalog products and update price
+                let updated = 0;
+                const newProducts = products.map(p => {
+                  const match = calcs.find(c => p.name.toLowerCase().includes(c.name.toLowerCase()) || (c.name.toLowerCase().includes(p.name.toLowerCase())));
+                  if (match) { updated++; return { ...p, price: match.precoSug, _custoVial: match.custoVial }; }
+                  return p;
+                });
+                persistProducts(newProducts);
+                showToast(`${updated} preços atualizados no catálogo ✓`, 'success');
+              }
+
+              function saveImport() {
+                if (calcs.length === 0) { showToast('Adicione produtos antes de salvar','error'); return; }
+                const entry = { id: Date.now(), date: importForm.date, cambio, freteUsd, fedexBrl, overheadBrl, totalOrderUsd, items: calcs };
+                const hist = [entry, ...importHistory].slice(0, 20);
+                setImportHistory(hist);
+                localStorage.setItem('vg-imports', JSON.stringify(hist));
+                showToast('Importação salva no histórico ✓', 'success');
+              }
+
+              const inputStyle = { background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:6, padding:'7px 10px', color:'var(--text)', fontSize:'0.8rem', fontFamily:"'DM Sans',sans-serif", width:'100%' };
+              const labelStyle = { fontSize:'0.65rem', color:'var(--muted)', marginBottom:3, display:'block' };
+
+              return <>
+                {/* PARÂMETROS */}
+                <div style={{background:'rgba(0,229,195,0.04)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
+                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px',marginBottom:12}}>📋 PARÂMETROS DA IMPORTAÇÃO</div>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:10}}>
+                    <div><label style={labelStyle}>Data</label><input style={inputStyle} value={importForm.date} onChange={e=>setImportForm(f=>({...f,date:e.target.value}))} /></div>
+                    <div><label style={labelStyle}>Câmbio (R$/USD)</label><input style={inputStyle} type="number" placeholder="5.80" value={importForm.cambio} onChange={e=>setImportForm(f=>({...f,cambio:e.target.value}))} /></div>
+                    <div><label style={labelStyle}>Frete USD</label><input style={inputStyle} type="number" placeholder="0.00" value={importForm.freteUsd} onChange={e=>setImportForm(f=>({...f,freteUsd:e.target.value}))} /></div>
+                    <div><label style={labelStyle}>Taxa FedEx (R$)</label><input style={inputStyle} type="number" placeholder="0.00" value={importForm.fedexBrl} onChange={e=>setImportForm(f=>({...f,fedexBrl:e.target.value}))} /></div>
+                  </div>
+                  {overheadBrl > 0 && (
+                    <div style={{marginTop:10,fontSize:'0.75rem',color:'var(--muted)',fontFamily:"'Space Mono',monospace"}}>
+                      Overhead total: <span style={{color:'var(--accent)',fontWeight:700}}>R$ {overheadBrl.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                      {totalOrderUsd > 0 && <> · Pedido: <span style={{color:'var(--accent)'}}>USD {totalOrderUsd.toLocaleString('en-US',{minimumFractionDigits:2})}</span></>}
+                    </div>
+                  )}
+                </div>
+
+                {/* ITENS */}
+                <div style={{marginBottom:10}}>
+                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px',marginBottom:10}}>📦 PRODUTOS DO PEDIDO</div>
+                  <div style={{display:'grid',gridTemplateColumns:'90px 1fr 60px 70px 80px 80px 90px 32px',gap:6,marginBottom:6,paddingBottom:6,borderBottom:'1px solid var(--border)'}}>
+                    {['SKU','Nome','Spec','Caixas','$/cx','Custo/vial','Preço sug.',''].map((h,i)=>(
+                      <div key={i} style={{fontSize:'0.6rem',color:'var(--muted)',fontFamily:"'Space Mono',monospace"}}>{h}</div>
+                    ))}
+                  </div>
+                  {importForm.items.map((it,idx) => {
+                    const calc = calcs.find(c=>c.sku===it.sku&&c.boxes===it.boxes&&c.priceUsd===it.priceUsd);
+                    return (
+                      <div key={idx} style={{display:'grid',gridTemplateColumns:'90px 1fr 60px 70px 80px 80px 90px 32px',gap:6,marginBottom:6,alignItems:'center'}}>
+                        <input style={{...inputStyle,fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',textTransform:'uppercase'}} placeholder="RT15" value={it.sku}
+                          onChange={e=>updateItem(idx,'sku',e.target.value)}
+                          onBlur={e=>{ if(!ADINA_CATALOG[e.target.value.toUpperCase()]) return; updateItem(idx,'sku',e.target.value); }} />
+                        <input style={{...inputStyle,fontSize:'0.75rem'}} placeholder="Nome auto" value={it.name} onChange={e=>updateItem(idx,'name',e.target.value)} />
+                        <input style={{...inputStyle,fontSize:'0.72rem'}} placeholder="15mg" value={it.spec} onChange={e=>updateItem(idx,'spec',e.target.value)} />
+                        <input style={{...inputStyle,textAlign:'center'}} type="number" min="1" placeholder="10" value={it.boxes} onChange={e=>updateItem(idx,'boxes',e.target.value)} />
+                        <input style={{...inputStyle,textAlign:'right'}} type="number" placeholder="120" value={it.priceUsd} onChange={e=>updateItem(idx,'priceUsd',e.target.value)} />
+                        <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',color:'#aaa',textAlign:'right',paddingRight:4}}>
+                          {calc ? `R$${calc.custoVial.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—'}
+                        </div>
+                        <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.78rem',color:'var(--accent)',fontWeight:700,textAlign:'right',paddingRight:4}}>
+                          {calc ? `R$${calc.precoSug}` : '—'}
+                        </div>
+                        <button onClick={()=>removeItem(idx)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.9rem',padding:0}}>✕</button>
+                      </div>
+                    );
+                  })}
+                  <button onClick={addItem} style={{marginTop:6,padding:'6px 14px',background:'none',border:'1px dashed var(--border)',borderRadius:8,color:'var(--muted)',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>
+                    ＋ Adicionar produto
+                  </button>
+                </div>
+
+                {/* AÇÕES */}
+                <div style={{display:'flex',gap:8,marginBottom:20,flexWrap:'wrap'}}>
+                  <button onClick={saveImport} style={{padding:'8px 18px',background:'rgba(0,229,195,0.1)',border:'1px solid rgba(0,229,195,0.3)',borderRadius:8,color:'var(--accent)',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontWeight:700}}>
+                    💾 Salvar importação
+                  </button>
+                  <button onClick={applyPrices} style={{padding:'8px 18px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontWeight:700}}>
+                    ✅ Aplicar preços ao catálogo
+                  </button>
+                </div>
+
+                {/* HISTÓRICO */}
+                {importHistory.length > 0 && (
+                  <div>
+                    <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--muted)',letterSpacing:'1.5px',marginBottom:8}}>📁 HISTÓRICO DE IMPORTAÇÕES</div>
+                    {importHistory.map(h=>(
+                      <div key={h.id} style={{padding:'10px 14px',background:'rgba(255,255,255,0.02)',border:'1px solid var(--border)',borderRadius:8,marginBottom:6,fontSize:'0.78rem'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}>
+                          <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.65rem',color:'var(--accent)'}}>{h.date}</span>
+                          <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.65rem',color:'var(--muted)'}}>Câmbio: {h.cambio} · USD {h.totalOrderUsd?.toFixed(2)} · Overhead: R${h.overheadBrl?.toFixed(2)}</span>
+                        </div>
+                        <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+                          {(h.items||[]).map((it,i)=>(
+                            <span key={i} style={{fontSize:'0.65rem',fontFamily:"'Space Mono',monospace",background:'rgba(0,229,195,0.06)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:4,padding:'2px 6px',color:'var(--muted)'}}>
+                              {it.sku} · R${it.precoSug}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>;
             })()}
             </>}
           </div>
