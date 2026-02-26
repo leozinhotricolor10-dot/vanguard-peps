@@ -2224,6 +2224,7 @@ function App() {
   const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms'
   const [importForm, setImportForm] = useState({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:''}] });
   const [importHistory, setImportHistory] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-imports')||'[]'); } catch { return []; } });
+  const [cambioInfo, setCambioInfo] = useState({ loading: false, hora: null, error: null });
   const [disclaimer, setDisclaimer] = useState(false);
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -2292,6 +2293,25 @@ function App() {
   }
   function persistProducts(p) { setProducts(p); saveProducts(p); }
   function persistStock(s) { setStock(s); saveStock(s); }
+
+  // ── Câmbio automático ─────────────────────────────────────────────────────
+  async function fetchCambio() {
+    setCambioInfo(c => ({ ...c, loading: true, error: null }));
+    try {
+      const res = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL');
+      const data = await res.json();
+      const ask = parseFloat(data.USDBRL.ask).toFixed(2);
+      const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      setImportForm(f => ({ ...f, cambio: ask }));
+      setCambioInfo({ loading: false, hora, error: null });
+    } catch {
+      setCambioInfo({ loading: false, hora: null, error: 'Falha ao buscar câmbio' });
+    }
+  }
+
+  React.useEffect(() => {
+    if (adminTab === 'importacao' && !importForm.cambio) { fetchCambio(); }
+  }, [adminTab]);
 
   // ── Supabase: carregar products + realtime ────────────────────────────────
   React.useEffect(() => {
@@ -4728,7 +4748,19 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                   <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px',marginBottom:12}}>📋 PARÂMETROS DA IMPORTAÇÃO</div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:10}}>
                     <div><label style={labelStyle}>Data</label><input style={inputStyle} value={importForm.date} onChange={e=>setImportForm(f=>({...f,date:e.target.value}))} /></div>
-                    <div><label style={labelStyle}>Câmbio (R$/USD)</label><input style={inputStyle} type="number" placeholder="5.80" value={importForm.cambio} onChange={e=>setImportForm(f=>({...f,cambio:e.target.value}))} /></div>
+                    <div>
+                      <label style={labelStyle}>
+                        Câmbio (R$/USD)
+                        {cambioInfo.hora && <span style={{marginLeft:6,color:'var(--accent)',fontSize:'0.58rem'}}>✓ {cambioInfo.hora}</span>}
+                        {cambioInfo.error && <span style={{marginLeft:6,color:'#ff5050',fontSize:'0.58rem'}}>{cambioInfo.error}</span>}
+                      </label>
+                      <div style={{display:'flex',gap:5}}>
+                        <input style={{...inputStyle,flex:1}} type="number" placeholder="5.80" value={importForm.cambio} onChange={e=>setImportForm(f=>({...f,cambio:e.target.value}))} />
+                        <button onClick={fetchCambio} disabled={cambioInfo.loading} title="Atualizar câmbio" style={{background:'rgba(0,229,195,0.1)',border:'1px solid rgba(0,229,195,0.3)',borderRadius:6,color:'var(--accent)',cursor:'pointer',padding:'0 8px',fontSize:'0.8rem',flexShrink:0}}>
+                          {cambioInfo.loading ? '⏳' : '🔄'}
+                        </button>
+                      </div>
+                    </div>
                     <div><label style={labelStyle}>Frete USD</label><input style={inputStyle} type="number" placeholder="0.00" value={importForm.freteUsd} onChange={e=>setImportForm(f=>({...f,freteUsd:e.target.value}))} /></div>
                     <div><label style={labelStyle}>Taxa FedEx (R$)</label><input style={inputStyle} type="number" placeholder="0.00" value={importForm.fedexBrl} onChange={e=>setImportForm(f=>({...f,fedexBrl:e.target.value}))} /></div>
                   </div>
