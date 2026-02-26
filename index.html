@@ -2222,6 +2222,10 @@ function App() {
   const [adminPoForm, setAdminPoForm] = useState(null);
   const [orderDetail, setOrderDetail] = useState(null);
   const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms'
+  const [trackModal, setTrackModal] = useState(false);
+  const [trackQuery, setTrackQuery] = useState('');
+  const [trackResults, setTrackResults] = useState(null);
+  const [trackLoading, setTrackLoading] = useState(false);
   const [importForm, setImportForm] = useState({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:''}] });
   const [importHistory, setImportHistory] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-imports')||'[]'); } catch { return []; } });
   const [cambioInfo, setCambioInfo] = useState({ loading: false, hora: null, error: null });
@@ -2293,6 +2297,26 @@ function App() {
   }
   function persistProducts(p) { setProducts(p); saveProducts(p); }
   function persistStock(s) { setStock(s); saveStock(s); }
+
+  // ── Rastreamento de pedidos ───────────────────────────────────────────────
+  async function searchOrders() {
+    const q = trackQuery.trim();
+    if (!q) return;
+    if (!sb) { showToast('Indisponível no momento', 'error'); return; }
+    setTrackLoading(true);
+    setTrackResults(null);
+    const clean = q.replace(/\D/g, '');
+    const { data, error } = await sb.from('orders').select('id,buyer_name,status,created_at,items,total,payment')
+      .or(`cpf.eq.${q},cpf.eq.${clean},phone.ilike.%${clean.slice(-8)}%`)
+      .order('created_at', { ascending: false })
+      .limit(20);
+    setTrackLoading(false);
+    if (error || !data) { setTrackResults([]); return; }
+    setTrackResults(data.map(o => ({
+      id: o.id, date: o.created_at, status: o.status || 'pendente',
+      items: o.items || [], total: o.total, buyerName: o.buyer_name, payment: o.payment,
+    })));
+  }
 
   // ── Câmbio automático ─────────────────────────────────────────────────────
   async function fetchCambio() {
@@ -3318,6 +3342,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
           <button className={`nav-btn ${view==="catalog"?"active":""}`} onClick={()=>setView("catalog")}>CATÁLOGO</button>
           <button className={`nav-btn ${view==="calc"?"active":""}`} onClick={()=>setView("calc")}>💊 CALC</button>
           <button className={`nav-btn ${view==="faq"?"active":""}`} onClick={()=>setView("faq")}>FAQ</button>
+          <button className="nav-btn" onClick={()=>{setTrackModal(true);setTrackResults(null);setTrackQuery('');}}>📦 PEDIDO</button>
           <button className={`cart-nav-btn ${view==="cart"?"active":""}`} onClick={()=>setView("cart")}>
             🛒 CARRINHO
             {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
@@ -4988,6 +5013,68 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
             </div>
 
             <button onClick={()=>setOrderDetail(null)} style={{width:'100%',padding:'11px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem'}}>Fechar</button>
+          </div>
+        </div>
+      )}
+
+      {/* RASTREAMENTO DE PEDIDO */}
+      {trackModal && (
+        <div className="modal-overlay" onClick={()=>setTrackModal(false)}>
+          <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:480}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+              <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px'}}>📦 RASTREAR PEDIDO</div>
+              <button onClick={()=>setTrackModal(false)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'1.1rem'}}>✕</button>
+            </div>
+            <p style={{fontSize:'0.82rem',color:'var(--muted)',marginBottom:16}}>Digite seu CPF ou número de WhatsApp para consultar seus pedidos.</p>
+            <div style={{display:'flex',gap:8,marginBottom:20}}>
+              <input
+                style={{flex:1,background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 14px',color:'var(--text)',fontSize:'0.88rem',fontFamily:"'DM Sans',sans-serif"}}
+                placeholder="CPF ou WhatsApp (só números)"
+                value={trackQuery}
+                onChange={e=>setTrackQuery(e.target.value)}
+                onKeyDown={e=>e.key==='Enter'&&searchOrders()}
+                autoFocus
+              />
+              <button onClick={searchOrders} disabled={trackLoading} style={{padding:'10px 18px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontWeight:700,fontSize:'0.82rem',cursor:'pointer',fontFamily:"'Space Mono',monospace",whiteSpace:'nowrap'}}>
+                {trackLoading ? '...' : 'BUSCAR'}
+              </button>
+            </div>
+
+            {trackResults === null && !trackLoading && (
+              <div style={{textAlign:'center',color:'var(--muted)',fontSize:'0.82rem',padding:'20px 0'}}>⬆ Informe seu CPF ou WhatsApp acima</div>
+            )}
+            {trackResults && trackResults.length === 0 && (
+              <div style={{textAlign:'center',color:'var(--muted)',fontSize:'0.82rem',padding:'20px 0'}}>Nenhum pedido encontrado. Verifique os dados e tente novamente.</div>
+            )}
+            {trackResults && trackResults.length > 0 && trackResults.map(o => {
+              const STATUS = { pendente:{emoji:'🟡',label:'Aguardando confirmação',color:'#ffc107'}, pago:{emoji:'✅',label:'Pagamento confirmado',color:'#4cffb0'}, enviado:{emoji:'🚚',label:'A caminho',color:'#64a0ff'}, entregue:{emoji:'🎉',label:'Entregue',color:'var(--accent)'}, cancelado:{emoji:'❌',label:'Cancelado',color:'#ff5050'} };
+              const s = STATUS[o.status] || STATUS.pendente;
+              return (
+                <div key={o.id} style={{background:'var(--bg2)',border:`1px solid ${s.color}33`,borderRadius:12,padding:'14px 16px',marginBottom:12}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                    <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.62rem',color:'var(--muted)'}}>
+                      {new Date(o.date).toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric'})}
+                    </div>
+                    <div style={{display:'flex',alignItems:'center',gap:6,background:`${s.color}22`,border:`1px solid ${s.color}44`,borderRadius:20,padding:'3px 10px'}}>
+                      <span>{s.emoji}</span>
+                      <span style={{fontSize:'0.72rem',fontWeight:700,color:s.color,fontFamily:"'Space Mono',monospace"}}>{s.label}</span>
+                    </div>
+                  </div>
+                  <div style={{fontSize:'0.82rem',marginBottom:8}}>
+                    {(o.items||[]).map((it,i)=>{
+                      const p = products.find(x=>x.id===it.peptideId);
+                      return <div key={i} style={{display:'flex',justifyContent:'space-between',color:'var(--text)',marginBottom:2}}>
+                        <span>{p?p.name:(it.peptideId||'Produto')}</span>
+                        <span style={{color:'var(--muted)'}}>×{it.qty||1}</span>
+                      </div>;
+                    })}
+                  </div>
+                  {o.total > 0 && <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.75rem',color:'var(--accent)',textAlign:'right',borderTop:'1px solid var(--border)',paddingTop:8,marginTop:6}}>
+                    Total: R$ {o.total.toLocaleString('pt-BR')}
+                  </div>}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
