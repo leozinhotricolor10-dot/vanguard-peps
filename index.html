@@ -2242,26 +2242,35 @@ function App() {
   const [articles, setArticles] = useState(loadArticles);
   function persistArticles(a) { setArticles(a); localStorage.setItem('vg-articles', JSON.stringify(a)); }
 
-  function cycleStatus(orderId) {
+  async function cycleStatus(orderId) {
     const cycle = ['pendente','pago','enviado','entregue'];
-    const prev = orders;
-    const updated = orders.map(o => {
-      if (o.id !== orderId) return o;
-      const idx = cycle.indexOf(o.status || 'pendente');
-      return { ...o, status: cycle[(idx+1) % cycle.length] };
-    });
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    const idx = cycle.indexOf(order.status || 'pendente');
+    const newStatus = cycle[(idx+1) % cycle.length];
+    const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
     persistOrders(updated);
-    // Sync status to Supabase
-    const newStatus = updated.find(o => o.id === orderId)?.status;
-    if (sb && newStatus) {
-      sb.from('orders').update({ status: newStatus }).eq('id', orderId)
-        .then(({ error }) => {
-          if (error) {
-            console.warn('[Supabase] Order status error:', error.message);
-            showToast('Erro ao atualizar status. Revertendo...', 'error');
-            persistOrders(prev);
-          }
-        });
+    // Sync to Supabase
+    if (sb) {
+      const { error } = await sb.from('orders').update({ status: newStatus }).eq('id', orderId);
+      if (error) {
+        console.warn('[Supabase] Order status error:', error.message);
+        showToast('Erro ao atualizar status. Revertendo...', 'error');
+        persistOrders(orders);
+        return;
+      }
+    }
+    // WhatsApp automático para pago/enviado
+    if ((newStatus === 'pago' || newStatus === 'enviado') && order._phone) {
+      const digits = order._phone.replace(/\D/g, '');
+      const intlPhone = digits.startsWith('55') ? digits : '55' + digits;
+      const firstName = (order.buyerName || 'Cliente').split(' ')[0];
+      const code = order._code || '';
+      const total = order._total ? `R$ ${order._total.toLocaleString('pt-BR')}` : '';
+      const msg = newStatus === 'pago'
+        ? `✅ *Olá, ${firstName}! Seu pagamento foi confirmado.*${code ? `\n\n📋 *Pedido:* ${code}` : ''}${total ? `\n💰 *Total:* ${total}` : ''}\n\nEstamos preparando seu pedido e avisaremos assim que for enviado. Qualquer dúvida, é só chamar!\n\n_Vanguard Peptides_ 🧬`
+        : `📦 *Olá, ${firstName}! Seu pedido foi enviado!*${code ? `\n\n📋 *Pedido:* ${code}` : ''}${total ? `\n💰 *Total:* ${total}` : ''}\n\nSeu pedido está a caminho. A entrega ocorre em breve.\n\nPara acompanhar, acesse vanguardpep.com → 📦 PEDIDO${code ? ` e use o código *${code}*` : ''}.\n\n_Vanguard Peptides_ 🧬`;
+      window.open(`https://wa.me/${intlPhone}?text=${encodeURIComponent(msg)}`, '_blank');
     }
   }
 
@@ -2445,6 +2454,7 @@ function App() {
           _address: o.address,
           _payment: o.payment,
           _notes: o.notes,
+          _code: o.code,
         }));
         setOrders(prev => {
           // Merge: manter itens locais do carrinho + adicionar pedidos do Supabase
