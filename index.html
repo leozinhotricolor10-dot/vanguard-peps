@@ -1652,6 +1652,22 @@ function CalcView() {
     setSelId(null); setSearch(''); setDose(null); setFreq(null); setVial(null); setManualDose(''); setManualVial('');
   }
 
+  // Detecta se o peptídeo usa escala mg (doses >= 1000 mcg)
+  const isMgScale = db && db.doses && db.doses.every(d => d >= 500);
+
+  // Formata mostrando mg + mcg quando valor é grande o suficiente
+  function fmtDual(val) {
+    if (!val && val !== 0) return '—';
+    const unit = db?.unit || 'mcg';
+    if (unit === 'mcg' && val >= 100) {
+      const mg = val / 1000;
+      const mgStr = (Number.isInteger(mg * 100) ? parseFloat(mg.toFixed(1)) : parseFloat(mg.toFixed(2))) + ' mg';
+      const mcgStr = Math.round(val) + ' mcg';
+      return mgStr + ' · ' + mcgStr;
+    }
+    return formatDose(val, unit);
+  }
+
   // Results calc
   let results = null;
   let recon = null;
@@ -1659,11 +1675,11 @@ function CalcView() {
     const unit = db?.unit || 'mcg';
     const daily = dose * freq.t;
     results = {
-      doseAppl: formatDose(dose, unit),
+      doseAppl: fmtDual(dose),
       freqLabel: freq.l,
-      daily: formatDose(daily, unit),
-      weekly: formatDose(daily * 7, unit),
-      monthly: formatDose(daily * 30, unit),
+      daily: fmtDual(daily),
+      weekly: fmtDual(daily * 7),
+      monthly: fmtDual(daily * 30),
     };
     if (vial) {
       const vialMcg = vial * 1000;
@@ -1737,9 +1753,9 @@ function CalcView() {
             <div className="calc-manual-wrap">
               <input type="number" className="calc-manual-input" placeholder="Outra dose..."
                 value={manualDose} min="0"
-                onChange={e=>{ setManualDose(e.target.value); const v=parseFloat(e.target.value); if(!isNaN(v)&&v>0) setDose(v); }}
+                onChange={e=>{ setManualDose(e.target.value); const v=parseFloat(e.target.value); if(!isNaN(v)&&v>0) setDose(isMgScale ? v * 1000 : v); }}
               />
-              <div className="calc-manual-unit">{db.unit||'mcg'}</div>
+              <div className="calc-manual-unit">{isMgScale ? 'mg' : (db.unit||'mcg')}</div>
             </div>
           </div>
         )}
