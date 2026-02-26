@@ -2222,7 +2222,7 @@ function App() {
   const [adminPoForm, setAdminPoForm] = useState(null);
   const [orderDetail, setOrderDetail] = useState(null);
   const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms'
-  const [importForm, setImportForm] = useState({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:''}] });
+  const [importForm, setImportForm] = useState({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:''}] });
   const [importHistory, setImportHistory] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-imports')||'[]'); } catch { return []; } });
   const [cambioInfo, setCambioInfo] = useState({ loading: false, hora: null, error: null });
   const [disclaimer, setDisclaimer] = useState(false);
@@ -4697,8 +4697,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                 const share     = totalOrderUsd > 0 ? itemUsd / totalOrderUsd : 0;
                 const overAlloc = overheadBrl * share;
                 const custoVial = (priceUsd / 10) * cambio + (vials > 0 ? overAlloc / vials : 0);
-                const precoSug  = custoVial > 0 ? Math.ceil(custoVial / 0.20) : 0;
-                return { ...it, vials, itemUsd, share, custoVial, precoSug };
+                const precoSugAuto = custoVial > 0 ? Math.ceil(custoVial / 0.20) : 0;
+                const precoSug = it.precoSugOverride ? parseInt(it.precoSugOverride) : precoSugAuto;
+                return { ...it, vials, itemUsd, share, custoVial, precoSug, precoSugAuto };
               });
 
               function updateItem(idx, field, val) {
@@ -4714,7 +4715,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                 setImportForm(f => ({ ...f, items }));
               }
 
-              function addItem() { setImportForm(f => ({ ...f, items: [...f.items, {sku:'',name:'',spec:'',boxes:'',priceUsd:''}] })); }
+              function addItem() { setImportForm(f => ({ ...f, items: [...f.items, {sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:''}] })); }
               function removeItem(idx) { setImportForm(f => ({ ...f, items: f.items.filter((_,i)=>i!==idx) })); }
 
               function applyPrices() {
@@ -4794,9 +4795,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                         <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',color:'#aaa',textAlign:'right',paddingRight:4}}>
                           {calc ? `R$${calc.custoVial.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}` : '—'}
                         </div>
-                        <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.78rem',color:'var(--accent)',fontWeight:700,textAlign:'right',paddingRight:4}}>
-                          {calc ? `R$${calc.precoSug}` : '—'}
-                        </div>
+                        <input style={{...inputStyle,textAlign:'right',color:'var(--accent)',fontWeight:700,fontFamily:"'Space Mono',monospace",fontSize:'0.78rem'}} type="number" min="0"
+                          placeholder={calc ? String(calc.precoSugAuto) : '—'}
+                          value={it.precoSugOverride}
+                          onChange={e=>updateItem(idx,'precoSugOverride',e.target.value)} />
                         <button onClick={()=>removeItem(idx)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.9rem',padding:0}}>✕</button>
                       </div>
                     );
