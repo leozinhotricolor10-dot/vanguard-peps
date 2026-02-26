@@ -1089,6 +1089,7 @@ function saveProducts(p) {
     category: prod.category, price: prod.price,
     hot: prod.hot || false, badge: prod.badge || null,
     compounds: prod.compounds || null,
+    cost_per_vial: prod._custoVial || null,
     sort_order: i, updated_at: new Date().toISOString()
   }));
   sb.from('products').upsert(rows, { onConflict: 'id' })
@@ -2392,6 +2393,7 @@ function App() {
           category: p.category || 'emagrecedores', price: Number(p.price) || 0,
           hot: p.hot || false, badge: p.badge || null,
           compounds: p.compounds || null,
+          _custoVial: p.cost_per_vial ? Number(p.cost_per_vial) : null,
         }));
       }
       sb.from('products').select('*').order('sort_order', { ascending: true }).then(({ data, error }) => {
