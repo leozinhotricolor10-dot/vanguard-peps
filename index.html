@@ -2243,7 +2243,7 @@ function App() {
   const [trackResults, setTrackResults] = useState(null);
   const [trackLoading, setTrackLoading] = useState(false);
   const [orderSuccessCode, setOrderSuccessCode] = useState(null);
-  const [importForm, setImportForm] = useState({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:''}] });
+  const [importForm, setImportForm] = useState({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', desconto:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:''}] });
   const [importHistory, setImportHistory] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-imports')||'[]'); } catch { return []; } });
   const [cambioInfo, setCambioInfo] = useState({ loading: false, hora: null, error: null });
   const [disclaimer, setDisclaimer] = useState(false);
@@ -4753,14 +4753,16 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
               const cambio    = parseFloat(importForm.cambio)   || 0;
               const freteUsd  = parseFloat(importForm.freteUsd) || 0;
               const fedexBrl  = parseFloat(importForm.fedexBrl) || 0;
+              const desconto  = parseFloat(importForm.desconto) || 0;
               const overheadBrl = freteUsd * cambio + fedexBrl;
 
               const validItems = importForm.items.filter(it => it.sku && it.boxes && it.priceUsd);
-              const totalOrderUsd = validItems.reduce((s,it) => s + (parseFloat(it.boxes)||0)*(parseFloat(it.priceUsd)||0), 0);
+              const totalOrderUsd = validItems.reduce((s,it) => s + (parseFloat(it.boxes)||0)*(parseFloat(it.priceUsd)||0)*(1 - desconto/100), 0);
 
               const calcs = validItems.map(it => {
-                const boxes     = parseFloat(it.boxes)    || 0;
-                const priceUsd  = parseFloat(it.priceUsd) || 0;
+                const boxes            = parseFloat(it.boxes)    || 0;
+                const priceUsdOriginal = parseFloat(it.priceUsd) || 0;
+                const priceUsd         = priceUsdOriginal * (1 - desconto / 100);
                 const vials     = boxes * 10;
                 const itemUsd   = boxes * priceUsd;
                 const share     = totalOrderUsd > 0 ? itemUsd / totalOrderUsd : 0;
@@ -4768,7 +4770,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                 const custoVial = (priceUsd / 10) * cambio + (vials > 0 ? overAlloc / vials : 0);
                 const precoSugAuto = custoVial > 0 ? Math.ceil(custoVial / 0.20) : 0;
                 const precoSug = it.precoSugOverride ? parseInt(it.precoSugOverride) : precoSugAuto;
-                return { ...it, vials, itemUsd, share, custoVial, precoSug, precoSugAuto };
+                return { ...it, vials, itemUsd, priceUsdOriginal, priceUsd, share, custoVial, precoSug, precoSugAuto };
               });
 
               function updateItem(idx, field, val) {
@@ -4793,20 +4795,45 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
 
               function applyPrices() {
                 if (calcs.length === 0) { showToast('Nenhum item calculado','error'); return; }
-                // Match by name+spec to catalog products and update price
-                let updated = 0;
+                let updated = 0; let added = 0;
+                const isMatch = (p, c) => p.name.toLowerCase().includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(p.name.toLowerCase());
+                // Atualiza produtos existentes
                 const newProducts = products.map(p => {
-                  const match = calcs.find(c => p.name.toLowerCase().includes(c.name.toLowerCase()) || (c.name.toLowerCase().includes(p.name.toLowerCase())));
+                  const match = calcs.find(c => c.name && isMatch(p, c));
                   if (match) { updated++; return { ...p, price: match.precoSug, _custoVial: match.custoVial }; }
                   return p;
                 });
+                // Adiciona produtos novos que não existem no catálogo
+                calcs.forEach(c => {
+                  if (!c.name || !c.precoSug) return;
+                  const exists = products.find(p => isMatch(p, c));
+                  if (!exists) {
+                    added++;
+                    newProducts.push({
+                      id: 'imp-' + Date.now() + '-' + Math.random().toString(36).slice(2,6),
+                      sku: c.sku || '',
+                      name: c.name,
+                      desc: c.spec || '',
+                      price: c.precoSug,
+                      _custoVial: c.custoVial,
+                      category: 'peptideos',
+                      stock: 0,
+                      hot: false,
+                      badge: null,
+                      compounds: null,
+                    });
+                  }
+                });
                 persistProducts(newProducts);
-                showToast(`${updated} preços atualizados no catálogo ✓`, 'success');
+                const parts = [];
+                if (updated > 0) parts.push(`${updated} preço${updated!==1?'s':''} atualizado${updated!==1?'s':''}`);
+                if (added > 0) parts.push(`${added} produto${added!==1?'s':''} novo${added!==1?'s':''} adicionado${added!==1?'s':''}`);
+                showToast((parts.join(' · ') || 'Sem alterações') + ' no catálogo ✓', 'success');
               }
 
               function saveImport() {
                 if (calcs.length === 0) { showToast('Adicione produtos antes de salvar','error'); return; }
-                const entry = { id: Date.now(), date: importForm.date, cambio, freteUsd, fedexBrl, overheadBrl, totalOrderUsd, items: calcs };
+                const entry = { id: Date.now(), date: importForm.date, cambio, freteUsd, fedexBrl, desconto, overheadBrl, totalOrderUsd, items: calcs };
                 const hist = [entry, ...importHistory].slice(0, 20);
                 setImportHistory(hist);
                 localStorage.setItem('vg-imports', JSON.stringify(hist));
@@ -4820,7 +4847,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                 {/* PARÂMETROS */}
                 <div style={{background:'rgba(0,229,195,0.04)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
                   <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px',marginBottom:12}}>📋 PARÂMETROS DA IMPORTAÇÃO</div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:10}}>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:10}}>
                     <div><label style={labelStyle}>Data</label><input style={inputStyle} value={importForm.date} onChange={e=>setImportForm(f=>({...f,date:e.target.value}))} /></div>
                     <div>
                       <label style={labelStyle}>
@@ -4837,11 +4864,20 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                     </div>
                     <div><label style={labelStyle}>Frete USD</label><input style={inputStyle} type="number" placeholder="0.00" value={importForm.freteUsd} onChange={e=>setImportForm(f=>({...f,freteUsd:e.target.value}))} /></div>
                     <div><label style={labelStyle}>Taxa FedEx (R$)</label><input style={inputStyle} type="number" placeholder="0.00" value={importForm.fedexBrl} onChange={e=>setImportForm(f=>({...f,fedexBrl:e.target.value}))} /></div>
+                    <div>
+                      <label style={labelStyle}>Desconto Fornecedor %</label>
+                      <div style={{display:'flex',alignItems:'center',gap:5}}>
+                        <input style={{...inputStyle,flex:1}} type="number" min="0" max="100" placeholder="0" value={importForm.desconto} onChange={e=>setImportForm(f=>({...f,desconto:e.target.value}))} />
+                        <span style={{fontSize:'0.75rem',color:'var(--muted)',flexShrink:0}}>%</span>
+                      </div>
+                      {desconto > 0 && <div style={{fontSize:'0.6rem',color:'#4cffb0',marginTop:3}}>-{desconto}% aplicado ao custo</div>}
+                    </div>
                   </div>
                   {overheadBrl > 0 && (
                     <div style={{marginTop:10,fontSize:'0.75rem',color:'var(--muted)',fontFamily:"'Space Mono',monospace"}}>
                       Overhead total: <span style={{color:'var(--accent)',fontWeight:700}}>R$ {overheadBrl.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
                       {totalOrderUsd > 0 && <> · Pedido: <span style={{color:'var(--accent)'}}>USD {totalOrderUsd.toLocaleString('en-US',{minimumFractionDigits:2})}</span></>}
+                      {desconto > 0 && <> · <span style={{color:'#4cffb0'}}>Desc. {desconto}%</span></>}
                     </div>
                   )}
                 </div>
