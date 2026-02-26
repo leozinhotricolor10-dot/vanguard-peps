@@ -260,10 +260,8 @@ main { padding: 36px 44px; max-width: 980px; }
 .admin-action-btn.danger:hover { background: rgba(255,107,53,0.06); }
 
 /* MODAL */
-.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; display: flex; align-items: flex-end; justify-content: center; backdrop-filter: blur(4px); }
-.modal-overlay.center { align-items: center; }
-.modal { background: #0a1219; border: 1px solid var(--border); border-radius: 20px 20px 0 0; padding: 28px 24px; width: 100%; max-width: 480px; animation: slideIn 0.25s ease forwards; }
-.modal.center-modal { border-radius: 20px; max-width: 400px; margin: 16px; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; backdrop-filter: blur(4px); }
+.modal { background: #0a1219; border: 1px solid var(--border); border-radius: 20px; padding: 28px 24px; width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto; animation: slideIn 0.25s ease forwards; }
 .modal-title { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; color: var(--text); margin-bottom: 4px; }
 .modal-sub { font-size: 0.8rem; color: var(--muted); margin-bottom: 22px; }
 .modal-label { font-family: 'Space Mono', monospace; font-size: 0.62rem; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 6px; display: block; }
@@ -893,7 +891,7 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
   .cat-btn.active .cat-btn-name { color: var(--accent) !important; }
   .cat-btn-icon { width: 18px !important; height: 18px !important; font-size: 10px !important; border-radius: 5px !important; }
   .cat-btn-count { display: none !important; }
-  .modal { padding: 22px 16px 28px; max-height: 88vh; overflow-y: auto; border-radius: 18px 18px 0 0; }
+  .modal { padding: 22px 16px 28px; max-height: 88vh; overflow-y: auto; border-radius: 18px; }
   .modal-title { font-size: 0.95rem; }
   .modal-input { font-size: 0.92rem; padding: 10px 12px; }
   .qty-big-btn { width: 46px; height: 46px; font-size: 1.3rem; }
