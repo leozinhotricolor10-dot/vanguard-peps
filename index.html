@@ -2289,8 +2289,8 @@ function App() {
         return;
       }
     }
-    // WhatsApp automático para pago/enviado
-    if ((newStatus === 'pago' || newStatus === 'enviado') && order._phone) {
+    // WhatsApp automático para pago/enviado/entregue
+    if ((newStatus === 'pago' || newStatus === 'enviado' || newStatus === 'entregue') && order._phone) {
       const digits = order._phone.replace(/\D/g, '');
       const intlPhone = digits.startsWith('55') ? digits : '55' + digits;
       const firstName = (order.buyerName || 'Cliente').split(' ')[0];
@@ -2298,7 +2298,9 @@ function App() {
       const total = order._total ? `R$ ${order._total.toLocaleString('pt-BR')}` : '';
       const msg = newStatus === 'pago'
         ? `✅ *Olá, ${firstName}! Seu pagamento foi confirmado.*${code ? `\n\n📋 *Pedido:* ${code}` : ''}${total ? `\n💰 *Total:* ${total}` : ''}\n\nEstamos preparando seu pedido e avisaremos assim que for enviado. Qualquer dúvida, é só chamar!\n\n_Vanguard Peptides_ 🧬`
-        : `📦 *Olá, ${firstName}! Seu pedido foi enviado!*${code ? `\n\n📋 *Pedido:* ${code}` : ''}${total ? `\n💰 *Total:* ${total}` : ''}\n\nSeu pedido está a caminho. A entrega ocorre em breve.\n\nPara acompanhar, acesse vanguardpep.com → 📦 PEDIDO${code ? ` e use o código *${code}*` : ''}.\n\n_Vanguard Peptides_ 🧬`;
+        : newStatus === 'enviado'
+        ? `📦 *Olá, ${firstName}! Seu pedido foi enviado!*${code ? `\n\n📋 *Pedido:* ${code}` : ''}${total ? `\n💰 *Total:* ${total}` : ''}\n\nSeu pedido está a caminho. A entrega ocorre em breve.\n\nPara acompanhar, acesse vanguardpep.com → 📦 PEDIDO${code ? ` e use o código *${code}*` : ''}.\n\n_Vanguard Peptides_ 🧬`
+        : `🎉 *Olá, ${firstName}! Seu pedido foi entregue!*${code ? `\n\n📋 *Pedido:* ${code}` : ''}\n\nEsperamos que você aproveite muito! Se tiver qualquer dúvida sobre o uso, estamos aqui para ajudar.\n\nObrigado pela confiança! 🙏\n\n_Vanguard Peptides_ 🧬`;
       window.open(`https://wa.me/${intlPhone}?text=${encodeURIComponent(msg)}`, '_blank');
     }
   }
