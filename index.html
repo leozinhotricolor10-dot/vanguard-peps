@@ -129,6 +129,13 @@ main { padding: 36px 44px; max-width: 980px; }
 .product-card:hover { border-color: rgba(0,229,195,0.3); transform: translateY(-3px); box-shadow: 0 12px 32px rgba(0,0,0,0.3); }
 .product-card:hover::before { transform: scaleX(1); }
 .product-card.in-cart { border-color: rgba(0,229,195,0.25); background: rgba(0,229,195,0.03); }
+.promo-badge { display:inline-block; background: linear-gradient(90deg,#ff5f5f,#ff9600); color:#fff; font-family:'Space Mono',monospace; font-size:0.55rem; font-weight:700; letter-spacing:1px; padding:2px 7px; border-radius:20px; margin-bottom:5px; }
+.price-original { font-family:'Space Mono',monospace; font-size:0.75rem; color:var(--muted); text-decoration:line-through; margin-right:6px; }
+.price-promo { color:#ff9600 !important; }
+.coupon-row { display:flex; gap:8px; margin-bottom:10px; }
+.coupon-input { flex:1; background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:9px 12px; color:var(--text); font-family:'Space Mono',monospace; font-size:0.82rem; letter-spacing:1px; text-transform:uppercase; }
+.coupon-input::placeholder { text-transform:none; letter-spacing:0; }
+.coupon-btn { padding:'9px 14px'; background:rgba(255,150,0,0.1); border:1px solid rgba(255,150,0,0.3); border-radius:8px; color:#ff9600; font-weight:700; font-size:0.75rem; cursor:pointer; white-space:nowrap; font-family:'Space Mono',monospace; }
 .product-card-name { font-family: 'Syne', sans-serif; font-size: 0.95rem; font-weight: 700; color: var(--text); margin-bottom: 4px; line-height: 1.3; }
 .product-card-desc { font-size: 0.75rem; color: var(--muted); margin-bottom: 14px; line-height: 1.5; flex: 1; }
 .product-card-price { font-family: 'Space Mono', monospace; font-size: 1.15rem; font-weight: 700; color: var(--accent); margin-bottom: 14px; }
@@ -2243,6 +2250,11 @@ function App() {
   const [trackResults, setTrackResults] = useState(null);
   const [trackLoading, setTrackLoading] = useState(false);
   const [orderSuccessCode, setOrderSuccessCode] = useState(null);
+  const [coupons, setCoupons] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-coupons')||'[]'); } catch { return []; } });
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponForm, setCouponForm] = useState(null);
+  const [productPromo, setProductPromo] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-promo')||'{}'); } catch { return {}; } });
   const [importForm, setImportForm] = useState({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', desconto:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:''}] });
   const [importHistory, setImportHistory] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-imports')||'[]'); } catch { return []; } });
   const [cambioInfo, setCambioInfo] = useState({ loading: false, hora: null, error: null });
@@ -2616,7 +2628,8 @@ function App() {
     try {
       const freight = calcFreight(checkout.estado, myTotal);
       const pixDiscount = checkout.pagamento === 'pix' ? Math.round(myTotal * 0.1) : 0;
-      const totalFinal = myTotal - pixDiscount + freight.value;
+      const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round((myTotal - pixDiscount) * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal - pixDiscount)) : 0;
+      const totalFinal = myTotal - pixDiscount - couponDiscount + freight.value;
       const itens = myOrders.map(o => {
         const p = products.find(x => x.id === o.peptideId);
         if (!p) return `• [produto removido] ×${o.qty}`;
@@ -2644,7 +2657,7 @@ ${itens}
 
 💰 *Resumo*
 Subtotal: R$ ${myTotal.toLocaleString('pt-BR')}${pixDiscount > 0 ? '\n💚 Desconto PIX (10%): -R$ '+pixDiscount.toLocaleString('pt-BR') : ''}
-Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
+Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${couponDiscount > 0 ? '\n🏷️ Cupom '+appliedCoupon.code+': -R$ '+couponDiscount.toLocaleString('pt-BR') : ''}
 *Total: R$ ${totalFinal.toLocaleString('pt-BR')}*${checkout.observacoes ? '\n\n📝 *Obs:* ' + checkout.observacoes : ''}`;
 
       // Salvar pedido no Supabase ANTES de abrir WhatsApp
@@ -2689,6 +2702,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
       localStorage.removeItem('vg-checkout');
       setCheckoutOpen(false);
       setDisclaimer(false);
+      setAppliedCoupon(null);
+      setCouponInput('');
       setOrderSuccessCode(orderCode);
       setView("catalog");
     } finally {
@@ -2714,6 +2729,25 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
     let code = 'VG-';
     for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
     return code;
+  }
+
+  function effectivePrice(p) {
+    if (!p) return 0;
+    const promo = productPromo[p.id] || p.promo || 0;
+    return promo > 0 ? Math.round(p.price * (1 - promo / 100)) : p.price;
+  }
+
+  function persistCoupons(c) { setCoupons(c); localStorage.setItem('vg-coupons', JSON.stringify(c)); }
+
+  function applyCouponCode() {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    const c = coupons.find(x => x.code.toUpperCase() === code && x.active !== false);
+    if (!c) { showToast('Cupom inválido ou inexistente', 'error'); return; }
+    if (c.expiresAt && new Date(c.expiresAt) < new Date()) { showToast('Cupom expirado', 'error'); return; }
+    if (c.minOrder && myTotal < c.minOrder) { showToast(`Pedido mínimo R$ ${c.minOrder.toLocaleString('pt-BR')} para este cupom`, 'error'); return; }
+    setAppliedCoupon(c);
+    showToast(`Cupom ${c.code} aplicado! ✓`, 'success');
   }
 
   function generateToken() {
@@ -2889,7 +2923,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
 
   // Cart for current user
   const myOrders = useMemo(() => orders.filter(o => !o._supabase && (o.buyerName || '').toLowerCase() === myName.toLowerCase()), [orders, myName]);
-  const myTotal  = useMemo(() => myOrders.reduce((s, o) => s + (o.qty || 0) * (products.find(p => p.id === o.peptideId)?.price || 0), 0), [myOrders]);
+  const myTotal  = useMemo(() => myOrders.reduce((s, o) => { const p = products.find(x => x.id === o.peptideId); return s + (o.qty||0) * effectivePrice(p); }, 0), [myOrders, productPromo]);
   const cartCount = myOrders.reduce((s, o) => s + (o.qty || 0), 0);
 
   function openModal(peptide) {
@@ -3180,7 +3214,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
       {checkoutOpen && (() => {
         const freight = calcFreight(checkout.estado, myTotal);
         const pixDiscount = checkout.pagamento === 'pix' ? Math.round(myTotal * 0.1) : 0;
-        const totalFinal = myTotal - pixDiscount + freight.value;
+        const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round((myTotal - pixDiscount) * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal - pixDiscount)) : 0;
+        const totalFinal = myTotal - pixDiscount - couponDiscount + freight.value;
         const isFree = freight.value === 0;
         return (
           <div className="modal-overlay" onClick={e=>{ if(e.target===e.currentTarget) setCheckoutOpen(false); }}>
@@ -3304,6 +3339,21 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                 </div>
               </div>
 
+              {/* Cupom de desconto */}
+              <div className="checkout-section">
+                <div className="checkout-section-title">🏷️ Cupom de Desconto</div>
+                {appliedCoupon
+                  ? <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',background:'rgba(255,150,0,0.07)',border:'1px solid rgba(255,150,0,0.3)',borderRadius:8}}>
+                      <span style={{color:'#ff9600',fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:'0.85rem'}}>{appliedCoupon.code} <span style={{color:'var(--muted)',fontWeight:400,fontSize:'0.72rem'}}>{appliedCoupon.type==='percent'?`-${appliedCoupon.value}%`:`-R$ ${appliedCoupon.value}`}</span></span>
+                      <button onClick={()=>{setAppliedCoupon(null);setCouponInput('');}} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.85rem'}}>✕</button>
+                    </div>
+                  : <div className="coupon-row">
+                      <input className="coupon-input" placeholder="Código do cupom" value={couponInput} onChange={e=>setCouponInput(e.target.value.toUpperCase())} onKeyDown={e=>e.key==='Enter'&&applyCouponCode()} />
+                      <button onClick={applyCouponCode} style={{padding:'9px 16px',background:'rgba(255,150,0,0.1)',border:'1px solid rgba(255,150,0,0.3)',borderRadius:8,color:'#ff9600',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',whiteSpace:'nowrap',fontFamily:"'Space Mono',monospace"}}>APLICAR</button>
+                    </div>
+                }
+              </div>
+
               {/* Resumo + frete */}
               <div className="checkout-section">
                 <div className="checkout-section-title">💰 Resumo do Pedido</div>
@@ -3315,6 +3365,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                   <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',marginBottom:8,padding:'8px 12px',background:'rgba(0,229,195,0.06)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:8}}>
                     <span style={{color:'var(--accent)'}}>💚 Desconto PIX (10%)</span>
                     <span style={{color:'var(--accent)',fontFamily:"'Space Mono',monospace",fontWeight:700}}>-R$ {pixDiscount.toLocaleString('pt-BR')}</span>
+                  </div>
+                )}
+                {couponDiscount > 0 && (
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',marginBottom:8,padding:'8px 12px',background:'rgba(255,150,0,0.06)',border:'1px solid rgba(255,150,0,0.2)',borderRadius:8}}>
+                    <span style={{color:'#ff9600'}}>🏷️ Cupom {appliedCoupon.code}</span>
+                    <span style={{color:'#ff9600',fontFamily:"'Space Mono',monospace",fontWeight:700}}>-R$ {couponDiscount.toLocaleString('pt-BR')}</span>
                   </div>
                 )}
                 <div className={`freight-box ${isFree?'free':'paid'}`}>
@@ -3581,14 +3637,18 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                 return (
                   <div key={peptide.id} className={`product-card ${inCartQty>0?"in-cart":""} ${availableStock(peptide.id)===0?"esgotado":""}`} style={{position:'relative'}}>
                     {availableStock(peptide.id)===0 && <div className="esgotado-badge">ESGOTADO</div>}
-                    {peptide.hot && availableStock(peptide.id)>0 && <div className="product-hot-badge">🔥 HOT</div>}
-                    {peptide.badge && !peptide.hot && availableStock(peptide.id)>0 && <div className="product-label-badge">{peptide.badge}</div>}
+                    {(productPromo[peptide.id]||0) > 0 && availableStock(peptide.id)>0 && <div className="promo-badge">🔥 -{productPromo[peptide.id]}% PROMO</div>}
+                    {peptide.hot && availableStock(peptide.id)>0 && !(productPromo[peptide.id]>0) && <div className="product-hot-badge">🔥 HOT</div>}
+                    {peptide.badge && !peptide.hot && availableStock(peptide.id)>0 && !(productPromo[peptide.id]>0) && <div className="product-label-badge">{peptide.badge}</div>}
                     {PRODUCT_IMAGES[peptide.id] && <img src={PRODUCT_IMAGES[peptide.id]} className="product-card-img" alt={peptide.name} style={{cursor:'pointer'}} onClick={()=>{ setSelectedProduct(peptide); setView('detail', peptide); }} />}
                     {peptide.sku && <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:"var(--muted)",marginBottom:6}}>{peptide.sku}</div>}
                     <div className="product-card-name" style={{cursor:"pointer"}} onClick={()=>{ setSelectedProduct(peptide); setView("detail", peptide); }}>{peptide.name} <span style={{fontSize:"0.6rem",color:"var(--accent)",fontFamily:"'Space Mono',monospace",opacity:0.7}}>ver mais ›</span></div>
                     {peptide.compounds && <div style={{fontSize:"0.65rem",color:"var(--accent)",opacity:0.75,marginBottom:"4px",marginTop:"-2px",letterSpacing:"0.02em"}}>{peptide.compounds}</div>}
                     <div className="product-card-desc">{peptide.desc}</div>
-                    <div className="product-card-price">R$ {peptide.price.toLocaleString("pt-BR")} <span>/ampola</span></div>
+                    {(productPromo[peptide.id]||0) > 0
+                      ? <div className="product-card-price price-promo"><span className="price-original">R$ {peptide.price.toLocaleString('pt-BR')}</span>R$ {effectivePrice(peptide).toLocaleString('pt-BR')} <span>/ampola</span></div>
+                      : <div className="product-card-price">R$ {peptide.price.toLocaleString("pt-BR")} <span>/ampola</span></div>
+                    }
 
                     {(() => { const avail = availableStock(peptide.id); return avail > 0 && avail <= 5 ? (
                       <div style={{display:'inline-flex',alignItems:'center',gap:5,fontSize:'0.68rem',fontFamily:"'Space Mono',monospace",color:'#ffaa1e',background:'rgba(255,170,30,0.08)',border:'1px solid rgba(255,170,30,0.25)',borderRadius:20,padding:'3px 10px',marginBottom:6}}>
@@ -3904,6 +3964,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
               <button className={`admin-tab ${adminTab==="avisos"?"active":""}`} onClick={()=>setAdminTab("avisos")}>📢 AVISOS</button>
               <button className={`admin-tab ${adminTab==="financeiro"?"active":""}`} onClick={()=>setAdminTab("financeiro")}>💰 FINANCEIRO</button>
               <button className={`admin-tab ${adminTab==="importacao"?"active":""}`} onClick={()=>setAdminTab("importacao")}>📦 IMPORTAÇÃO</button>
+  <button className={`admin-tab ${adminTab==="cupons"?"active":""}`} onClick={()=>setAdminTab("cupons")}>🏷️ CUPONS</button>
             </div>
 
             {/* TAB: PEDIDOS */}
@@ -4102,12 +4163,18 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                 if (!form.name?.trim() || !form.price) { showToast("Nome e preço são obrigatórios", "error"); return; }
                 const price = parseFloat(form.price);
                 if (isNaN(price)) { showToast("Preço inválido", "error"); return; }
+                const promoVal = parseFloat(form.promo) || 0;
+                const prodId = editing ? editing.id : (form.name||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,20) + Date.now();
+                // Save promo separately
+                const newPromo = { ...productPromo };
+                if (promoVal > 0) newPromo[prodId] = promoVal; else delete newPromo[prodId];
+                setProductPromo(newPromo);
+                localStorage.setItem('vg-promo', JSON.stringify(newPromo));
                 if (editing) {
                   persistProducts(products.map(p => p.id===editing.id ? {...p, ...form, price} : p));
                   showToast("Produto atualizado ✓");
                 } else {
-                  const id = (form.name||'').toLowerCase().replace(/[^a-z0-9]/g,'').slice(0,20) + Date.now();
-                  persistProducts([...products, { id, sku: form.sku||id.toUpperCase(), name: form.name, desc: form.desc||'', category: form.category||'emagrecedores', price }]);
+                  persistProducts([...products, { id: prodId, sku: form.sku||prodId.toUpperCase(), name: form.name, desc: form.desc||'', category: form.category||'emagrecedores', price }]);
                   showToast("Produto criado ✓");
                 }
                 setProdForm(null);
@@ -4142,6 +4209,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                             <option key={c.id} value={c.id}>{c.icon} {c.name}</option>
                           ))}
                         </select>
+                      </div>
+                      <div className="prod-form-group">
+                        <label>🔥 Promoção (%)</label>
+                        <input type="number" min="0" max="99" placeholder="0 = sem promoção" value={form.promo||productPromo[form.id||'']||''} onChange={e=>setProdForm(f=>({...f,promo:e.target.value}))} />
+                        {(parseFloat(form.promo)||0) > 0 && form.price && <div style={{fontSize:'0.65rem',color:'#ff9600',marginTop:3}}>De R$ {parseFloat(form.price).toLocaleString('pt-BR')} por R$ {Math.round(parseFloat(form.price)*(1-(parseFloat(form.promo)||0)/100)).toLocaleString('pt-BR')}</div>}
                       </div>
                       <div className="prod-form-group">
                         <label>Badge (ex: ✨ Novo)</label>
@@ -4948,6 +5020,88 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})
                     ))}
                   </div>
                 )}
+              </>;
+            })()}
+
+            {/* TAB: CUPONS */}
+            {adminTab==="cupons" && (()=>{
+              const iStyle = { background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:6, padding:'7px 10px', color:'var(--text)', fontSize:'0.82rem', fontFamily:"'DM Sans',sans-serif", width:'100%' };
+              const lStyle = { fontSize:'0.65rem', color:'var(--muted)', marginBottom:3, display:'block' };
+              const editing = couponForm?.id && coupons.find(c=>c.id===couponForm.id);
+
+              function saveCoupon() {
+                if (!couponForm.code?.trim()) { showToast('Código obrigatório','error'); return; }
+                if (!couponForm.value || parseFloat(couponForm.value) <= 0) { showToast('Valor inválido','error'); return; }
+                const entry = {
+                  id: editing ? couponForm.id : Date.now(),
+                  code: couponForm.code.trim().toUpperCase(),
+                  type: couponForm.type || 'percent',
+                  value: parseFloat(couponForm.value),
+                  minOrder: parseFloat(couponForm.minOrder) || 0,
+                  expiresAt: couponForm.expiresAt || null,
+                  active: couponForm.active !== false,
+                };
+                const updated = editing ? coupons.map(c=>c.id===entry.id?entry:c) : [...coupons, entry];
+                persistCoupons(updated);
+                setCouponForm(null);
+                showToast(editing ? 'Cupom atualizado ✓' : 'Cupom criado ✓', 'success');
+              }
+
+              return <>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px'}}>🏷️ GERENCIAR CUPONS</div>
+                  <button onClick={()=>setCouponForm({code:'',type:'percent',value:'',minOrder:'',expiresAt:'',active:true})} style={{padding:'7px 14px',background:'rgba(255,150,0,0.1)',border:'1px solid rgba(255,150,0,0.3)',borderRadius:8,color:'#ff9600',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontWeight:700}}>＋ Novo Cupom</button>
+                </div>
+
+                {couponForm && (
+                  <div style={{background:'rgba(255,150,0,0.04)',border:'1px solid rgba(255,150,0,0.2)',borderRadius:12,padding:'16px',marginBottom:20}}>
+                    <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'#ff9600',letterSpacing:'1.5px',marginBottom:14}}>{editing?'✏️ EDITAR CUPOM':'＋ NOVO CUPOM'}</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:10}}>
+                      <div><label style={lStyle}>Código *</label><input style={{...iStyle,textTransform:'uppercase',fontFamily:"'Space Mono',monospace",letterSpacing:'2px'}} placeholder="VANGUARD10" value={couponForm.code} onChange={e=>setCouponForm(f=>({...f,code:e.target.value.toUpperCase()}))} /></div>
+                      <div><label style={lStyle}>Tipo</label>
+                        <select style={iStyle} value={couponForm.type} onChange={e=>setCouponForm(f=>({...f,type:e.target.value}))}>
+                          <option value="percent">% Porcentagem</option>
+                          <option value="fixed">R$ Valor fixo</option>
+                        </select>
+                      </div>
+                      <div><label style={lStyle}>Desconto ({couponForm.type==='percent'?'%':'R$'}) *</label><input style={iStyle} type="number" min="1" placeholder={couponForm.type==='percent'?'10':'50'} value={couponForm.value} onChange={e=>setCouponForm(f=>({...f,value:e.target.value}))} /></div>
+                      <div><label style={lStyle}>Pedido mínimo (R$)</label><input style={iStyle} type="number" min="0" placeholder="0 = sem mínimo" value={couponForm.minOrder} onChange={e=>setCouponForm(f=>({...f,minOrder:e.target.value}))} /></div>
+                      <div><label style={lStyle}>Validade (opcional)</label><input style={iStyle} type="date" value={couponForm.expiresAt||''} onChange={e=>setCouponForm(f=>({...f,expiresAt:e.target.value}))} /></div>
+                      <div style={{display:'flex',alignItems:'center',gap:8,paddingTop:18}}>
+                        <input type="checkbox" id="coupon-active" checked={couponForm.active!==false} onChange={e=>setCouponForm(f=>({...f,active:e.target.checked}))} style={{width:16,height:16,accentColor:'#ff9600',cursor:'pointer'}} />
+                        <label htmlFor="coupon-active" style={{fontSize:'0.78rem',cursor:'pointer'}}>Ativo</label>
+                      </div>
+                    </div>
+                    <div style={{display:'flex',gap:8}}>
+                      <button onClick={saveCoupon} style={{padding:'8px 18px',background:'#ff9600',border:'none',borderRadius:8,color:'#000',fontSize:'0.72rem',fontWeight:700,cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>💾 Salvar</button>
+                      <button onClick={()=>setCouponForm(null)} style={{padding:'8px 14px',background:'transparent',border:'1px solid var(--border)',borderRadius:8,color:'var(--muted)',fontSize:'0.72rem',cursor:'pointer'}}>Cancelar</button>
+                    </div>
+                  </div>
+                )}
+
+                {coupons.length === 0
+                  ? <div style={{textAlign:'center',color:'var(--muted)',padding:'40px 0',fontSize:'0.85rem'}}>Nenhum cupom cadastrado</div>
+                  : <div>
+                    {coupons.map(c => {
+                      const expired = c.expiresAt && new Date(c.expiresAt) < new Date();
+                      return (
+                        <div key={c.id} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',background:'var(--card)',border:`1px solid ${c.active&&!expired?'rgba(255,150,0,0.25)':'var(--border)'}`,borderRadius:10,marginBottom:8,opacity:c.active&&!expired?1:0.5}}>
+                          <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.9rem',fontWeight:700,color:c.active&&!expired?'#ff9600':'var(--muted)',minWidth:100}}>{c.code}</div>
+                          <div style={{flex:1,fontSize:'0.78rem',color:'var(--muted)'}}>
+                            <span style={{color:'var(--text)',fontWeight:600}}>{c.type==='percent'?`-${c.value}%`:`-R$ ${c.value}`}</span>
+                            {c.minOrder > 0 && <span> · mín. R$ {c.minOrder}</span>}
+                            {c.expiresAt && <span> · até {new Date(c.expiresAt).toLocaleDateString('pt-BR')}</span>}
+                            {expired && <span style={{color:'#ff5050'}}> · EXPIRADO</span>}
+                          </div>
+                          <div style={{fontSize:'0.65rem',fontFamily:"'Space Mono',monospace",color:c.active&&!expired?'var(--accent)':'var(--muted)'}}>{c.active&&!expired?'ATIVO':'INATIVO'}</div>
+                          <button onClick={()=>{ const u=coupons.map(x=>x.id===c.id?{...x,active:!x.active}:x); persistCoupons(u); }} style={{background:'none',border:'1px solid var(--border)',borderRadius:6,color:'var(--muted)',cursor:'pointer',fontSize:'0.65rem',padding:'3px 8px',fontFamily:"'Space Mono',monospace"}}>{c.active?'PAUSAR':'ATIVAR'}</button>
+                          <button onClick={()=>setCouponForm({...c,value:String(c.value),minOrder:String(c.minOrder||''),expiresAt:c.expiresAt||''})} style={{background:'none',border:'1px solid var(--border)',borderRadius:6,color:'var(--muted)',cursor:'pointer',fontSize:'0.65rem',padding:'3px 8px'}}>✏️</button>
+                          <button onClick={()=>{ if(!confirm('Excluir cupom '+c.code+'?')) return; persistCoupons(coupons.filter(x=>x.id!==c.id)); }} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.85rem'}}>✕</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                }
               </>;
             })()}
             </>}
