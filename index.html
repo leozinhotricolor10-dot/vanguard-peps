@@ -3329,7 +3329,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
                   {/* Cartão 2x */}
                   {(() => {
-                    const MP_TAXA_2X = 0.0697; // taxa MP para 2x (ajuste conforme sua conta)
+                    const MP_TAXA_2X = 0.0459; // taxa MP para 2x
                     const totalComJuros = Math.round(myTotal * (1 + MP_TAXA_2X));
                     const juros = totalComJuros - myTotal;
                     const parcela = Math.round(totalComJuros / 2);
