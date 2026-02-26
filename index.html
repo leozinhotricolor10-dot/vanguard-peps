@@ -3329,8 +3329,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
                   {/* Cartão 2x */}
                   {(() => {
-                    const MP_TAXA_2X = 0.0459; // taxa MP para 2x
-                    const totalComJuros = Math.round(myTotal * (1 + MP_TAXA_2X));
+                    const MP_RECEBER_HORA = 0.0498; // taxa receber na hora
+                    const MP_PARCELAMENTO = 0.0459; // taxa parcelamento 2x
+                    const totalComJuros = Math.round(myTotal * (1 + MP_RECEBER_HORA) * (1 + MP_PARCELAMENTO));
                     const juros = totalComJuros - myTotal;
                     const parcela = Math.round(totalComJuros / 2);
                     return (
