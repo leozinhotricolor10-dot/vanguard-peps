@@ -2267,8 +2267,11 @@ function App() {
   const [appliedPoints, setAppliedPoints] = useState(0);
   const [pointsBalance, setPointsBalance] = useState(null); // null | {cpf,points,...}
   const [pointsConfig, setPointsConfig] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-points-config')||'null') || { rate: 1, redeem: 5 }; } catch { return { rate: 1, redeem: 5 }; } });
-  // rate = pontos por R$1 gasto (ex: 0.5 = 1pt a cada R$2)
-  // redeem = R$ a cada 100 pontos resgatados (ex: 3 = R$3 por 100pts)
+  const [clientList, setClientList] = useState([]); // aba Clientes
+  const [adjustModal, setAdjustModal] = useState(null);
+  const [adjustDelta, setAdjustDelta] = useState('');
+  const [cfgRate, setCfgRate] = useState(() => String(JSON.parse(localStorage.getItem('vg-points-config')||'null')?.rate || 1));
+  const [cfgRedeem, setCfgRedeem] = useState(() => String(JSON.parse(localStorage.getItem('vg-points-config')||'null')?.redeem || 5));
   const [disclaimer, setDisclaimer] = useState(false);
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -2548,6 +2551,14 @@ function App() {
 
     return () => sb.removeChannel(channel);
   } catch(e) { console.warn('[Supabase] Stock effect error:', e.message); }
+  }, []);
+
+  // ── Supabase: carregar customers ────────────────────────────────────────
+  React.useEffect(() => {
+    if (!sb) { setClientList(customers); return; }
+    sb.from('customers').select('*').order('points', { ascending: false }).then(({ data }) => {
+      if (data) { setClientList(data); persistCustomers(data); }
+    });
   }, []);
 
   // ── Supabase: carregar pedidos e pré-orders + realtime ────────────────────
@@ -5226,19 +5237,6 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
             {/* TAB: CLIENTES */}
             {adminTab==="clientes" && (()=>{
-              const [clientList, setClientList] = React.useState(customers);
-              const [adjustModal, setAdjustModal] = React.useState(null); // {cpf,name,points}
-              const [adjustDelta, setAdjustDelta] = React.useState('');
-              const [cfgRate, setCfgRate] = React.useState(String(pointsConfig.rate));
-              const [cfgRedeem, setCfgRedeem] = React.useState(String(pointsConfig.redeem));
-
-              React.useEffect(() => {
-                if (!sb) return;
-                sb.from('customers').select('*').order('points', { ascending: false }).then(({ data }) => {
-                  if (data) { setClientList(data); persistCustomers(data); }
-                });
-              }, []);
-
               function saveConfig() {
                 const r = parseFloat(cfgRate); const d = parseFloat(cfgRedeem);
                 if (isNaN(r)||r<=0||isNaN(d)||d<=0) { showToast('Valores inválidos','error'); return; }
