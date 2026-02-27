@@ -2257,6 +2257,12 @@ function App() {
   const [importForm, setImportForm] = useState({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', desconto:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:''}] });
   const [importHistory, setImportHistory] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-imports')||'[]'); } catch { return []; } });
   const [cambioInfo, setCambioInfo] = useState({ loading: false, hora: null, error: null });
+  const [meSettings, setMeSettings] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-me-settings')||'null'); } catch { return null; } });
+  const [etiquetaModal, setEtiquetaModal] = useState(null); // order being processed
+  const [etiquetaStep, setEtiquetaStep] = useState('idle'); // idle | settings | confirm | loading | done | error
+  const [etiquetaResult, setEtiquetaResult] = useState(null);
+  const [etiquetaError, setEtiquetaError] = useState('');
+  const [meForm, setMeForm] = useState({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' });
   const [disclaimer, setDisclaimer] = useState(false);
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -2304,6 +2310,73 @@ function App() {
   }
 
   function persistOrders(o) { setOrders(o); saveOrders(o); }
+
+  const ME_PROXY = `https://aumubzvdhzvtnqfzqeqd.supabase.co/functions/v1/melhorenvios-proxy`;
+  const ME_ANON  = 'sb_publishable_crfA-iUkVR2mnibsWQ2ZDA_wpwOBBY_';
+
+  async function callME(path, method = 'GET', body = null) {
+    const res = await fetch(ME_PROXY, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': ME_ANON, 'Authorization': `Bearer ${ME_ANON}` },
+      body: JSON.stringify({ path, method, body }),
+    });
+    return res.json();
+  }
+
+  async function gerarEtiqueta(order) {
+    const sender = meSettings;
+    if (!sender) { setEtiquetaModal(order); setEtiquetaStep('settings'); setMeForm({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' }); return; }
+    setEtiquetaModal(order);
+    setEtiquetaStep('confirm');
+  }
+
+  async function confirmarEtiqueta() {
+    const order = etiquetaModal;
+    const sender = meSettings;
+    setEtiquetaStep('loading');
+    setEtiquetaError('');
+    try {
+      const addr = order.address || {};
+      const cartBody = {
+        service: 7, // Jadlog .package
+        from: { name: sender.name, phone: sender.phone.replace(/\D/g,''), email: sender.email, document: sender.document.replace(/\D/g,''), address: sender.address, number: sender.number, complement: sender.complement||'', district: sender.district, city: sender.city, country_id: 'BR', postal_code: sender.postal_code.replace(/\D/g,''), note: '' },
+        to: { name: order.buyerName||'Cliente', phone: (order._phone||'').replace(/\D/g,''), email: order.email||'', document: (order.cpf||'').replace(/\D/g,''), address: addr.rua||'', number: addr.numero||'', complement: addr.complemento||'', district: addr.bairro||'', city: addr.cidade||'', country_id: 'BR', postal_code: (addr.cep||'').replace(/\D/g,''), note: '' },
+        products: [{ name: 'Peptídeo', quantity: 1, unitary_value: order._total||100, weight: 0.3 }],
+        volumes: [{ height: 5, width: 6, length: 12, weight: 0.3 }],
+        options: { insurance_value: order._total||100, receipt: false, own_hand: false, reverse: false, non_commercial: true, tags: [{ tag: order._code||order.id, url: null }] },
+      };
+      const cartRes = await callME('/me/cart', 'POST', cartBody);
+      if (!cartRes.id) throw new Error(cartRes.message || JSON.stringify(cartRes));
+      const meOrderId = cartRes.id;
+
+      const checkoutRes = await callME('/me/shipment/checkout', 'POST', { orders: [meOrderId] });
+      if (!checkoutRes.purchase) throw new Error('Falha no checkout: ' + JSON.stringify(checkoutRes));
+
+      const genRes = await callME('/me/shipment/generate', 'POST', { orders: [meOrderId] });
+
+      const printRes = await callME('/me/shipment/print', 'POST', { mode: 'public', orders: [meOrderId] });
+      const labelUrl = printRes.url || printRes;
+
+      const trackCode = cartRes.tracking || genRes[meOrderId]?.tracking || '';
+
+      if (sb) await sb.from('orders').update({ me_order_id: meOrderId, tracking_code: trackCode, label_url: typeof labelUrl === 'string' ? labelUrl : '' }).eq('id', order.id);
+      const updated = orders.map(o => o.id === order.id ? { ...o, me_order_id: meOrderId, tracking_code: trackCode, label_url: typeof labelUrl === 'string' ? labelUrl : '' } : o);
+      persistOrders(updated);
+
+      setEtiquetaResult({ meOrderId, trackCode, labelUrl: typeof labelUrl === 'string' ? labelUrl : '' });
+      setEtiquetaStep('done');
+    } catch(e) {
+      setEtiquetaError(e.message);
+      setEtiquetaStep('error');
+    }
+  }
+
+  function saveMeSettings() {
+    const s = { ...meForm };
+    setMeSettings(s);
+    localStorage.setItem('vg-me-settings', JSON.stringify(s));
+    setEtiquetaStep('confirm');
+  }
 
   async function clearAllOrders() {
     if (!window.confirm("Apagar TODOS os pedidos? O estoque será restaurado automaticamente.")) return;
@@ -4064,6 +4137,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                         <div style={{display:'flex',flexDirection:'column',gap:4}}>
                           <button className="admin-remove-btn" style={{background:'rgba(0,229,195,0.08)',color:'var(--accent)',borderColor:'rgba(0,229,195,0.3)'}} onClick={()=>setOrderDetail(order)}>detalhes</button>
                           {(order.status||'pendente')==='pendente' && <button className="admin-remove-btn" style={{background:'rgba(139,0,0,0.15)',color:'#e05555',borderColor:'rgba(139,0,0,0.3)',fontSize:'0.6rem'}} onClick={()=>{ navigator.clipboard.writeText(orderTotal.toLocaleString('pt-BR',{minimumFractionDigits:2})); showToast('Valor copiado! Abrindo DominiPay...','success'); setTimeout(()=>window.open('https://admin.dominipay.com.br/dashboard','_blank'),600); }}>💳 PIX</button>}
+                          {(order.status||'pendente')==='pago' && <button className="admin-remove-btn" style={{background:'rgba(0,180,255,0.1)',color:'#5bc8ff',borderColor:'rgba(0,180,255,0.3)',fontSize:'0.6rem'}} onClick={()=>gerarEtiqueta(order)}>{order.label_url ? '🏷️ Reimpr.' : '🏷️ Etiqueta'}</button>}
                           <button className="admin-remove-btn" onClick={()=>adminRemove(order.id)}>remover</button>
                         </div>
                       </div>
@@ -5385,6 +5459,65 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               </div>
             </>}
             <button onClick={()=>setLegalModal(null)} style={{width:'100%',marginTop:20,padding:'10px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem'}}>Fechar</button>
+          </div>
+        </div>
+      )}
+
+      {/* ETIQUETA MODAL */}
+      {etiquetaModal && (
+        <div className="modal-overlay" onClick={()=>{ if(etiquetaStep!=='loading'){ setEtiquetaModal(null); setEtiquetaStep('idle'); setEtiquetaResult(null); }}}>
+          <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:480}}>
+            <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--accent)',letterSpacing:'1.5px',marginBottom:16}}>🏷️ GERAR ETIQUETA</div>
+
+            {/* STEP: settings */}
+            {etiquetaStep==='settings' && <>
+              <div style={{fontSize:'0.78rem',color:'var(--muted)',marginBottom:16}}>Configure o endereço de remetente (salvo para próximas etiquetas).</div>
+              {[['name','Nome completo'],['document','CPF (somente números)'],['phone','Telefone'],['email','E-mail'],['postal_code','CEP'],['address','Rua'],['number','Número'],['complement','Complemento'],['district','Bairro'],['city','Cidade'],['state','Estado (UF)']].map(([k,lbl])=>(
+                <div key={k} style={{marginBottom:8}}>
+                  <label style={{fontSize:'0.62rem',color:'var(--muted)',display:'block',marginBottom:3}}>{lbl}</label>
+                  <input style={{width:'100%',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'7px 10px',color:'var(--text)',fontSize:'0.8rem'}}
+                    value={meForm[k]} onChange={e=>setMeForm(f=>({...f,[k]:e.target.value}))} />
+                </div>
+              ))}
+              <button onClick={saveMeSettings} style={{width:'100%',marginTop:12,padding:'11px',background:'var(--accent)',border:'none',borderRadius:10,color:'#000',fontWeight:700,fontSize:'0.85rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>SALVAR E CONTINUAR</button>
+            </>}
+
+            {/* STEP: confirm */}
+            {etiquetaStep==='confirm' && etiquetaModal && <>
+              <div style={{marginBottom:14,padding:'10px 14px',background:'rgba(0,229,195,0.05)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:10,fontSize:'0.78rem'}}>
+                <div style={{color:'var(--accent)',fontWeight:700,marginBottom:4}}>{etiquetaModal.buyerName}</div>
+                <div style={{color:'var(--muted)'}}>{etiquetaModal.address?.rua}, {etiquetaModal.address?.numero} — {etiquetaModal.address?.bairro}</div>
+                <div style={{color:'var(--muted)'}}>{etiquetaModal.address?.cidade}/{etiquetaModal.address?.estado} · CEP {etiquetaModal.address?.cep}</div>
+                <div style={{color:'var(--muted)',marginTop:4}}>Transportadora: <strong>Jadlog .package</strong> · 0,3kg · 12×6×5cm</div>
+              </div>
+              <div style={{fontSize:'0.65rem',color:'var(--muted)',marginBottom:12}}>Remetente: <strong style={{color:'var(--text)'}}>{meSettings?.name}</strong> · <button onClick={()=>{ setMeForm(meSettings); setEtiquetaStep('settings'); }} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontSize:'0.65rem',padding:0}}>alterar</button></div>
+              <button onClick={confirmarEtiqueta} style={{width:'100%',padding:'11px',background:'var(--accent)',border:'none',borderRadius:10,color:'#000',fontWeight:700,fontSize:'0.85rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>✅ GERAR ETIQUETA</button>
+            </>}
+
+            {/* STEP: loading */}
+            {etiquetaStep==='loading' && <div style={{textAlign:'center',padding:'30px 0',color:'var(--muted)',fontSize:'0.85rem'}}>⏳ Gerando etiqueta, aguarde...</div>}
+
+            {/* STEP: done */}
+            {etiquetaStep==='done' && etiquetaResult && <>
+              <div style={{textAlign:'center',marginBottom:16}}>
+                <div style={{fontSize:'2rem',marginBottom:8}}>✅</div>
+                <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:'1rem',marginBottom:4}}>Etiqueta gerada!</div>
+                {etiquetaResult.trackCode && <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.75rem',color:'var(--accent)',marginBottom:12}}>Rastreio: {etiquetaResult.trackCode}</div>}
+              </div>
+              {etiquetaResult.labelUrl && <a href={etiquetaResult.labelUrl} target="_blank" rel="noreferrer" style={{display:'block',width:'100%',padding:'11px',background:'var(--accent)',border:'none',borderRadius:10,color:'#000',fontWeight:700,fontSize:'0.85rem',cursor:'pointer',fontFamily:"'Space Mono',monospace",textAlign:'center',textDecoration:'none',marginBottom:8}}>🖨️ IMPRIMIR ETIQUETA</a>}
+              <button onClick={()=>{ setEtiquetaModal(null); setEtiquetaStep('idle'); setEtiquetaResult(null); }} style={{width:'100%',padding:'10px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',fontSize:'0.78rem',cursor:'pointer'}}>Fechar</button>
+            </>}
+
+            {/* STEP: error */}
+            {etiquetaStep==='error' && <>
+              <div style={{textAlign:'center',marginBottom:16}}>
+                <div style={{fontSize:'2rem',marginBottom:8}}>❌</div>
+                <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:'1rem',marginBottom:8}}>Erro ao gerar etiqueta</div>
+                <div style={{fontSize:'0.72rem',color:'#ff5050',background:'rgba(255,80,80,0.08)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:8,padding:'10px',textAlign:'left'}}>{etiquetaError}</div>
+              </div>
+              <button onClick={()=>setEtiquetaStep('confirm')} style={{width:'100%',padding:'10px',background:'rgba(0,229,195,0.1)',border:'1px solid rgba(0,229,195,0.3)',borderRadius:10,color:'var(--accent)',fontSize:'0.78rem',cursor:'pointer',marginBottom:8}}>Tentar novamente</button>
+              <button onClick={()=>{ setEtiquetaModal(null); setEtiquetaStep('idle'); }} style={{width:'100%',padding:'10px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',fontSize:'0.78rem',cursor:'pointer'}}>Fechar</button>
+            </>}
           </div>
         </div>
       )}
