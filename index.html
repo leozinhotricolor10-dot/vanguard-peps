@@ -2352,7 +2352,6 @@ function App() {
 
       const cartBody = {
         service: service.id,
-        agency: service.company?.id === 8 ? service.company.id : 0, // Jadlog needs agency
         from: { name: sender.name, phone: sender.phone.replace(/\D/g,''), email: sender.email, document: sender.document.replace(/\D/g,''), address: sender.address, number: sender.number, complement: sender.complement||'', district: sender.district, city: sender.city, state_abbr: normUF(sender.state), country_id: 'BR', postal_code: fromCep, note: '' },
         to: { name: order.buyerName||'Cliente', phone: (order._phone||'').replace(/\D/g,''), email: order._email||'', document: (order._cpf||'').replace(/\D/g,''), address: addr.rua||'', number: addr.numero||'', complement: addr.complemento||'', district: addr.bairro||'', city: addr.cidade||'', state_abbr: normUF(addr.estado), country_id: 'BR', postal_code: toCep, note: '' },
         products: [{ name: 'Peptídeo', quantity: 1, unitary_value: order._total||100, weight: 0.3 }],
