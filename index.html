@@ -2840,16 +2840,19 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
   function persistCustomers(c) { setCustomers(c); localStorage.setItem('vg-customers', JSON.stringify(c)); }
 
   async function awardPoints(order) {
-    const cpf = ((order._cpf || order.cpf) || '').replace(/\D/g,'');
-    if (!cpf || cpf.length < 11) return;
+    const cpf = (order._cpf || order.cpf || '').replace(/\D/g,'');
+    if (!cpf || cpf.length !== 11) return;
     const pts = Math.floor(Math.abs(order._total || 0) * (pointsConfig.rate || 1));
     if (pts <= 0) return;
     if (sb) {
-      const { data: ex } = await sb.from('customers').select('points,total_spent').eq('cpf', cpf).maybeSingle();
+      const { data: ex, error: selErr } = await sb.from('customers').select('points,total_spent').eq('cpf', cpf).maybeSingle();
+      if (selErr) { console.warn('[Points] select error:', selErr.message); }
       if (ex) {
-        await sb.from('customers').update({ points: (ex.points||0)+pts, total_spent: (ex.total_spent||0)+(order._total||0), name: order.buyerName||'', phone: order._phone||'', email: order._email||'' }).eq('cpf', cpf);
+        const { error: updErr } = await sb.from('customers').update({ points: (ex.points||0)+pts, total_spent: (ex.total_spent||0)+(order._total||0), name: order.buyerName||'', phone: order._phone||'', email: order._email||'' }).eq('cpf', cpf);
+        if (updErr) { console.warn('[Points] update error:', updErr.message); return; }
       } else {
-        await sb.from('customers').insert({ cpf, name: order.buyerName||'', phone: order._phone||'', email: order._email||'', points: pts, total_spent: order._total||0 });
+        const { error: insErr } = await sb.from('customers').insert({ cpf, name: order.buyerName||'', phone: order._phone||'', email: order._email||'', points: pts, total_spent: order._total||0 });
+        if (insErr) { console.warn('[Points] insert error:', insErr.message); return; }
       }
     }
     const upd = customers.find(c=>c.cpf===cpf) ? customers.map(c=>c.cpf===cpf?{...c,points:(c.points||0)+pts,total_spent:(c.total_spent||0)+(order._total||0)}:c) : [...customers,{cpf,name:order.buyerName||'',phone:order._phone||'',email:order._email||'',points:pts,total_spent:order._total||0}];
@@ -2857,21 +2860,33 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
     showToast(`⭐ +${pts} pontos VG creditados!`, 'success');
   }
 
+  // Ref para cancelar checkPoints stale em caso de digitação rápida
+  const _checkPointsReq = React.useRef(0);
   async function checkPoints(cpf) {
     const clean = (cpf||'').replace(/\D/g,'');
     if (clean.length < 11) { setPointsBalance(null); return; }
+    const reqId = ++_checkPointsReq.current;
     let data = null;
-    if (sb) { const r = await sb.from('customers').select('*').eq('cpf', clean).maybeSingle(); data = r.data; }
-    else { data = customers.find(c=>c.cpf===clean)||null; }
-    setPointsBalance(data || { cpf: clean, points: 0 });
+    if (sb) {
+      const { data: d, error } = await sb.from('customers').select('*').eq('cpf', clean).maybeSingle();
+      if (reqId !== _checkPointsReq.current) return; // resposta stale, ignora
+      if (!error) data = d;
+    } else {
+      data = customers.find(c=>c.cpf===clean)||null;
+    }
+    setPointsBalance(data ? { ...data, points: data.points ?? 0 } : { cpf: clean, points: 0 });
   }
 
   async function redeemPoints(cpf, pts) {
     const clean = (cpf||'').replace(/\D/g,'');
     if (!clean || pts <= 0) return;
     if (sb) {
-      const { data: ex } = await sb.from('customers').select('points').eq('cpf', clean).maybeSingle();
-      if (ex) await sb.from('customers').update({ points: Math.max(0,(ex.points||0)-pts) }).eq('cpf', clean);
+      const { data: ex, error: selErr } = await sb.from('customers').select('points').eq('cpf', clean).maybeSingle();
+      if (selErr) { console.warn('[Points] redeem select error:', selErr.message); return; }
+      if (ex) {
+        const { error: updErr } = await sb.from('customers').update({ points: Math.max(0,(ex.points||0)-pts) }).eq('cpf', clean);
+        if (updErr) { console.warn('[Points] redeem update error:', updErr.message); return; }
+      }
     }
     persistCustomers(customers.map(c=>c.cpf===clean?{...c,points:Math.max(0,(c.points||0)-pts)}:c));
   }
@@ -3512,14 +3527,14 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 <div className="checkout-section-title">⭐ Vanguard Points</div>
                 {pointsBalance === null
                   ? <div style={{fontSize:'0.75rem',color:'var(--muted)'}}>Preencha seu CPF acima para verificar seu saldo de pontos.</div>
-                  : pointsBalance.points >= 100
+                  : (pointsBalance.points ?? 0) >= 100
                     ? appliedPoints > 0
                       ? <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',background:'rgba(255,200,0,0.07)',border:'1px solid rgba(255,200,0,0.3)',borderRadius:8}}>
                           <span style={{color:'#ffc800',fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:'0.85rem'}}>⭐ {appliedPoints} pts <span style={{fontWeight:400,color:'var(--muted)',fontSize:'0.72rem'}}>→ -R$ {(Math.floor(appliedPoints/100)*(pointsConfig.redeem||5)).toLocaleString('pt-BR')}</span></span>
                           <button onClick={()=>setAppliedPoints(0)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.85rem'}}>✕</button>
                         </div>
                       : <div>
-                          <div style={{fontSize:'0.78rem',color:'var(--muted)',marginBottom:8}}>Você tem <strong style={{color:'#ffc800'}}>{pointsBalance.points} pontos</strong> → vale até <strong style={{color:'#ffc800'}}>R$ {Math.floor(pointsBalance.points/100)*(pointsConfig.redeem||5)}</strong> de desconto</div>
+                          <div style={{fontSize:'0.78rem',color:'var(--muted)',marginBottom:8}}>Você tem <strong style={{color:'#ffc800'}}>{pointsBalance.points ?? 0} pontos</strong> → vale até <strong style={{color:'#ffc800'}}>R$ {Math.floor((pointsBalance.points??0)/100)*(pointsConfig.redeem||5)}</strong> de desconto</div>
                           <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                             {[100,200,500].filter(p=>p<=pointsBalance.points).map(p=>(
                               <button key={p} onClick={()=>setAppliedPoints(p)} style={{padding:'6px 12px',background:'rgba(255,200,0,0.1)',border:'1px solid rgba(255,200,0,0.3)',borderRadius:8,color:'#ffc800',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>{p} pts → -R$ {Math.floor(p/100)*(pointsConfig.redeem||5)}</button>
@@ -3527,7 +3542,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                             {pointsBalance.points >= 100 && <button onClick={()=>setAppliedPoints(pointsBalance.points - (pointsBalance.points % 100))} style={{padding:'6px 12px',background:'rgba(255,200,0,0.1)',border:'1px solid rgba(255,200,0,0.3)',borderRadius:8,color:'#ffc800',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>Usar tudo ({pointsBalance.points-(pointsBalance.points%100)} pts)</button>}
                           </div>
                         </div>
-                    : <div style={{fontSize:'0.75rem',color:'var(--muted)'}}>{pointsBalance.points > 0 ? `Você tem ${pointsBalance.points} pts — mínimo 100 pts para resgatar.` : 'Nenhum ponto acumulado neste CPF ainda.'}</div>
+                    : <div style={{fontSize:'0.75rem',color:'var(--muted)'}}>{(pointsBalance.points??0) > 0 ? `Você tem ${pointsBalance.points??0} pts — mínimo 100 pts para resgatar.` : 'Nenhum ponto acumulado neste CPF ainda.'}</div>
                 }
               </div>
 
