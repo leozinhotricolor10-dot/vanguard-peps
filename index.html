@@ -2263,6 +2263,9 @@ function App() {
   const [etiquetaResult, setEtiquetaResult] = useState(null);
   const [etiquetaError, setEtiquetaError] = useState('');
   const [meForm, setMeForm] = useState({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' });
+  const [customers, setCustomers] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-customers')||'[]'); } catch { return []; } });
+  const [appliedPoints, setAppliedPoints] = useState(0);
+  const [pointsBalance, setPointsBalance] = useState(null); // null | {cpf,points,...}
   const [disclaimer, setDisclaimer] = useState(false);
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -2307,6 +2310,7 @@ function App() {
         : `🎉 *Olá, ${firstName}! Seu pedido foi entregue!*${code ? `\n\n📋 *Pedido:* ${code}` : ''}\n\nEsperamos que você aproveite muito! Se tiver qualquer dúvida sobre o uso, estamos aqui para ajudar.\n\nObrigado pela confiança! 🙏\n\n_Vanguard Peptides_ 🧬`;
       window.open(`https://wa.me/${intlPhone}?text=${encodeURIComponent(msg)}`, '_blank');
     }
+    if (newStatus === 'pago') awardPoints(order);
   }
 
   function persistOrders(o) { setOrders(o); saveOrders(o); }
@@ -2717,7 +2721,8 @@ function App() {
       const freight = calcFreight(checkout.estado, myTotal);
       const pixDiscount = checkout.pagamento === 'pix' ? Math.round(myTotal * 0.1) : 0;
       const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round((myTotal - pixDiscount) * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal - pixDiscount)) : 0;
-      const totalFinal = myTotal - pixDiscount - couponDiscount + freight.value;
+      const pointsDiscount = Math.floor(appliedPoints / 100) * 5;
+      const totalFinal = myTotal - pixDiscount - couponDiscount - pointsDiscount + freight.value;
       const itens = myOrders.map(o => {
         const p = products.find(x => x.id === o.peptideId);
         if (!p) return `• [produto removido] ×${o.qty}`;
@@ -2745,7 +2750,7 @@ ${itens}
 
 💰 *Resumo*
 Subtotal: R$ ${myTotal.toLocaleString('pt-BR')}${pixDiscount > 0 ? '\n💚 Desconto PIX (10%): -R$ '+pixDiscount.toLocaleString('pt-BR') : ''}
-Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${couponDiscount > 0 ? '\n🏷️ Cupom '+appliedCoupon.code+': -R$ '+couponDiscount.toLocaleString('pt-BR') : ''}
+Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${couponDiscount > 0 ? '\n🏷️ Cupom '+appliedCoupon.code+': -R$ '+couponDiscount.toLocaleString('pt-BR') : ''}${pointsDiscount > 0 ? '\n⭐ Pontos VG ('+appliedPoints+' pts): -R$ '+pointsDiscount.toLocaleString('pt-BR') : ''}
 *Total: R$ ${totalFinal.toLocaleString('pt-BR')}*${checkout.observacoes ? '\n\n📝 *Obs:* ' + checkout.observacoes : ''}`;
 
       // Salvar pedido no Supabase ANTES de abrir WhatsApp
@@ -2779,6 +2784,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
           showToast("Erro ao salvar pedido. Verifique sua conexão e tente novamente.", "error");
           return;
         }
+        if (appliedPoints > 0) await redeemPoints(checkout.cpf, appliedPoints);
       }
 
       // Adiciona código ao final da mensagem WhatsApp
@@ -2792,6 +2798,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       setDisclaimer(false);
       setAppliedCoupon(null);
       setCouponInput('');
+      setAppliedPoints(0);
+      setPointsBalance(null);
       setOrderSuccessCode(orderCode);
       setView("catalog");
     } finally {
@@ -2826,6 +2834,44 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
   }
 
   function persistCoupons(c) { setCoupons(c); localStorage.setItem('vg-coupons', JSON.stringify(c)); }
+  function persistCustomers(c) { setCustomers(c); localStorage.setItem('vg-customers', JSON.stringify(c)); }
+
+  async function awardPoints(order) {
+    const cpf = ((order._cpf || order.cpf) || '').replace(/\D/g,'');
+    if (!cpf || cpf.length < 11) return;
+    const pts = Math.floor(Math.abs(order._total || 0));
+    if (pts <= 0) return;
+    if (sb) {
+      const { data: ex } = await sb.from('customers').select('points,total_spent').eq('cpf', cpf).maybeSingle();
+      if (ex) {
+        await sb.from('customers').update({ points: (ex.points||0)+pts, total_spent: (ex.total_spent||0)+(order._total||0), name: order.buyerName||'', phone: order._phone||'', email: order._email||'' }).eq('cpf', cpf);
+      } else {
+        await sb.from('customers').insert({ cpf, name: order.buyerName||'', phone: order._phone||'', email: order._email||'', points: pts, total_spent: order._total||0 });
+      }
+    }
+    const upd = customers.find(c=>c.cpf===cpf) ? customers.map(c=>c.cpf===cpf?{...c,points:(c.points||0)+pts,total_spent:(c.total_spent||0)+(order._total||0)}:c) : [...customers,{cpf,name:order.buyerName||'',phone:order._phone||'',email:order._email||'',points:pts,total_spent:order._total||0}];
+    persistCustomers(upd);
+    showToast(`⭐ +${pts} pontos VG creditados!`, 'success');
+  }
+
+  async function checkPoints(cpf) {
+    const clean = (cpf||'').replace(/\D/g,'');
+    if (clean.length < 11) { setPointsBalance(null); return; }
+    let data = null;
+    if (sb) { const r = await sb.from('customers').select('*').eq('cpf', clean).maybeSingle(); data = r.data; }
+    else { data = customers.find(c=>c.cpf===clean)||null; }
+    setPointsBalance(data || { cpf: clean, points: 0 });
+  }
+
+  async function redeemPoints(cpf, pts) {
+    const clean = (cpf||'').replace(/\D/g,'');
+    if (!clean || pts <= 0) return;
+    if (sb) {
+      const { data: ex } = await sb.from('customers').select('points').eq('cpf', clean).maybeSingle();
+      if (ex) await sb.from('customers').update({ points: Math.max(0,(ex.points||0)-pts) }).eq('cpf', clean);
+    }
+    persistCustomers(customers.map(c=>c.cpf===clean?{...c,points:Math.max(0,(c.points||0)-pts)}:c));
+  }
 
   function applyCouponCode() {
     const code = couponInput.trim().toUpperCase();
@@ -3303,7 +3349,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
         const freight = calcFreight(checkout.estado, myTotal);
         const pixDiscount = checkout.pagamento === 'pix' ? Math.round(myTotal * 0.1) : 0;
         const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round((myTotal - pixDiscount) * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal - pixDiscount)) : 0;
-        const totalFinal = myTotal - pixDiscount - couponDiscount + freight.value;
+        const pointsDiscount = Math.floor(appliedPoints / 100) * 5;
+        const totalFinal = myTotal - pixDiscount - couponDiscount - pointsDiscount + freight.value;
         const isFree = freight.value === 0;
         return (
           <div className="modal-overlay" onClick={e=>{ if(e.target===e.currentTarget) setCheckoutOpen(false); }}>
@@ -3325,7 +3372,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     <label>CPF *</label>
                     <input placeholder="000.000.000-00" value={checkout.cpf}
                       className={checkoutErrors.cpf ? 'error' : ''}
-                      onChange={e=>updateCheckout('cpf', e.target.value)} />
+                      onChange={e=>{ updateCheckout('cpf', e.target.value); const clean=e.target.value.replace(/\D/g,''); if(clean.length===11) checkPoints(e.target.value); else setPointsBalance(null); }} />
                   </div>
                   <div className="input-group">
                     <label>Telefone *</label>
@@ -3457,6 +3504,30 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 }
               </div>
 
+              {/* Vanguard Points */}
+              <div className="checkout-section">
+                <div className="checkout-section-title">⭐ Vanguard Points</div>
+                {pointsBalance === null
+                  ? <div style={{fontSize:'0.75rem',color:'var(--muted)'}}>Preencha seu CPF acima para verificar seu saldo de pontos.</div>
+                  : pointsBalance.points >= 100
+                    ? appliedPoints > 0
+                      ? <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',background:'rgba(255,200,0,0.07)',border:'1px solid rgba(255,200,0,0.3)',borderRadius:8}}>
+                          <span style={{color:'#ffc800',fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:'0.85rem'}}>⭐ {appliedPoints} pts <span style={{fontWeight:400,color:'var(--muted)',fontSize:'0.72rem'}}>→ -R$ {(Math.floor(appliedPoints/100)*5).toLocaleString('pt-BR')}</span></span>
+                          <button onClick={()=>setAppliedPoints(0)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.85rem'}}>✕</button>
+                        </div>
+                      : <div>
+                          <div style={{fontSize:'0.78rem',color:'var(--muted)',marginBottom:8}}>Você tem <strong style={{color:'#ffc800'}}>{pointsBalance.points} pontos</strong> → vale até <strong style={{color:'#ffc800'}}>R$ {Math.floor(pointsBalance.points/100)*5}</strong> de desconto</div>
+                          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                            {[100,200,500].filter(p=>p<=pointsBalance.points).map(p=>(
+                              <button key={p} onClick={()=>setAppliedPoints(p)} style={{padding:'6px 12px',background:'rgba(255,200,0,0.1)',border:'1px solid rgba(255,200,0,0.3)',borderRadius:8,color:'#ffc800',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>{p} pts → -R$ {Math.floor(p/100)*5}</button>
+                            ))}
+                            {pointsBalance.points >= 100 && <button onClick={()=>setAppliedPoints(pointsBalance.points - (pointsBalance.points % 100))} style={{padding:'6px 12px',background:'rgba(255,200,0,0.1)',border:'1px solid rgba(255,200,0,0.3)',borderRadius:8,color:'#ffc800',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>Usar tudo ({pointsBalance.points-(pointsBalance.points%100)} pts)</button>}
+                          </div>
+                        </div>
+                    : <div style={{fontSize:'0.75rem',color:'var(--muted)'}}>{pointsBalance.points > 0 ? `Você tem ${pointsBalance.points} pts — mínimo 100 pts para resgatar.` : 'Nenhum ponto acumulado neste CPF ainda.'}</div>
+                }
+              </div>
+
               {/* Resumo + frete */}
               <div className="checkout-section">
                 <div className="checkout-section-title">💰 Resumo do Pedido</div>
@@ -3474,6 +3545,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',marginBottom:8,padding:'8px 12px',background:'rgba(255,150,0,0.06)',border:'1px solid rgba(255,150,0,0.2)',borderRadius:8}}>
                     <span style={{color:'#ff9600'}}>🏷️ Cupom {appliedCoupon.code}</span>
                     <span style={{color:'#ff9600',fontFamily:"'Space Mono',monospace",fontWeight:700}}>-R$ {couponDiscount.toLocaleString('pt-BR')}</span>
+                  </div>
+                )}
+                {pointsDiscount > 0 && (
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',marginBottom:8,padding:'8px 12px',background:'rgba(255,200,0,0.06)',border:'1px solid rgba(255,200,0,0.2)',borderRadius:8}}>
+                    <span style={{color:'#ffc800'}}>⭐ Pontos VG ({appliedPoints} pts)</span>
+                    <span style={{color:'#ffc800',fontFamily:"'Space Mono',monospace",fontWeight:700}}>-R$ {pointsDiscount.toLocaleString('pt-BR')}</span>
                   </div>
                 )}
                 <div className={`freight-box ${isFree?'free':'paid'}`}>
@@ -4068,6 +4145,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               <button className={`admin-tab ${adminTab==="financeiro"?"active":""}`} onClick={()=>setAdminTab("financeiro")}>💰 FINANCEIRO</button>
               <button className={`admin-tab ${adminTab==="importacao"?"active":""}`} onClick={()=>setAdminTab("importacao")}>📦 IMPORTAÇÃO</button>
   <button className={`admin-tab ${adminTab==="cupons"?"active":""}`} onClick={()=>setAdminTab("cupons")}>🏷️ CUPONS</button>
+              <button className={`admin-tab ${adminTab==="clientes"?"active":""}`} onClick={()=>setAdminTab("clientes")}>👥 CLIENTES</button>
             </div>
 
             {/* TAB: PEDIDOS */}
@@ -5123,6 +5201,70 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+              </>;
+            })()}
+
+            {/* TAB: CLIENTES */}
+            {adminTab==="clientes" && (()=>{
+              const [clientList, setClientList] = React.useState(customers);
+              const [adjustModal, setAdjustModal] = React.useState(null); // {cpf,name,points}
+              const [adjustDelta, setAdjustDelta] = React.useState('');
+
+              React.useEffect(() => {
+                if (!sb) return;
+                sb.from('customers').select('*').order('points', { ascending: false }).then(({ data }) => {
+                  if (data) { setClientList(data); persistCustomers(data); }
+                });
+              }, []);
+
+              async function saveAdjust() {
+                const delta = parseInt(adjustDelta);
+                if (isNaN(delta)) return;
+                const newPts = Math.max(0, (adjustModal.points||0) + delta);
+                if (sb) await sb.from('customers').update({ points: newPts }).eq('cpf', adjustModal.cpf);
+                const upd = clientList.map(c=>c.cpf===adjustModal.cpf?{...c,points:newPts}:c);
+                setClientList(upd); persistCustomers(upd);
+                setAdjustModal(null); setAdjustDelta('');
+                showToast('Pontos atualizados!', 'success');
+              }
+
+              return <>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.65rem',color:'var(--muted)'}}>{clientList.length} cliente{clientList.length!==1?'s':''} cadastrado{clientList.length!==1?'s':''}</div>
+                  <button onClick={()=>{ if(sb) sb.from('customers').select('*').order('points',{ascending:false}).then(({data})=>{if(data){setClientList(data);persistCustomers(data);}}); }} style={{background:'none',border:'1px solid var(--border)',borderRadius:8,color:'var(--muted)',cursor:'pointer',fontSize:'0.7rem',padding:'4px 10px',fontFamily:"'Space Mono',monospace"}}>↻ Recarregar</button>
+                </div>
+                {clientList.length === 0
+                  ? <div style={{textAlign:'center',color:'var(--muted)',padding:'40px 0',fontSize:'0.85rem'}}>Nenhum cliente ainda. Os clientes aparecem aqui quando um pedido é marcado como pago.</div>
+                  : <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                      {clientList.map(c=>(
+                        <div key={c.cpf} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',background:'var(--bg2)',borderRadius:10,gap:12}}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:600,fontSize:'0.85rem',marginBottom:2}}>{c.name||'—'}</div>
+                            <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.65rem',color:'var(--muted)'}}>{c.cpf}</div>
+                            {c.phone && <div style={{fontSize:'0.7rem',color:'var(--muted)'}}>{c.phone}</div>}
+                          </div>
+                          <div style={{textAlign:'right'}}>
+                            <div style={{fontFamily:"'Space Mono',monospace",fontWeight:700,color:'#ffc800',fontSize:'0.9rem'}}>⭐ {c.points||0} pts</div>
+                            <div style={{fontSize:'0.65rem',color:'var(--muted)'}}>R$ {(c.total_spent||0).toLocaleString('pt-BR')} gasto</div>
+                          </div>
+                          <button onClick={()=>{ setAdjustModal(c); setAdjustDelta(''); }} style={{background:'none',border:'1px solid var(--border)',borderRadius:8,color:'var(--muted)',cursor:'pointer',fontSize:'0.7rem',padding:'4px 10px',whiteSpace:'nowrap'}}>✏️ Ajustar</button>
+                        </div>
+                      ))}
+                    </div>
+                }
+                {adjustModal && (
+                  <div className="modal-overlay" onClick={()=>setAdjustModal(null)}>
+                    <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:360}}>
+                      <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--accent)',letterSpacing:'1.5px',marginBottom:12}}>AJUSTAR PONTOS</div>
+                      <div style={{marginBottom:12,fontSize:'0.82rem'}}><strong>{adjustModal.name||adjustModal.cpf}</strong> — saldo atual: <strong style={{color:'#ffc800'}}>{adjustModal.points||0} pts</strong></div>
+                      <label style={{fontSize:'0.65rem',color:'var(--muted)',display:'block',marginBottom:4}}>Ajuste (+100 para adicionar, -50 para remover)</label>
+                      <input type="number" style={{width:'100%',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 10px',color:'var(--text)',fontSize:'0.85rem',marginBottom:12}} value={adjustDelta} onChange={e=>setAdjustDelta(e.target.value)} placeholder="ex: +200 ou -100" />
+                      <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:12}}>Novo saldo: <strong style={{color:'#ffc800'}}>{Math.max(0,(adjustModal.points||0)+(parseInt(adjustDelta)||0))} pts</strong></div>
+                      <button onClick={saveAdjust} style={{width:'100%',padding:'10px',background:'var(--accent)',border:'none',borderRadius:10,color:'#000',fontWeight:700,fontSize:'0.82rem',cursor:'pointer',fontFamily:"'Space Mono',monospace",marginBottom:8}}>SALVAR</button>
+                      <button onClick={()=>setAdjustModal(null)} style={{width:'100%',padding:'9px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',fontSize:'0.78rem',cursor:'pointer'}}>Cancelar</button>
+                    </div>
                   </div>
                 )}
               </>;
