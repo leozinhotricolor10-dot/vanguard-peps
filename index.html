@@ -2375,7 +2375,7 @@ function App() {
   }
 
   function saveMeSettings() {
-    const s = { ...meForm };
+    const s = { ...meForm, state: (meForm.state||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,2) };
     setMeSettings(s);
     localStorage.setItem('vg-me-settings', JSON.stringify(s));
     setEtiquetaStep('confirm');
@@ -5475,11 +5475,13 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
             {/* STEP: settings */}
             {etiquetaStep==='settings' && <>
               <div style={{fontSize:'0.78rem',color:'var(--muted)',marginBottom:16}}>Configure o endereço de remetente (salvo para próximas etiquetas).</div>
-              {[['name','Nome completo'],['document','CPF (somente números)'],['phone','Telefone'],['email','E-mail'],['postal_code','CEP'],['address','Rua'],['number','Número'],['complement','Complemento'],['district','Bairro'],['city','Cidade'],['state','Estado (UF)']].map(([k,lbl])=>(
+              {[['name','Nome completo',null,null],['document','CPF','00000000000','11 dígitos sem pontos'],['phone','Telefone','11999999999','DDD + número'],['email','E-mail',null,null],['postal_code','CEP','00000000','8 dígitos'],['address','Rua',null,null],['number','Número',null,null],['complement','Complemento',null,null],['district','Bairro',null,null],['city','Cidade',null,null],['state','UF (sigla)','SP','2 letras: SP, RJ, MG...']].map(([k,lbl,ph,hint])=>(
                 <div key={k} style={{marginBottom:8}}>
-                  <label style={{fontSize:'0.62rem',color:'var(--muted)',display:'block',marginBottom:3}}>{lbl}</label>
+                  <label style={{fontSize:'0.62rem',color:'var(--muted)',display:'block',marginBottom:3}}>{lbl}{hint && <span style={{color:'var(--muted)',fontWeight:400,marginLeft:6,opacity:0.6}}>{hint}</span>}</label>
                   <input style={{width:'100%',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'7px 10px',color:'var(--text)',fontSize:'0.8rem'}}
-                    value={meForm[k]} onChange={e=>setMeForm(f=>({...f,[k]:e.target.value}))} />
+                    placeholder={ph||''}
+                    maxLength={k==='state'?2:undefined}
+                    value={meForm[k]} onChange={e=>setMeForm(f=>({...f,[k]: k==='state' ? e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,2) : e.target.value}))} />
                 </div>
               ))}
               <button onClick={saveMeSettings} style={{width:'100%',marginTop:12,padding:'11px',background:'var(--accent)',border:'none',borderRadius:10,color:'#000',fontWeight:700,fontSize:'0.85rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>SALVAR E CONTINUAR</button>
