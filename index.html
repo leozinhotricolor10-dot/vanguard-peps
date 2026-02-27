@@ -2313,6 +2313,8 @@ function App() {
 
   const ME_PROXY = `https://aumubzvdhzvtnqfzqeqd.supabase.co/functions/v1/melhorenvios-proxy`;
   const ME_ANON  = 'sb_publishable_crfA-iUkVR2mnibsWQ2ZDA_wpwOBBY_';
+  const BR_STATE_MAP = {'acre':'AC','alagoas':'AL','amapa':'AP','amapá':'AP','amazonas':'AM','bahia':'BA','ceara':'CE','ceará':'CE','distrito federal':'DF','espirito santo':'ES','espírito santo':'ES','goias':'GO','goiás':'GO','maranhao':'MA','maranhão':'MA','mato grosso do sul':'MS','mato grosso':'MT','minas gerais':'MG','para':'PA','pará':'PA','paraiba':'PB','paraíba':'PB','parana':'PR','paraná':'PR','pernambuco':'PE','piaui':'PI','piauí':'PI','rio de janeiro':'RJ','rio grande do norte':'RN','rio grande do sul':'RS','rondonia':'RO','rondônia':'RO','roraima':'RR','santa catarina':'SC','sao paulo':'SP','são paulo':'SP','sergipe':'SE','tocantins':'TO'};
+  function normUF(s) { if (!s) return ''; const t = s.trim().toUpperCase(); if (t.length === 2) return t; const k = s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); return BR_STATE_MAP[k] || t.slice(0,2); }
 
   async function callME(path, method = 'GET', body = null) {
     const res = await fetch(ME_PROXY, {
@@ -2339,8 +2341,8 @@ function App() {
       const addr = order._address || order.address || {};
       const cartBody = {
         service: 7, // Jadlog .package
-        from: { name: sender.name, phone: sender.phone.replace(/\D/g,''), email: sender.email, document: sender.document.replace(/\D/g,''), address: sender.address, number: sender.number, complement: sender.complement||'', district: sender.district, city: sender.city, state_abbr: (sender.state||'').toUpperCase(), country_id: 'BR', postal_code: sender.postal_code.replace(/\D/g,''), note: '' },
-        to: { name: order.buyerName||'Cliente', phone: (order._phone||'').replace(/\D/g,''), email: order._email||'', document: (order._cpf||'').replace(/\D/g,''), address: addr.rua||'', number: addr.numero||'', complement: addr.complemento||'', district: addr.bairro||'', city: addr.cidade||'', state_abbr: (addr.estado||'').toUpperCase(), country_id: 'BR', postal_code: (addr.cep||'').replace(/\D/g,''), note: '' },
+        from: { name: sender.name, phone: sender.phone.replace(/\D/g,''), email: sender.email, document: sender.document.replace(/\D/g,''), address: sender.address, number: sender.number, complement: sender.complement||'', district: sender.district, city: sender.city, state_abbr: normUF(sender.state), country_id: 'BR', postal_code: sender.postal_code.replace(/\D/g,''), note: '' },
+        to: { name: order.buyerName||'Cliente', phone: (order._phone||'').replace(/\D/g,''), email: order._email||'', document: (order._cpf||'').replace(/\D/g,''), address: addr.rua||'', number: addr.numero||'', complement: addr.complemento||'', district: addr.bairro||'', city: addr.cidade||'', state_abbr: normUF(addr.estado), country_id: 'BR', postal_code: (addr.cep||'').replace(/\D/g,''), note: '' },
         products: [{ name: 'Peptídeo', quantity: 1, unitary_value: order._total||100, weight: 0.3 }],
         volumes: [{ height: 5, width: 6, length: 12, weight: 0.3 }],
         options: { insurance_value: order._total||100, receipt: false, own_hand: false, reverse: false, non_commercial: true, tags: [{ tag: order._code||order.id, url: null }] },
@@ -2348,12 +2350,12 @@ function App() {
       const cartRes = await callME('/me/cart', 'POST', cartBody);
       if (!cartRes.id) {
         const errs = cartRes.errors ? Object.entries(cartRes.errors).map(([k,v])=>`${k}: ${Array.isArray(v)?v[0]:v}`).join('\n') : null;
-        throw new Error(errs || cartRes.message || JSON.stringify(cartRes));
+        throw new Error('[CART] ' + (errs || cartRes.message || JSON.stringify(cartRes)));
       }
       const meOrderId = cartRes.id;
 
       const checkoutRes = await callME('/me/shipment/checkout', 'POST', { orders: [meOrderId] });
-      if (!checkoutRes.purchase) throw new Error('Falha no checkout: ' + JSON.stringify(checkoutRes));
+      if (!checkoutRes.purchase) throw new Error('[CHECKOUT] ' + (checkoutRes.message || JSON.stringify(checkoutRes)));
 
       const genRes = await callME('/me/shipment/generate', 'POST', { orders: [meOrderId] });
 
@@ -5520,7 +5522,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:'1rem',marginBottom:8}}>Erro ao gerar etiqueta</div>
                 <div style={{fontSize:'0.72rem',color:'#ff5050',background:'rgba(255,80,80,0.08)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:8,padding:'10px',textAlign:'left'}}>{etiquetaError}</div>
               </div>
-              <button onClick={()=>setEtiquetaStep('confirm')} style={{width:'100%',padding:'10px',background:'rgba(0,229,195,0.1)',border:'1px solid rgba(0,229,195,0.3)',borderRadius:10,color:'var(--accent)',fontSize:'0.78rem',cursor:'pointer',marginBottom:8}}>Tentar novamente</button>
+              <button onClick={()=>{ setMeForm(meSettings||{}); setEtiquetaStep('settings'); }} style={{width:'100%',padding:'10px',background:'rgba(0,229,195,0.1)',border:'1px solid rgba(0,229,195,0.3)',borderRadius:10,color:'var(--accent)',fontSize:'0.78rem',cursor:'pointer',marginBottom:8}}>Tentar novamente</button>
               <button onClick={()=>{ setEtiquetaModal(null); setEtiquetaStep('idle'); }} style={{width:'100%',padding:'10px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',fontSize:'0.78rem',cursor:'pointer'}}>Fechar</button>
             </>}
           </div>
