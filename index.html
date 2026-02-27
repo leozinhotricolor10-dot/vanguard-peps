@@ -2350,7 +2350,7 @@ function App() {
       const cartRes = await callME('/me/cart', 'POST', cartBody);
       if (!cartRes.id) {
         const errs = cartRes.errors ? Object.entries(cartRes.errors).map(([k,v])=>`${k}: ${Array.isArray(v)?v[0]:v}`).join('\n') : null;
-        throw new Error('[CART] ' + (errs || cartRes.message || JSON.stringify(cartRes)));
+        throw new Error('[CART] ' + JSON.stringify(cartRes));
       }
       const meOrderId = cartRes.id;
 
