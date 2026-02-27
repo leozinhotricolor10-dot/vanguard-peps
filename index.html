@@ -2317,7 +2317,7 @@ function App() {
   async function callME(path, method = 'GET', body = null) {
     const res = await fetch(ME_PROXY, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': ME_ANON, 'Authorization': `Bearer ${ME_ANON}` },
+      headers: { 'Content-Type': 'application/json', 'apikey': ME_ANON },
       body: JSON.stringify({ path, method, body }),
     });
     return res.json();
