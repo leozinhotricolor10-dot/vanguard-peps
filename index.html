@@ -2359,11 +2359,11 @@ function App() {
         options: { insurance_value: order._total||100, receipt: false, own_hand: false, reverse: false, non_commercial: true, tags: [{ tag: order._code||order.id, url: null }] },
       };
       const cartRes = await callME('/me/cart', 'POST', cartBody);
-      if (!cartRes.id) throw new Error('[CART service=' + service.id + ' ' + service.name + '] ' + JSON.stringify(cartRes));
+      if (!cartRes.id) { const errs = cartRes.errors ? Object.entries(cartRes.errors).map(([k,v])=>`${k}: ${Array.isArray(v)?v[0]:v}`).join('\n') : null; throw new Error(errs || cartRes.message || 'Erro ao criar envio'); }
       const meOrderId = cartRes.id;
 
       const checkoutRes = await callME('/me/shipment/checkout', 'POST', { orders: [meOrderId] });
-      if (!checkoutRes.purchase) throw new Error('[CHECKOUT] ' + (checkoutRes.message || JSON.stringify(checkoutRes)));
+      if (!checkoutRes.purchase) throw new Error(checkoutRes.error || checkoutRes.message || 'Falha no checkout');
 
       const genRes = await callME('/me/shipment/generate', 'POST', { orders: [meOrderId] });
 
