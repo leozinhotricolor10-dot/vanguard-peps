@@ -2336,17 +2336,20 @@ function App() {
     setEtiquetaStep('loading');
     setEtiquetaError('');
     try {
-      const addr = order.address || {};
+      const addr = order._address || order.address || {};
       const cartBody = {
         service: 7, // Jadlog .package
-        from: { name: sender.name, phone: sender.phone.replace(/\D/g,''), email: sender.email, document: sender.document.replace(/\D/g,''), address: sender.address, number: sender.number, complement: sender.complement||'', district: sender.district, city: sender.city, country_id: 'BR', postal_code: sender.postal_code.replace(/\D/g,''), note: '' },
-        to: { name: order.buyerName||'Cliente', phone: (order._phone||'').replace(/\D/g,''), email: order.email||'', document: (order.cpf||'').replace(/\D/g,''), address: addr.rua||'', number: addr.numero||'', complement: addr.complemento||'', district: addr.bairro||'', city: addr.cidade||'', country_id: 'BR', postal_code: (addr.cep||'').replace(/\D/g,''), note: '' },
+        from: { name: sender.name, phone: sender.phone.replace(/\D/g,''), email: sender.email, document: sender.document.replace(/\D/g,''), address: sender.address, number: sender.number, complement: sender.complement||'', district: sender.district, city: sender.city, state_abbr: (sender.state||'').toUpperCase(), country_id: 'BR', postal_code: sender.postal_code.replace(/\D/g,''), note: '' },
+        to: { name: order.buyerName||'Cliente', phone: (order._phone||'').replace(/\D/g,''), email: order._email||'', document: (order._cpf||'').replace(/\D/g,''), address: addr.rua||'', number: addr.numero||'', complement: addr.complemento||'', district: addr.bairro||'', city: addr.cidade||'', state_abbr: (addr.estado||'').toUpperCase(), country_id: 'BR', postal_code: (addr.cep||'').replace(/\D/g,''), note: '' },
         products: [{ name: 'Peptídeo', quantity: 1, unitary_value: order._total||100, weight: 0.3 }],
         volumes: [{ height: 5, width: 6, length: 12, weight: 0.3 }],
         options: { insurance_value: order._total||100, receipt: false, own_hand: false, reverse: false, non_commercial: true, tags: [{ tag: order._code||order.id, url: null }] },
       };
       const cartRes = await callME('/me/cart', 'POST', cartBody);
-      if (!cartRes.id) throw new Error(cartRes.message || JSON.stringify(cartRes));
+      if (!cartRes.id) {
+        const errs = cartRes.errors ? Object.entries(cartRes.errors).map(([k,v])=>`${k}: ${Array.isArray(v)?v[0]:v}`).join('\n') : null;
+        throw new Error(errs || cartRes.message || JSON.stringify(cartRes));
+      }
       const meOrderId = cartRes.id;
 
       const checkoutRes = await callME('/me/shipment/checkout', 'POST', { orders: [meOrderId] });
