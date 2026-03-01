@@ -2271,6 +2271,7 @@ function App() {
   const [declLarg, setDeclLarg] = useState('6');
   const [declAlt, setDeclAlt] = useState('5');
   const [declComp, setDeclComp] = useState('12');
+  const [editingRem, setEditingRem] = useState(false);
   const [meForm, setMeForm] = useState({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' });
   const [customers, setCustomers] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-customers')||'[]'); } catch { return []; } });
   const [appliedPoints, setAppliedPoints] = useState(0);
@@ -2363,6 +2364,7 @@ function App() {
       setMeServices(available);
       setSelectedService(null);
       setDeclValor(String(order._total || ''));
+      setEditingRem(false);
       setEtiquetaStep('select');
     } catch(e) {
       setEtiquetaError(e.message);
@@ -5858,7 +5860,30 @@ _Vanguard Peptides_ 🧬`;
                   <input type="number" min="1" step="1" value={declAlt} onChange={e=>setDeclAlt(e.target.value)} placeholder="5" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
                 </div>
               </div>
-              <div style={{fontSize:'0.65rem',color:'var(--muted)',marginBottom:12}}>Remetente: <strong style={{color:'var(--text)'}}>{meSettings?.name}</strong> · <button onClick={()=>{ setMeForm(meSettings); setEtiquetaStep('settings'); }} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontSize:'0.65rem',padding:0}}>alterar remetente</button> · <button onClick={()=>setEtiquetaStep('select')} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontSize:'0.65rem',padding:0}}>alterar serviço</button></div>
+              <div style={{marginBottom:12,border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 12px',background:'rgba(255,255,255,0.03)',cursor:'pointer'}} onClick={()=>{ if(!editingRem) setMeForm({...meSettings}); setEditingRem(v=>!v); }}>
+                  <div>
+                    <div style={{fontSize:'0.6rem',color:'var(--muted)',letterSpacing:'0.5px',textTransform:'uppercase',marginBottom:2}}>📮 Remetente</div>
+                    <div style={{fontSize:'0.78rem',color:'var(--text)',fontWeight:600}}>{meSettings?.name}</div>
+                    <div style={{fontSize:'0.65rem',color:'var(--muted)'}}>{meSettings?.address}, {meSettings?.number} — {meSettings?.city}/{meSettings?.state} · {meSettings?.postal_code}</div>
+                  </div>
+                  <span style={{fontSize:'0.7rem',color:'var(--accent)',flexShrink:0,marginLeft:12}}>{editingRem ? '▲ fechar' : '✏️ editar'}</span>
+                </div>
+                {editingRem && <div style={{padding:'12px',borderTop:'1px solid var(--border)',display:'flex',flexDirection:'column',gap:8}}>
+                  {[['name','Nome completo'],['document','CPF (sem pontos)'],['phone','Telefone (DDD+número)'],['email','E-mail'],['postal_code','CEP (sem traço)'],['address','Rua'],['number','Número'],['complement','Complemento'],['district','Bairro'],['city','Cidade']].map(([k,lbl])=>(
+                    <div key={k}>
+                      <div style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:3}}>{lbl}</div>
+                      <input value={meForm[k]||''} onChange={e=>setMeForm(f=>({...f,[k]:e.target.value}))} style={{width:'100%',padding:'7px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,color:'var(--text)',fontSize:'0.78rem',boxSizing:'border-box'}} />
+                    </div>
+                  ))}
+                  <div>
+                    <div style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:3}}>UF (2 letras)</div>
+                    <input value={meForm.state||''} onChange={e=>setMeForm(f=>({...f,state:e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,2)}))} maxLength={2} style={{width:'100%',padding:'7px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,color:'var(--text)',fontSize:'0.78rem',boxSizing:'border-box'}} />
+                  </div>
+                  <button onClick={()=>{ const s={...meForm,state:(meForm.state||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,2)}; setMeSettings(s); localStorage.setItem('vg-me-settings',JSON.stringify(s)); setEditingRem(false); }} style={{padding:'9px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontWeight:700,fontSize:'0.78rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>💾 SALVAR REMETENTE</button>
+                </div>}
+              </div>
+              <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:10,textAlign:'right'}}><button onClick={()=>setEtiquetaStep('select')} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontSize:'0.62rem',padding:0}}>← alterar serviço</button></div>
               <button onClick={confirmarEtiqueta} style={{width:'100%',padding:'11px',background:'var(--accent)',border:'none',borderRadius:10,color:'#000',fontWeight:700,fontSize:'0.85rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>✅ GERAR ETIQUETA</button>
             </>}
 
