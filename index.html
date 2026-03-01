@@ -2265,7 +2265,12 @@ function App() {
   const [meServices, setMeServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
   const [declNome, setDeclNome] = useState('Peptídeo');
+  const [declQtd, setDeclQtd] = useState('1');
   const [declValor, setDeclValor] = useState('');
+  const [declPeso, setDeclPeso] = useState('0.3');
+  const [declLarg, setDeclLarg] = useState('6');
+  const [declAlt, setDeclAlt] = useState('5');
+  const [declComp, setDeclComp] = useState('12');
   const [meForm, setMeForm] = useState({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' });
   const [customers, setCustomers] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-customers')||'[]'); } catch { return []; } });
   const [appliedPoints, setAppliedPoints] = useState(0);
@@ -2351,7 +2356,7 @@ function App() {
       const addr = order._address || order.address || {};
       const fromCep = sender.postal_code.replace(/\D/g,'');
       const toCep = (addr.cep||'').replace(/\D/g,'');
-      const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width:6, height:5, length:12, weight:0.3, insurance_value: order._total||100, quantity:1 }], services:'1,2,3,7,8,9', options:{ receipt:false, own_hand:false, collect:false } };
+      const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width: parseFloat(declLarg)||6, height: parseFloat(declAlt)||5, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3, insurance_value: parseFloat(declValor)||order._total||100, quantity: parseInt(declQtd)||1 }], services:'1,2,3,7,8,9', options:{ receipt:false, own_hand:false, collect:false } };
       const calcRes = await callME('/me/shipment/calculate', 'POST', calcBody);
       const available = Array.isArray(calcRes) ? calcRes.filter(s=>!s.error && s.price) : [];
       if (!available.length) throw new Error('[CALC] Nenhum serviço disponível para esta rota.\n' + JSON.stringify(calcRes));
@@ -2381,8 +2386,8 @@ function App() {
         service: service.id,
         from: { name: sender.name, phone: sender.phone.replace(/\D/g,''), email: sender.email, document: sender.document.replace(/\D/g,''), address: sender.address, number: sender.number, complement: sender.complement||'', district: sender.district, city: sender.city, state_abbr: normUF(sender.state), country_id: 'BR', postal_code: fromCep, note: '' },
         to: { name: order.buyerName||'Cliente', phone: (order._phone||'').replace(/\D/g,''), email: order._email||'', document: (order._cpf||'').replace(/\D/g,''), address: addr.rua||'', number: addr.numero||'', complement: addr.complemento||'', district: addr.bairro||'', city: addr.cidade||'', state_abbr: normUF(addr.estado), country_id: 'BR', postal_code: toCep, note: '' },
-        products: [{ name: declNome||'Peptídeo', quantity: 1, unitary_value: parseFloat(declValor)||order._total||100, weight: 0.3 }],
-        volumes: [{ height: 5, width: 6, length: 12, weight: 0.3 }],
+        products: [{ name: declNome||'Peptídeo', quantity: parseInt(declQtd)||1, unitary_value: parseFloat(declValor)||order._total||100, weight: parseFloat(declPeso)||0.3 }],
+        volumes: [{ height: parseFloat(declAlt)||5, width: parseFloat(declLarg)||6, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3 }],
         options: { insurance_value: parseFloat(declValor)||order._total||100, receipt: false, own_hand: false, reverse: false, non_commercial: true, tags: [{ tag: order._code||order.id, url: null }] },
       };
       const cartRes = await callME('/me/cart', 'POST', cartBody);
@@ -2424,7 +2429,7 @@ function App() {
       const addr = order._address || order.address || {};
       const fromCep = s.postal_code.replace(/\D/g,'');
       const toCep = (addr.cep||'').replace(/\D/g,'');
-      const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width:6, height:5, length:12, weight:0.3, insurance_value: order._total||100, quantity:1 }], services:'1,2,3,7,8,9', options:{ receipt:false, own_hand:false, collect:false } };
+      const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width: parseFloat(declLarg)||6, height: parseFloat(declAlt)||5, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3, insurance_value: parseFloat(declValor)||order._total||100, quantity: parseInt(declQtd)||1 }], services:'1,2,3,7,8,9', options:{ receipt:false, own_hand:false, collect:false } };
       const calcRes = await callME('/me/shipment/calculate', 'POST', calcBody);
       const available = Array.isArray(calcRes) ? calcRes.filter(s=>!s.error && s.price) : [];
       if (!available.length) throw new Error('[CALC] Nenhum serviço disponível para esta rota.\n' + JSON.stringify(calcRes));
@@ -5820,14 +5825,37 @@ _Vanguard Peptides_ 🧬`;
                 {selectedService && <div style={{color:'var(--muted)',marginTop:4}}>Serviço: <strong style={{color:'var(--text)'}}>{selectedService.company?.name} — {selectedService.name}</strong> · R$ {Number(selectedService.price||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} · {selectedService.custom_delivery_time ?? selectedService.delivery_time ?? '?'}d úteis</div>}
               </div>
               <div style={{fontSize:'0.68rem',color:'var(--muted)',marginBottom:6,letterSpacing:'0.5px',textTransform:'uppercase'}}>📄 Declaração de conteúdo</div>
-              <div style={{display:'flex',gap:8,marginBottom:14}}>
-                <div style={{flex:2}}>
+              <div style={{display:'flex',gap:8,marginBottom:8}}>
+                <div style={{flex:3}}>
                   <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:4}}>Nome do conteúdo</div>
                   <input value={declNome} onChange={e=>setDeclNome(e.target.value)} placeholder="Ex: Suplemento" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
                 </div>
                 <div style={{flex:1}}>
+                  <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:4}}>Qtd</div>
+                  <input type="number" min="1" step="1" value={declQtd} onChange={e=>setDeclQtd(e.target.value)} placeholder="1" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
+                </div>
+                <div style={{flex:2}}>
                   <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:4}}>Valor declarado (R$)</div>
                   <input type="number" min="0" step="0.01" value={declValor} onChange={e=>setDeclValor(e.target.value)} placeholder="0.00" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
+                </div>
+              </div>
+              <div style={{fontSize:'0.68rem',color:'var(--muted)',marginBottom:6,letterSpacing:'0.5px',textTransform:'uppercase'}}>📦 Embalagem</div>
+              <div style={{display:'flex',gap:8,marginBottom:14}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:4}}>Peso (kg)</div>
+                  <input type="number" min="0.1" step="0.1" value={declPeso} onChange={e=>setDeclPeso(e.target.value)} placeholder="0.3" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:4}}>Comp (cm)</div>
+                  <input type="number" min="1" step="1" value={declComp} onChange={e=>setDeclComp(e.target.value)} placeholder="12" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:4}}>Larg (cm)</div>
+                  <input type="number" min="1" step="1" value={declLarg} onChange={e=>setDeclLarg(e.target.value)} placeholder="6" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:4}}>Alt (cm)</div>
+                  <input type="number" min="1" step="1" value={declAlt} onChange={e=>setDeclAlt(e.target.value)} placeholder="5" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
                 </div>
               </div>
               <div style={{fontSize:'0.65rem',color:'var(--muted)',marginBottom:12}}>Remetente: <strong style={{color:'var(--text)'}}>{meSettings?.name}</strong> · <button onClick={()=>{ setMeForm(meSettings); setEtiquetaStep('settings'); }} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontSize:'0.65rem',padding:0}}>alterar remetente</button> · <button onClick={()=>setEtiquetaStep('select')} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontSize:'0.65rem',padding:0}}>alterar serviço</button></div>
