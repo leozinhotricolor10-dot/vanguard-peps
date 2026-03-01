@@ -2282,8 +2282,9 @@ function App() {
     setMeBalance({ loading: true });
     try {
       const res = await callME('/me', 'GET');
-      const val = res?.cash_balance ?? res?.balance ?? res?.wallet ?? null;
-      if (val === null) throw new Error('Campo de saldo não encontrado: ' + JSON.stringify(res).slice(0,200));
+      console.log('[ME /me]', JSON.stringify(res));
+      const val = res?.cash_balance ?? res?.balance ?? res?.wallet ?? res?.saldo ?? null;
+      if (val === null) throw new Error(JSON.stringify(res).slice(0, 400));
       setMeBalance({ value: parseFloat(val) });
     } catch(e) {
       setMeBalance({ error: e.message });
@@ -5846,7 +5847,7 @@ _Vanguard Peptides_ 🧬`;
                 <div style={{fontSize:'0.72rem',color:'var(--muted)'}}>Escolha o serviço para <strong style={{color:'var(--text)'}}>{etiquetaModal.buyerName}</strong>:</div>
                 <div style={{display:'flex',alignItems:'center',gap:6,padding:'5px 10px',background:'rgba(0,229,195,0.06)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:8,flexShrink:0}}>
                   {meBalance?.loading && <span style={{fontSize:'0.65rem',color:'var(--muted)'}}>⏳ carregando...</span>}
-                  {meBalance?.error && <span style={{fontSize:'0.65rem',color:'#ff5050'}} title={meBalance.error}>⚠️ saldo</span>}
+                  {meBalance?.error && <span onClick={()=>alert('[ME /me erro]\n'+meBalance.error)} style={{fontSize:'0.65rem',color:'#ff5050',cursor:'pointer'}} title="Clique para ver detalhes">⚠️ saldo</span>}
                   {meBalance?.value != null && <>
                     <span style={{fontSize:'0.6rem',color:'var(--muted)'}}>💰 carteira</span>
                     <span style={{fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:'0.78rem',color: meBalance.value < 20 ? '#ff9800' : 'var(--accent)'}}>R$ {meBalance.value.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
