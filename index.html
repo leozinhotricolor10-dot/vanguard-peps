@@ -2264,6 +2264,8 @@ function App() {
   const [etiquetaError, setEtiquetaError] = useState('');
   const [meServices, setMeServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
+  const [declNome, setDeclNome] = useState('Peptídeo');
+  const [declValor, setDeclValor] = useState('');
   const [meForm, setMeForm] = useState({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' });
   const [customers, setCustomers] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-customers')||'[]'); } catch { return []; } });
   const [appliedPoints, setAppliedPoints] = useState(0);
@@ -2355,6 +2357,7 @@ function App() {
       if (!available.length) throw new Error('[CALC] Nenhum serviço disponível para esta rota.\n' + JSON.stringify(calcRes));
       setMeServices(available);
       setSelectedService(null);
+      setDeclValor(String(order._total || ''));
       setEtiquetaStep('select');
     } catch(e) {
       setEtiquetaError(e.message);
@@ -2378,9 +2381,9 @@ function App() {
         service: service.id,
         from: { name: sender.name, phone: sender.phone.replace(/\D/g,''), email: sender.email, document: sender.document.replace(/\D/g,''), address: sender.address, number: sender.number, complement: sender.complement||'', district: sender.district, city: sender.city, state_abbr: normUF(sender.state), country_id: 'BR', postal_code: fromCep, note: '' },
         to: { name: order.buyerName||'Cliente', phone: (order._phone||'').replace(/\D/g,''), email: order._email||'', document: (order._cpf||'').replace(/\D/g,''), address: addr.rua||'', number: addr.numero||'', complement: addr.complemento||'', district: addr.bairro||'', city: addr.cidade||'', state_abbr: normUF(addr.estado), country_id: 'BR', postal_code: toCep, note: '' },
-        products: [{ name: 'Peptídeo', quantity: 1, unitary_value: order._total||100, weight: 0.3 }],
+        products: [{ name: declNome||'Peptídeo', quantity: 1, unitary_value: parseFloat(declValor)||order._total||100, weight: 0.3 }],
         volumes: [{ height: 5, width: 6, length: 12, weight: 0.3 }],
-        options: { insurance_value: order._total||100, receipt: false, own_hand: false, reverse: false, non_commercial: true, tags: [{ tag: order._code||order.id, url: null }] },
+        options: { insurance_value: parseFloat(declValor)||order._total||100, receipt: false, own_hand: false, reverse: false, non_commercial: true, tags: [{ tag: order._code||order.id, url: null }] },
       };
       const cartRes = await callME('/me/cart', 'POST', cartBody);
       if (!cartRes.id) { const errs = cartRes.errors ? Object.entries(cartRes.errors).map(([k,v])=>`${k}: ${Array.isArray(v)?v[0]:v}`).join('\n') : null; throw new Error(errs || cartRes.message || 'Erro ao criar envio'); }
@@ -2427,6 +2430,7 @@ function App() {
       if (!available.length) throw new Error('[CALC] Nenhum serviço disponível para esta rota.\n' + JSON.stringify(calcRes));
       setMeServices(available);
       setSelectedService(null);
+      setDeclValor(String(order._total || ''));
       setEtiquetaStep('select');
     } catch(e) {
       setEtiquetaError(e.message);
@@ -5814,6 +5818,17 @@ _Vanguard Peptides_ 🧬`;
                 <div style={{color:'var(--muted)'}}>{etiquetaModal.address?.rua}, {etiquetaModal.address?.numero} — {etiquetaModal.address?.bairro}</div>
                 <div style={{color:'var(--muted)'}}>{etiquetaModal.address?.cidade}/{etiquetaModal.address?.estado} · CEP {etiquetaModal.address?.cep}</div>
                 {selectedService && <div style={{color:'var(--muted)',marginTop:4}}>Serviço: <strong style={{color:'var(--text)'}}>{selectedService.company?.name} — {selectedService.name}</strong> · R$ {Number(selectedService.price||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} · {selectedService.custom_delivery_time ?? selectedService.delivery_time ?? '?'}d úteis</div>}
+              </div>
+              <div style={{fontSize:'0.68rem',color:'var(--muted)',marginBottom:6,letterSpacing:'0.5px',textTransform:'uppercase'}}>📄 Declaração de conteúdo</div>
+              <div style={{display:'flex',gap:8,marginBottom:14}}>
+                <div style={{flex:2}}>
+                  <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:4}}>Nome do conteúdo</div>
+                  <input value={declNome} onChange={e=>setDeclNome(e.target.value)} placeholder="Ex: Suplemento" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:4}}>Valor declarado (R$)</div>
+                  <input type="number" min="0" step="0.01" value={declValor} onChange={e=>setDeclValor(e.target.value)} placeholder="0.00" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
+                </div>
               </div>
               <div style={{fontSize:'0.65rem',color:'var(--muted)',marginBottom:12}}>Remetente: <strong style={{color:'var(--text)'}}>{meSettings?.name}</strong> · <button onClick={()=>{ setMeForm(meSettings); setEtiquetaStep('settings'); }} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontSize:'0.65rem',padding:0}}>alterar remetente</button> · <button onClick={()=>setEtiquetaStep('select')} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontSize:'0.65rem',padding:0}}>alterar serviço</button></div>
               <button onClick={confirmarEtiqueta} style={{width:'100%',padding:'11px',background:'var(--accent)',border:'none',borderRadius:10,color:'#000',fontWeight:700,fontSize:'0.85rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>✅ GERAR ETIQUETA</button>
