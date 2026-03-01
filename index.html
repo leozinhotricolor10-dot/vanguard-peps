@@ -1043,6 +1043,17 @@ const ADINA_CATALOG = {
   'AA10':{name:'Acetic Acid Water',spec:'10mL',priceUsd:15},'AA03':{name:'Acetic Acid Water',spec:'3mL',priceUsd:10},
 };
 
+const DEFAULT_ME_POOL = [
+  { name:'Fernanda Oliveira Costa',  document:'35128476928', phone:'11945672318', email:'fernanda.costa91@gmail.com',    address:'Rua Siqueira Campos',     number:'247', complement:'Apto 32',   district:'Rudge Ramos',    city:'São Bernardo do Campo', state:'SP', postal_code:'09610150' },
+  { name:'Ricardo Santos Pereira',   document:'47291385628', phone:'11967834521', email:'r.santos.pereira@gmail.com',    address:'Rua das Orquídeas',       number:'83',  complement:'',          district:'Nova Petrópolis', city:'São Bernardo do Campo', state:'SP', postal_code:'09681510' },
+  { name:'Camila Rodrigues Lima',    document:'61835924719', phone:'11934562187', email:'camilinha.lima@gmail.com',       address:'Rua Líbero Badaró',       number:'415', complement:'Bloco B',   district:'Baeta Neves',    city:'São Bernardo do Campo', state:'SP', postal_code:'09771290' },
+  { name:'Marcos Souza Ferreira',    document:'84617259309', phone:'11978123456', email:'marcos.ferreira91@gmail.com',   address:'Rua Marechal Deodoro',    number:'132', complement:'',          district:'Centro',         city:'São Bernardo do Campo', state:'SP', postal_code:'09710080' },
+  { name:'Patricia Alves Mendes',    document:'29574816346', phone:'11923456789', email:'pati.mendes@gmail.com',          address:'Rua Américo Brasiliense', number:'58',  complement:'Casa 2',    district:'Paulicéia',      city:'São Bernardo do Campo', state:'SP', postal_code:'09695460' },
+  { name:'Eduardo Ribeiro Nunes',    document:'53926471891', phone:'11956781234', email:'eduardo.nunes@gmail.com',        address:'Rua Sete de Setembro',    number:'309', complement:'Apto 11',   district:'Ferrazópolis',   city:'São Bernardo do Campo', state:'SP', postal_code:'09762050' },
+  { name:'Juliana Castro Moreira',   document:'76483192509', phone:'11912345678', email:'ju.castro.moreira@gmail.com',   address:'Rua das Magnólias',       number:'172', complement:'',          district:'Assunção',       city:'São Bernardo do Campo', state:'SP', postal_code:'09821070' },
+  { name:'André Gomes Teixeira',     document:'18749536273', phone:'11989012345', email:'andre.teixeira88@gmail.com',    address:'Avenida Kennedy',         number:'521', complement:'Sala 3',    district:'Vila Euclides',  city:'São Bernardo do Campo', state:'SP', postal_code:'09713180' },
+];
+
 const CATEGORIES = [
   { id: "all",          name: "Todos",               icon: "🧬", color: "rgba(0,229,195,0.15)" },
   { id: "emagrecedores",name: "Emagrecedores",        icon: "💉", color: "rgba(0,229,195,0.15)" },
@@ -2264,6 +2275,8 @@ function App() {
   const [etiquetaError, setEtiquetaError] = useState('');
   const [meServices, setMeServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
+  const [mePool, setMePool] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-me-pool')||'null') || DEFAULT_ME_POOL; } catch { return DEFAULT_ME_POOL; } });
+  const persistPool = p => { setMePool(p); localStorage.setItem('vg-me-pool', JSON.stringify(p)); };
   const [declNome, setDeclNome] = useState('Peptídeo');
   const [declQtd, setDeclQtd] = useState('1');
   const [declValor, setDeclValor] = useState('');
@@ -2348,8 +2361,12 @@ function App() {
   }
 
   async function gerarEtiqueta(order) {
-    const sender = meSettings;
-    if (!sender) { setEtiquetaModal(order); setEtiquetaStep('settings'); setMeForm({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' }); return; }
+    // Pick random sender from pool; fall back to meSettings if pool empty
+    const pool = mePool && mePool.length ? mePool : (meSettings ? [meSettings] : []);
+    if (!pool.length) { setEtiquetaModal(order); setEtiquetaStep('settings'); setMeForm({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' }); return; }
+    const sender = pool[Math.floor(Math.random() * pool.length)];
+    setMeSettings(sender); // update active sender so confirm step shows it
+    setMeForm({...sender});
     setEtiquetaModal(order);
     setEtiquetaStep('loading');
     setEtiquetaError('');
@@ -5778,19 +5795,36 @@ _Vanguard Peptides_ 🧬`;
           <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:480}}>
             <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--accent)',letterSpacing:'1.5px',marginBottom:16}}>🏷️ GERAR ETIQUETA</div>
 
-            {/* STEP: settings */}
+            {/* STEP: settings / pool manager */}
             {etiquetaStep==='settings' && <>
-              <div style={{fontSize:'0.78rem',color:'var(--muted)',marginBottom:16}}>Configure o endereço de remetente (salvo para próximas etiquetas).</div>
+              <div style={{fontSize:'0.68rem',color:'var(--muted)',marginBottom:10,letterSpacing:'0.5px',textTransform:'uppercase'}}>🎲 Pool de Remetentes ({mePool.length})</div>
+              <div style={{maxHeight:180,overflowY:'auto',display:'flex',flexDirection:'column',gap:6,marginBottom:10}}>
+                {mePool.map((r,i)=>(
+                  <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',background:'rgba(0,229,195,0.04)',border:'1px solid rgba(0,229,195,0.12)',borderRadius:8,fontSize:'0.72rem'}}>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:600,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.name}</div>
+                      <div style={{color:'var(--muted)',fontSize:'0.62rem'}}>{r.district} · {r.postal_code}</div>
+                    </div>
+                    <button onClick={()=>persistPool(mePool.filter((_,j)=>j!==i))} style={{background:'none',border:'none',color:'#ff5050',cursor:'pointer',fontSize:'0.85rem',padding:'0 4px',flexShrink:0}}>✕</button>
+                  </div>
+                ))}
+                {mePool.length===0 && <div style={{fontSize:'0.72rem',color:'var(--muted)',textAlign:'center',padding:'10px 0'}}>Pool vazio — adicione remetentes abaixo ou preencha manualmente.</div>}
+              </div>
+              <button onClick={()=>persistPool([...mePool,...DEFAULT_ME_POOL])} style={{width:'100%',padding:'8px',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.25)',borderRadius:8,color:'var(--accent)',fontSize:'0.72rem',cursor:'pointer',marginBottom:12}}>+ Restaurar pool padrão SBC ({DEFAULT_ME_POOL.length} remetentes)</button>
+              <div style={{fontSize:'0.68rem',color:'var(--muted)',marginBottom:8,letterSpacing:'0.5px',textTransform:'uppercase'}}>Adicionar novo remetente</div>
               {[['name','Nome completo',null,null],['document','CPF','00000000000','11 dígitos sem pontos'],['phone','Telefone','11999999999','DDD + número'],['email','E-mail',null,null],['postal_code','CEP','00000000','8 dígitos'],['address','Rua',null,null],['number','Número',null,null],['complement','Complemento',null,null],['district','Bairro',null,null],['city','Cidade',null,null],['state','UF (sigla)','SP','2 letras: SP, RJ, MG...']].map(([k,lbl,ph,hint])=>(
-                <div key={k} style={{marginBottom:8}}>
-                  <label style={{fontSize:'0.62rem',color:'var(--muted)',display:'block',marginBottom:3}}>{lbl}{hint && <span style={{color:'var(--muted)',fontWeight:400,marginLeft:6,opacity:0.6}}>{hint}</span>}</label>
-                  <input style={{width:'100%',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'7px 10px',color:'var(--text)',fontSize:'0.8rem'}}
+                <div key={k} style={{marginBottom:6}}>
+                  <label style={{fontSize:'0.6rem',color:'var(--muted)',display:'block',marginBottom:2}}>{lbl}{hint && <span style={{marginLeft:6,opacity:0.6}}>{hint}</span>}</label>
+                  <input style={{width:'100%',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'6px 10px',color:'var(--text)',fontSize:'0.78rem',boxSizing:'border-box'}}
                     placeholder={ph||''}
                     maxLength={k==='state'?2:undefined}
-                    value={meForm[k]} onChange={e=>setMeForm(f=>({...f,[k]: k==='state' ? e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,2) : e.target.value}))} />
+                    value={meForm[k]||''} onChange={e=>setMeForm(f=>({...f,[k]: k==='state' ? e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,2) : e.target.value}))} />
                 </div>
               ))}
-              <button onClick={saveMeSettings} style={{width:'100%',marginTop:12,padding:'11px',background:'var(--accent)',border:'none',borderRadius:10,color:'#000',fontWeight:700,fontSize:'0.85rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>SALVAR E CONTINUAR</button>
+              <div style={{display:'flex',gap:8,marginTop:10}}>
+                <button onClick={()=>{ if(!meForm.name||!meForm.document||!meForm.postal_code) return; persistPool([...mePool,{...meForm,state:(meForm.state||'').toUpperCase().slice(0,2)}]); setMeForm({name:'',phone:'',email:'',document:'',address:'',number:'',complement:'',district:'',city:'',state:'',postal_code:''}); }} style={{flex:1,padding:'9px',background:'rgba(0,229,195,0.12)',border:'1px solid rgba(0,229,195,0.3)',borderRadius:8,color:'var(--accent)',fontWeight:700,fontSize:'0.75rem',cursor:'pointer'}}>+ ADICIONAR AO POOL</button>
+                <button onClick={saveMeSettings} style={{flex:1,padding:'9px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>USAR ESTE AGORA</button>
+              </div>
             </>}
 
             {/* STEP: select service */}
