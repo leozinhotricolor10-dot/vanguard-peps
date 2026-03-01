@@ -5695,28 +5695,35 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               onChange={e=>setPixCode(e.target.value)}
               style={{width:'100%',minHeight:80,background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,padding:'8px 10px',color:'var(--text)',fontSize:'0.75rem',fontFamily:"'Space Mono',monospace",resize:'vertical',boxSizing:'border-box',marginBottom:10}}
             />
-            <button
-              disabled={!pixCode.trim()}
-              onClick={()=>{
-                const firstName = (pixModal.buyerName||'Cliente').split(' ')[0];
-                const tot = (pixModal._total||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
-                const code = pixModal._code||'';
-                const msg = `✅ *Olá, ${firstName}! Segue o código PIX para pagamento do seu pedido Vanguard Peptides.*${code?`\n\n📋 *Pedido:* ${code}`:''}
+            <div style={{display:'flex',gap:8,marginBottom:8}}>
+              <button
+                disabled={!pixCode.trim()}
+                onClick={()=>{
+                  const firstName = (pixModal.buyerName||'Cliente').split(' ')[0];
+                  const tot = (pixModal._total||0).toLocaleString('pt-BR',{minimumFractionDigits:2});
+                  const code = pixModal._code||'';
+                  const msg = `✅ *Olá, ${firstName}! Segue o PIX para pagamento do seu pedido Vanguard Peptides.*${code?`\n\n📋 *Pedido:* ${code}`:''}
 💰 *Valor:* R$ ${tot}
 
-📋 *Código PIX (copia e cola):*
-\`${pixCode.trim()}\`
-
-_Após o pagamento, seu pedido será confirmado em breve. Qualquer dúvida é só chamar!_
+_Vou te mandar o código PIX agora, é só copiar e colar no seu banco!_
 _Vanguard Peptides_ 🧬`;
-                const digits = (pixModal._phone||'').replace(/\D/g,'');
-                const intl = digits.startsWith('55') ? digits : '55'+digits;
-                window.open(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`,'_blank');
-              }}
-              style={{width:'100%',padding:'11px',background: pixCode.trim() ? 'var(--accent)' : 'rgba(0,229,195,0.2)',border:'none',borderRadius:10,color: pixCode.trim() ? '#000' : 'var(--muted)',fontWeight:700,fontSize:'0.85rem',cursor: pixCode.trim() ? 'pointer' : 'default',fontFamily:"'Space Mono',monospace",marginBottom:8,transition:'all 0.2s'}}
-            >
-              📲 ENVIAR CÓDIGO NO WHATSAPP
-            </button>
+                  const digits = (pixModal._phone||'').replace(/\D/g,'');
+                  const intl = digits.startsWith('55') ? digits : '55'+digits;
+                  window.open(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`,'_blank');
+                }}
+                style={{flex:1,padding:'11px',background: pixCode.trim() ? 'var(--accent)' : 'rgba(0,229,195,0.2)',border:'none',borderRadius:10,color: pixCode.trim() ? '#000' : 'var(--muted)',fontWeight:700,fontSize:'0.78rem',cursor: pixCode.trim() ? 'pointer' : 'default',fontFamily:"'Space Mono',monospace",transition:'all 0.2s'}}
+              >
+                📲 ENVIAR MENSAGEM
+              </button>
+              <button
+                disabled={!pixCode.trim()}
+                onClick={()=>{ navigator.clipboard.writeText(pixCode.trim()); showToast('Código PIX copiado! Cole no WhatsApp.','success'); }}
+                style={{flex:1,padding:'11px',background: pixCode.trim() ? 'rgba(255,200,0,0.12)' : 'rgba(255,200,0,0.04)',border:`1px solid ${pixCode.trim()?'rgba(255,200,0,0.4)':'rgba(255,200,0,0.1)'}`,borderRadius:10,color: pixCode.trim() ? '#ffc800' : 'var(--muted)',fontWeight:700,fontSize:'0.78rem',cursor: pixCode.trim() ? 'pointer' : 'default',fontFamily:"'Space Mono',monospace",transition:'all 0.2s'}}
+              >
+                📋 COPIAR CÓDIGO
+              </button>
+            </div>
+            <div style={{fontSize:'0.65rem',color:'var(--muted)',textAlign:'center',marginBottom:8}}>Envie a mensagem → vá ao WhatsApp → cole o código como segunda mensagem</div>
             <button onClick={()=>setPixModal(null)} style={{width:'100%',padding:'9px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',fontSize:'0.78rem',cursor:'pointer'}}>Fechar</button>
           </div>
         </div>
