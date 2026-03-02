@@ -2282,9 +2282,10 @@ function App() {
     setMeBalance({ loading: true });
     try {
       const res = await callME('/me', 'GET');
-      console.log('[ME /me]', JSON.stringify(res));
-      const val = res?.cash_balance ?? res?.balance ?? res?.wallet ?? res?.saldo ?? null;
-      if (val === null) throw new Error(JSON.stringify(res).slice(0, 400));
+      const full = JSON.stringify(res);
+      console.log('[ME /me full]', full);
+      const val = res?.cash_balance ?? res?.balance ?? res?.wallet?.balance ?? res?.wallet ?? res?.saldo ?? null;
+      if (val === null) throw new Error(full);
       setMeBalance({ value: parseFloat(val) });
     } catch(e) {
       setMeBalance({ error: e.message });
