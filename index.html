@@ -2299,6 +2299,7 @@ function App() {
   const [declAlt, setDeclAlt] = useState('5');
   const [declComp, setDeclComp] = useState('12');
   const [editingRem, setEditingRem] = useState(false);
+  const [editTrackInput, setEditTrackInput] = useState('');
   const [meForm, setMeForm] = useState({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' });
   const [customers, setCustomers] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-customers')||'[]'); } catch { return []; } });
   const [appliedPoints, setAppliedPoints] = useState(0);
@@ -2359,6 +2360,16 @@ function App() {
   }
 
   function persistOrders(o) { setOrders(o); saveOrders(o); }
+
+  async function saveTrackingManual(orderId, code) {
+    const trimmed = (code||'').trim();
+    if (sb) await sb.from('orders').update({ tracking_code: trimmed }).eq('id', orderId);
+    const updated = orders.map(o => o.id === orderId ? { ...o, tracking_code: trimmed } : o);
+    persistOrders(updated);
+    setOrderDetail(d => ({ ...d, tracking_code: trimmed }));
+    setEditTrackInput('');
+    showToast('Rastreio salvo!', 'success');
+  }
 
   const ME_PROXY = `https://aumubzvdhzvtnqfzqeqd.supabase.co/functions/v1/melhorenvios-proxy`;
   const ME_ANON  = 'sb_publishable_crfA-iUkVR2mnibsWQ2ZDA_wpwOBBY_';
@@ -5618,24 +5629,32 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   <div style={{fontSize:'0.82rem'}}>{orderDetail._notes}</div>
                 </div>
               )}
-              {(orderDetail.tracking_code || orderDetail.label_url) && (
-                <div style={{background:'var(--bg2)',borderRadius:10,padding:'12px 14px'}}>
-                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1px',marginBottom:8}}>📦 ENVIO</div>
-                  {orderDetail.tracking_code && (
-                    <div style={{marginBottom:6}}>
-                      <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:3}}>Código de rastreio</div>
-                      <div style={{display:'flex',alignItems:'center',gap:8}}>
-                        <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.78rem',color:'var(--text)',flex:1}}>{orderDetail.tracking_code}</span>
-                        <button onClick={()=>{navigator.clipboard.writeText(orderDetail.tracking_code);showToast('Código copiado!','success');}} style={{background:'none',border:'1px solid var(--border)',borderRadius:6,color:'var(--accent)',fontSize:'0.65rem',cursor:'pointer',padding:'3px 8px'}}>copiar</button>
-                        <a href={`https://melhorrastreio.com.br/rastreio/${orderDetail.tracking_code}`} target="_blank" rel="noreferrer" style={{background:'none',border:'1px solid var(--border)',borderRadius:6,color:'var(--accent)',fontSize:'0.65rem',cursor:'pointer',padding:'3px 8px',textDecoration:'none'}}>rastrear</a>
-                      </div>
-                    </div>
-                  )}
-                  {orderDetail.label_url && (
-                    <a href={orderDetail.label_url} target="_blank" rel="noreferrer" style={{display:'block',padding:'7px 12px',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:8,color:'var(--accent)',fontSize:'0.72rem',textAlign:'center',textDecoration:'none',marginTop:4}}>🖨️ Imprimir etiqueta</a>
-                  )}
+              <div style={{background:'var(--bg2)',borderRadius:10,padding:'12px 14px'}}>
+                <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1px'}}>📦 ENVIO</div>
+                  <button onClick={()=>setEditTrackInput(orderDetail.tracking_code||'')} style={{background:'none',border:'none',color:'var(--accent)',fontSize:'0.62rem',cursor:'pointer',padding:0}}>{orderDetail.tracking_code ? '✏️ editar' : '+ adicionar rastreio'}</button>
                 </div>
-              )}
+                {editTrackInput !== '' ? (
+                  <div style={{display:'flex',gap:6,marginBottom:8}}>
+                    <input autoFocus value={editTrackInput} onChange={e=>setEditTrackInput(e.target.value)} placeholder="Cole o código de rastreio" style={{flex:1,padding:'7px 10px',background:'var(--surface)',border:'1px solid var(--accent)',borderRadius:7,color:'var(--text)',fontSize:'0.78rem'}} onKeyDown={e=>{ if(e.key==='Enter') saveTrackingManual(orderDetail.id, editTrackInput); if(e.key==='Escape') setEditTrackInput(''); }} />
+                    <button onClick={()=>saveTrackingManual(orderDetail.id, editTrackInput)} style={{padding:'7px 12px',background:'var(--accent)',border:'none',borderRadius:7,color:'#000',fontWeight:700,fontSize:'0.72rem',cursor:'pointer'}}>✓</button>
+                    <button onClick={()=>setEditTrackInput('')} style={{padding:'7px 10px',background:'none',border:'1px solid var(--border)',borderRadius:7,color:'var(--muted)',fontSize:'0.72rem',cursor:'pointer'}}>✕</button>
+                  </div>
+                ) : orderDetail.tracking_code ? (
+                  <div style={{marginBottom:6}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                      <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.78rem',color:'var(--text)',flex:1}}>{orderDetail.tracking_code}</span>
+                      <button onClick={()=>{navigator.clipboard.writeText(orderDetail.tracking_code);showToast('Código copiado!','success');}} style={{background:'none',border:'1px solid var(--border)',borderRadius:6,color:'var(--accent)',fontSize:'0.65rem',cursor:'pointer',padding:'3px 8px'}}>copiar</button>
+                      <a href={`https://melhorrastreio.com.br/rastreio/${orderDetail.tracking_code}`} target="_blank" rel="noreferrer" style={{background:'none',border:'1px solid var(--border)',borderRadius:6,color:'var(--accent)',fontSize:'0.65rem',cursor:'pointer',padding:'3px 8px',textDecoration:'none'}}>rastrear</a>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{fontSize:'0.72rem',color:'var(--muted)'}}>Nenhum rastreio cadastrado.</div>
+                )}
+                {orderDetail.label_url && (
+                  <a href={orderDetail.label_url} target="_blank" rel="noreferrer" style={{display:'block',padding:'7px 12px',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:8,color:'var(--accent)',fontSize:'0.72rem',textAlign:'center',textDecoration:'none',marginTop:8}}>🖨️ Imprimir etiqueta</a>
+                )}
+              </div>
             </div>
 
             <button onClick={()=>setOrderDetail(null)} style={{width:'100%',padding:'11px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem'}}>Fechar</button>
