@@ -2299,7 +2299,7 @@ function App() {
   const [declAlt, setDeclAlt] = useState('5');
   const [declComp, setDeclComp] = useState('12');
   const [editingRem, setEditingRem] = useState(false);
-  const [editTrackInput, setEditTrackInput] = useState('');
+  const [editTrackInput, setEditTrackInput] = useState(null); // null = fechado, string = editando
   const [meForm, setMeForm] = useState({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' });
   const [customers, setCustomers] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-customers')||'[]'); } catch { return []; } });
   const [appliedPoints, setAppliedPoints] = useState(0);
@@ -2367,8 +2367,18 @@ function App() {
     const updated = orders.map(o => o.id === orderId ? { ...o, tracking_code: trimmed } : o);
     persistOrders(updated);
     setOrderDetail(d => ({ ...d, tracking_code: trimmed }));
-    setEditTrackInput('');
+    setEditTrackInput(null);
     showToast('Rastreio salvo!', 'success');
+  }
+
+  function sendTrackingWhatsApp(order) {
+    const firstName = (order.buyerName||'Cliente').split(' ')[0];
+    const code = order._code || order.code || '';
+    const track = order.tracking_code;
+    const msg = `📦 *Olá, ${firstName}!*\n\n🔍 *Código de rastreio do seu pedido${code?` ${code}`:''}:*\n${track}\n\n📲 Acompanhe aqui: https://melhorrastreio.com.br/rastreio/${track}\n\nQualquer dúvida é só chamar! 🙏\n\n_Vanguard Peptides_ 🧬`;
+    const digits = (order._phone||order.phone||'').replace(/\D/g,'');
+    const intl = digits.startsWith('55') ? digits : '55'+digits;
+    window.open(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`, '_blank');
   }
 
   const ME_PROXY = `https://aumubzvdhzvtnqfzqeqd.supabase.co/functions/v1/melhorenvios-proxy`;
@@ -5634,19 +5644,20 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1px'}}>📦 ENVIO</div>
                   <button onClick={()=>setEditTrackInput(orderDetail.tracking_code||'')} style={{background:'none',border:'none',color:'var(--accent)',fontSize:'0.62rem',cursor:'pointer',padding:0}}>{orderDetail.tracking_code ? '✏️ editar' : '+ adicionar rastreio'}</button>
                 </div>
-                {editTrackInput !== '' ? (
+                {editTrackInput !== null ? (
                   <div style={{display:'flex',gap:6,marginBottom:8}}>
-                    <input autoFocus value={editTrackInput} onChange={e=>setEditTrackInput(e.target.value)} placeholder="Cole o código de rastreio" style={{flex:1,padding:'7px 10px',background:'var(--surface)',border:'1px solid var(--accent)',borderRadius:7,color:'var(--text)',fontSize:'0.78rem'}} onKeyDown={e=>{ if(e.key==='Enter') saveTrackingManual(orderDetail.id, editTrackInput); if(e.key==='Escape') setEditTrackInput(''); }} />
+                    <input autoFocus value={editTrackInput} onChange={e=>setEditTrackInput(e.target.value)} placeholder="Cole o código de rastreio" style={{flex:1,padding:'7px 10px',background:'var(--surface)',border:'1px solid var(--accent)',borderRadius:7,color:'var(--text)',fontSize:'0.78rem'}} onKeyDown={e=>{ if(e.key==='Enter') saveTrackingManual(orderDetail.id, editTrackInput); if(e.key==='Escape') setEditTrackInput(null); }} />
                     <button onClick={()=>saveTrackingManual(orderDetail.id, editTrackInput)} style={{padding:'7px 12px',background:'var(--accent)',border:'none',borderRadius:7,color:'#000',fontWeight:700,fontSize:'0.72rem',cursor:'pointer'}}>✓</button>
-                    <button onClick={()=>setEditTrackInput('')} style={{padding:'7px 10px',background:'none',border:'1px solid var(--border)',borderRadius:7,color:'var(--muted)',fontSize:'0.72rem',cursor:'pointer'}}>✕</button>
+                    <button onClick={()=>setEditTrackInput(null)} style={{padding:'7px 10px',background:'none',border:'1px solid var(--border)',borderRadius:7,color:'var(--muted)',fontSize:'0.72rem',cursor:'pointer'}}>✕</button>
                   </div>
                 ) : orderDetail.tracking_code ? (
-                  <div style={{marginBottom:6}}>
-                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <div style={{marginBottom:8}}>
+                    <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
                       <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.78rem',color:'var(--text)',flex:1}}>{orderDetail.tracking_code}</span>
                       <button onClick={()=>{navigator.clipboard.writeText(orderDetail.tracking_code);showToast('Código copiado!','success');}} style={{background:'none',border:'1px solid var(--border)',borderRadius:6,color:'var(--accent)',fontSize:'0.65rem',cursor:'pointer',padding:'3px 8px'}}>copiar</button>
                       <a href={`https://melhorrastreio.com.br/rastreio/${orderDetail.tracking_code}`} target="_blank" rel="noreferrer" style={{background:'none',border:'1px solid var(--border)',borderRadius:6,color:'var(--accent)',fontSize:'0.65rem',cursor:'pointer',padding:'3px 8px',textDecoration:'none'}}>rastrear</a>
                     </div>
+                    <button onClick={()=>sendTrackingWhatsApp(orderDetail)} style={{width:'100%',padding:'8px',background:'#25d366',border:'none',borderRadius:8,color:'#fff',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>📲 ENVIAR RASTREIO NO WHATSAPP</button>
                   </div>
                 ) : (
                   <div style={{fontSize:'0.72rem',color:'var(--muted)'}}>Nenhum rastreio cadastrado.</div>
