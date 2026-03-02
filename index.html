@@ -2286,7 +2286,9 @@ function App() {
       console.log('[ME /me full]', full);
       const val = res?.accounts?.[0]?.balance ?? null;
       if (val === null) throw new Error(full);
-      setMeBalance({ value: parseFloat(val) });
+      const numVal = parseFloat(val);
+      setMeBalance({ value: numVal });
+      if (numVal < 20) addNotif('balance', '⚠️ Saldo ME baixo', `Carteira Melhor Envios: R$ ${numVal.toFixed(2)}. Adicione saldo para gerar etiquetas.`);
     } catch(e) {
       setMeBalance({ error: e.message });
     }
@@ -2318,7 +2320,35 @@ function App() {
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [carouselTouchX, setCarouselTouchX] = useState(null);
 
+  // ── Notifications ──────────────────────────────────────────────────────────
+  const [notifs, setNotifs] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-notifs')||'[]'); } catch { return []; } });
+  const [notifOpen, setNotifOpen] = useState(false);
+  const unreadCount = notifs.filter(n => !n.read).length;
 
+  function addNotif(type, title, body, meta={}) {
+    const n = { id: Date.now().toString(36) + Math.random().toString(36).slice(2), type, title, body, meta, ts: Date.now(), read: false };
+    setNotifs(prev => {
+      const dup = prev.find(x => x.type === type && x.body === body && (Date.now() - x.ts) < 30000);
+      if (dup) return prev;
+      const updated = [n, ...prev].slice(0, 60);
+      localStorage.setItem('vg-notifs', JSON.stringify(updated));
+      return updated;
+    });
+  }
+
+  function markAllRead() {
+    setNotifs(prev => { const u = prev.map(n => ({ ...n, read: true })); localStorage.setItem('vg-notifs', JSON.stringify(u)); return u; });
+  }
+
+  function clearNotifs() { setNotifs([]); localStorage.removeItem('vg-notifs'); }
+
+  function timeAgo(ts) {
+    const d = Date.now() - ts;
+    if (d < 60000) return 'agora';
+    if (d < 3600000) return `${Math.floor(d/60000)}min`;
+    if (d < 86400000) return `${Math.floor(d/3600000)}h`;
+    return `${Math.floor(d/86400000)}d`;
+  }
 
   function loadArticles() { try { return JSON.parse(localStorage.getItem('vg-articles') || 'null') || DEFAULT_ARTICLES; } catch { return DEFAULT_ARTICLES; } }
   const [articles, setArticles] = useState(loadArticles);
@@ -2332,6 +2362,7 @@ function App() {
     const newStatus = cycle[(idx+1) % cycle.length];
     const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
     persistOrders(updated);
+    addNotif('status', `🔄 ${order.buyerName || 'Pedido'} → ${newStatus}`, `${order._code || orderId} marcado como ${newStatus}`, { orderId });
     // Sync to Supabase
     if (sb) {
       const { error } = await sb.from('orders').update({ status: newStatus }).eq('id', orderId);
@@ -2636,11 +2667,16 @@ function App() {
     const channel = sb.channel('stock-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'stock' }, (payload) => {
         if (payload.new && payload.new.product_id !== undefined) {
+          const qty = payload.new.quantity;
           setStock(prev => {
-            const updated = { ...prev, [payload.new.product_id]: payload.new.quantity };
+            const updated = { ...prev, [payload.new.product_id]: qty };
             localStorage.setItem('vg-stock', JSON.stringify(updated));
             return updated;
           });
+          if (qty <= 3) {
+            const pName = products.find(p => p.id === payload.new.product_id)?.name || payload.new.product_id;
+            addNotif('stock', '⚠️ Estoque baixo', `${pName}: ${qty} unidade${qty !== 1 ? 's' : ''} restante${qty !== 1 ? 's' : ''}`, { productId: payload.new.product_id });
+          }
         }
       })
       .subscribe((status) => {
@@ -2658,6 +2694,34 @@ function App() {
       if (data) { setClientList(data); persistCustomers(data); }
     });
   }, []);
+
+  // ── Tracking polling: check ME tracking events when admin unlocks ──────────
+  React.useEffect(() => {
+    if (!adminUnlocked) return;
+    const enviados = orders.filter(o => o.status === 'enviado' && o.me_order_id);
+    if (!enviados.length) return;
+    let seen = {};
+    try { seen = JSON.parse(localStorage.getItem('vg-tracking-seen')||'{}'); } catch {}
+    const KEY_EVENTS = ['alfandega','customs','falhou','ausente','aguardando retirada','endereço incorreto','devolvido','retido'];
+    (async () => {
+      for (const order of enviados.slice(0, 8)) {
+        try {
+          const res = await callME(`/me/shipment/${order.me_order_id}/tracking`, 'GET');
+          const events = Array.isArray(res) ? res : (res?.tracking || []);
+          for (const ev of events) {
+            const evId = `${order.me_order_id}|${ev.created_at||''}|${(ev.message||ev.description||'').slice(0,40)}`;
+            if (seen[evId]) continue;
+            const msg = (ev.message || ev.description || ev.status || '').toLowerCase();
+            if (KEY_EVENTS.some(k => msg.includes(k))) {
+              addNotif('tracking', `📍 Rastreio: ${order._code||''}`, ev.message || ev.description || ev.status, { orderId: order.id });
+              seen[evId] = true;
+            }
+          }
+        } catch { /* ignore per-order errors */ }
+      }
+      try { localStorage.setItem('vg-tracking-seen', JSON.stringify(seen)); } catch {}
+    })();
+  }, [adminUnlocked]);
 
   // ── Supabase: carregar pedidos e pré-orders + realtime ────────────────────
   React.useEffect(() => {
@@ -2743,6 +2807,7 @@ function App() {
           };
           setOrders(prev => [converted, ...prev.filter(x => x.id !== o.id)]);
           showToast('Novo pedido recebido! 🛒', 'success');
+          addNotif('order', '🛒 Novo pedido recebido!', `${o.buyer_name || 'Cliente'}${o.total ? ` • R$ ${parseFloat(o.total).toLocaleString('pt-BR')}` : ''}${o.code ? ` • ${o.code}` : ''}`, { orderId: o.id });
         }
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders' }, (payload) => {
@@ -2766,6 +2831,7 @@ function App() {
           };
           setPreorders(prev => [converted, ...prev.filter(x => x.id !== po.id)]);
           showToast('Nova reserva recebida! 📋', 'success');
+          addNotif('preorder', '📋 Nova pré-order!', `${po.name || 'Cliente'} reservou ${po.product_name || 'produto'}${po.qty && po.qty > 1 ? ` ×${po.qty}` : ''}`, { preorderId: po.id });
         }
       })
       .subscribe((status) => {
@@ -4254,8 +4320,51 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 </button>
               </div>
             ) : <>
-            <div className="page-tag">▸ ADMINISTRADOR</div>
-            <div className="page-title">Painel Admin</div>
+            <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:0}}>
+              <div>
+                <div className="page-tag">▸ ADMINISTRADOR</div>
+                <div className="page-title">Painel Admin</div>
+              </div>
+              {/* 🔔 Bell icon */}
+              <div style={{position:'relative',marginTop:8}}>
+                <button
+                  onClick={() => { setNotifOpen(o => { if (!o) markAllRead(); return !o; }); }}
+                  style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:'8px 13px',cursor:'pointer',color:'var(--text)',fontSize:'1.1rem',position:'relative',lineHeight:1}}>
+                  🔔
+                  {unreadCount > 0 && (
+                    <span style={{position:'absolute',top:-6,right:-6,background:'#e74c3c',color:'#fff',borderRadius:'50%',fontSize:'0.6rem',fontWeight:700,minWidth:18,height:18,display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Space Mono',monospace",padding:'0 3px'}}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {notifOpen && (
+                  <>
+                  <div onClick={()=>setNotifOpen(false)} style={{position:'fixed',inset:0,zIndex:1999}} />
+                  <div style={{position:'absolute',right:0,top:'calc(100% + 8px)',width:320,background:'var(--card)',border:'1px solid var(--border)',borderRadius:14,boxShadow:'0 8px 32px rgba(0,0,0,0.5)',zIndex:2000,maxHeight:440,display:'flex',flexDirection:'column'}}>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'11px 16px',borderBottom:'1px solid var(--border)',flexShrink:0}}>
+                      <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',letterSpacing:'1.5px',textTransform:'uppercase',color:'var(--muted)'}}>NOTIFICAÇÕES</span>
+                      <button onClick={clearNotifs} style={{background:'transparent',border:'none',cursor:'pointer',color:'var(--muted)',fontSize:'0.68rem',fontFamily:"'Space Mono',monospace",padding:0}}>Limpar tudo</button>
+                    </div>
+                    <div style={{overflowY:'auto',flex:1}}>
+                      {notifs.length === 0 ? (
+                        <div style={{padding:'28px 16px',textAlign:'center',color:'var(--muted)',fontSize:'0.8rem'}}>Nenhuma notificação</div>
+                      ) : notifs.map(n => (
+                        <div key={n.id} style={{padding:'11px 16px',borderBottom:'1px solid rgba(255,255,255,0.04)',background:n.read?'transparent':'rgba(0,229,195,0.04)',transition:'background 0.2s'}}>
+                          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontSize:'0.8rem',fontWeight:600,marginBottom:2,lineHeight:1.3}}>{n.title}</div>
+                              <div style={{fontSize:'0.72rem',color:'var(--muted)',lineHeight:1.4,wordBreak:'break-word'}}>{n.body}</div>
+                            </div>
+                            <div style={{fontSize:'0.6rem',color:'var(--muted)',fontFamily:"'Space Mono',monospace",whiteSpace:'nowrap',flexShrink:0,marginTop:2}}>{timeAgo(n.ts)}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  </>
+                )}
+              </div>
+            </div>
 
             <div className="admin-grid" style={{marginBottom:24}}>
               <div className="admin-stat"><div className="admin-stat-label">Compradores</div><div className="admin-stat-value">{totalBuyers}</div></div>
