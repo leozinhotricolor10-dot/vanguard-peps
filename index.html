@@ -2519,7 +2519,7 @@ function App() {
     const clean = q.replace(/\D/g, '');
     // Busca por código VG-, CPF ou telefone
     const isCode = q.startsWith('VG-') || q.startsWith('VG');
-    let query = sb.from('orders').select('id,code,buyer_name,status,created_at,items,total,payment');
+    let query = sb.from('orders').select('id,code,buyer_name,status,created_at,items,total,payment,tracking_code');
     if (isCode) {
       query = query.or(`code.eq.${q},code.eq.VG-${q.replace(/^VG-?/,'')}}`);
     } else {
@@ -2531,6 +2531,7 @@ function App() {
     setTrackResults(data.map(o => ({
       id: o.id, code: o.code, date: o.created_at, status: o.status || 'pendente',
       items: o.items || [], total: o.total, buyerName: o.buyer_name, payment: o.payment,
+      tracking_code: o.tracking_code,
     })));
   }
 
@@ -2665,6 +2666,9 @@ function App() {
           _payment: o.payment,
           _notes: o.notes,
           _code: o.code,
+          me_order_id: o.me_order_id,
+          tracking_code: o.tracking_code,
+          label_url: o.label_url,
         }));
         setOrders(prev => {
           // Merge: manter itens locais do carrinho + adicionar pedidos do Supabase
