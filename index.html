@@ -2284,7 +2284,7 @@ function App() {
       const res = await callME('/me', 'GET');
       const full = JSON.stringify(res);
       console.log('[ME /me full]', full);
-      const val = res?.cash_balance ?? res?.balance ?? res?.wallet?.balance ?? res?.wallet ?? res?.saldo ?? null;
+      const val = res?.accounts?.[0]?.balance ?? null;
       if (val === null) throw new Error(full);
       setMeBalance({ value: parseFloat(val) });
     } catch(e) {
