@@ -1,5 +1,5 @@
 # PRD — Vanguard Peptides
-**Versão atual:** v2.9a6bc4f
+**Versão atual:** v2.e71cd4b
 **Última atualização:** Março 2026
 **Stack:** React 18 SPA (esbuild build pipeline) · Supabase JS v2 · localStorage · GitHub Actions CI/CD
 
@@ -439,7 +439,8 @@ git push main → GitHub Action → npm ci → esbuild → dist/ → gh-pages �
 ### O que o build faz:
 - Extrai JSX do `<script type="text/babel">` e compila com esbuild (minificado, ES2020)
 - Remove Babel standalone (~500KB economia)
-- Troca CDN Supabase: unpkg → jsDelivr (mais rápido e cacheado)
+- Troca CDN Supabase: unpkg → jsDelivr `.min.js` (mais rápido e cacheado)
+- Adiciona `defer crossorigin` em React, ReactDOM e Supabase — elimina bloqueio de render
 - Injeta preconnect + dns-prefetch hints no `<head>`
 - Injeta loading screen CSS pura (aparece antes do JS carregar)
 - Salva em `dist/index.html` + copia `CNAME`
@@ -463,6 +464,7 @@ git push main → GitHub Action → npm ci → esbuild → dist/ → gh-pages �
 
 | Versão | Commit | Descrição |
 |--------|--------|-----------|
+| v2.e71cd4b | `e71cd4b` | perf: defer nos CDN scripts (React/ReactDOM/Supabase), Supabase .min.js |
 | v2.9a6bc4f | `9a6bc4f` | Mapa 3 zonas: RMSP motoboy (origem SBC), SP interior, outros estados |
 | v2.e49b0da | `e49b0da` | Previsão de demanda de pré-orders na aba Mapa |
 | v2.5ffc33a | `5ffc33a` | Mapa de calor — pedidos por estado, zonas motoboy SP vs Correios |
