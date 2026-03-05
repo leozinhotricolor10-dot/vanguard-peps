@@ -100,25 +100,33 @@ esbuild.transform(jsxCode, {
 </div>
 <script>
 (function(){
-  var pb=document.getElementById('vg-pb'),pct=document.getElementById('vg-pct'),cur=0;
-  function go(p){cur=Math.max(cur,p);pb.style.width=cur+'%';pct.textContent=Math.round(cur)+'%';}
-  // Anima até 40% enquanto recursos baixam
-  var t=0,iv=setInterval(function(){
-    t++;go(Math.min(38,t*1.2));
-    if(t>=32)clearInterval(iv);
-  },25);
-  // DOM pronto + scripts executados → 85%
-  document.addEventListener('DOMContentLoaded',function(){go(85);});
-  // React renderizou → 100% → fade out
-  new MutationObserver(function(m,obs){
+  var pb=document.getElementById('vg-pb'),pct=document.getElementById('vg-pct'),cur=0,done=false;
+  function go(p){cur=Math.max(cur,p);if(pb)pb.style.width=cur+'%';if(pct)pct.textContent=Math.round(cur)+'%';}
+  function finish(){
+    if(done)return;done=true;
+    go(100);
+    var el=document.getElementById('vg-loading');
+    if(el){setTimeout(function(){el.classList.add('hide');setTimeout(function(){if(el.parentNode)el.remove();},550);},200);}
+  }
+  // Anima até 38% enquanto recursos baixam
+  var t=0,iv=setInterval(function(){t++;go(Math.min(38,t*1.2));if(t>=32)clearInterval(iv);},25);
+  // DOMContentLoaded → 85% (com defer, dispara depois que os scripts executam)
+  document.addEventListener('DOMContentLoaded',function(){
+    go(85);
+    // Fallback: se React não renderizar em 3s, fecha mesmo assim
+    setTimeout(finish,3000);
+  });
+  // MutationObserver: detecta React renderizando no #root
+  var obs=new MutationObserver(function(){
     var r=document.getElementById('root');
-    if(r&&r.children.length){
-      go(100);
-      var el=document.getElementById('vg-loading');
-      if(el){setTimeout(function(){el.classList.add('hide');setTimeout(function(){el.remove();},550);},180);}
-      obs.disconnect();
-    }
-  }).observe(document.body,{childList:true,subtree:true});
+    if(r&&r.hasChildNodes()){obs.disconnect();finish();}
+  });
+  obs.observe(document.body,{childList:true,subtree:true});
+  // Segurança extra: poll a cada 200ms caso o observer falhe
+  var poll=setInterval(function(){
+    var r=document.getElementById('root');
+    if(r&&r.hasChildNodes()){clearInterval(poll);finish();}
+  },200);
 })();
 </script>`;
 
