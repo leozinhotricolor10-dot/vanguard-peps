@@ -81,25 +81,45 @@ esbuild.transform(jsxCode, {
 <link rel="dns-prefetch" href="https://economia.awesomeapi.com.br"/>`
   );
 
-  // Adicionar loading screen inline (CSS puro, aparece antes do JS carregar)
+  // Adicionar loading screen inline com barra de progresso real
   const loadingScreen = `
 <style>
-#vg-loading{position:fixed;inset:0;background:#050a0e;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .4s ease}
+#vg-loading{position:fixed;inset:0;background:#050a0e;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .5s ease}
 #vg-loading.hide{opacity:0;pointer-events:none}
-.vg-spinner{width:40px;height:40px;border:3px solid rgba(0,229,195,0.15);border-top-color:#00e5c3;border-radius:50%;animation:vg-spin .8s linear infinite;margin-bottom:18px}
-.vg-load-title{font-family:'Space Mono',monospace;font-size:.7rem;letter-spacing:2px;color:#00e5c3;opacity:.7}
-@keyframes vg-spin{to{transform:rotate(360deg)}}
+.vg-logo{font-family:'Space Mono',monospace;font-size:.8rem;letter-spacing:4px;color:#00e5c3;opacity:.9;margin-bottom:28px;text-align:center}
+.vg-logo span{display:block;font-size:.5rem;letter-spacing:6px;opacity:.45;margin-top:4px}
+.vg-pw{width:220px;height:2px;background:rgba(0,229,195,0.1);border-radius:2px;overflow:visible;margin-bottom:10px;position:relative}
+.vg-pb{height:100%;width:0%;background:linear-gradient(90deg,#00b4d8,#00e5c3);border-radius:2px;transition:width .35s cubic-bezier(.4,0,.2,1);position:relative}
+.vg-pb::after{content:'';position:absolute;right:-1px;top:-3px;width:8px;height:8px;border-radius:50%;background:#00e5c3;box-shadow:0 0 8px #00e5c3;transition:opacity .2s}
+.vg-pct{font-family:'Space Mono',monospace;font-size:.58rem;color:rgba(0,229,195,.45);letter-spacing:1px}
 </style>
-<div id="vg-loading"><div class="vg-spinner"></div><div class="vg-load-title">VANGUARD PEPTIDES</div></div>
+<div id="vg-loading">
+  <div class="vg-logo">VANGUARD PEPTIDES<span>CARREGANDO</span></div>
+  <div class="vg-pw"><div class="vg-pb" id="vg-pb"></div></div>
+  <div class="vg-pct" id="vg-pct">0%</div>
+</div>
 <script>
-// Remove loading screen assim que React renderizar em #root
-new MutationObserver(function(m,obs){
-  if(document.getElementById('root')&&document.getElementById('root').children.length){
-    var el=document.getElementById('vg-loading');
-    if(el){el.classList.add('hide');setTimeout(function(){el.remove()},450);}
-    obs.disconnect();
-  }
-}).observe(document.body,{childList:true,subtree:true});
+(function(){
+  var pb=document.getElementById('vg-pb'),pct=document.getElementById('vg-pct'),cur=0;
+  function go(p){cur=Math.max(cur,p);pb.style.width=cur+'%';pct.textContent=Math.round(cur)+'%';}
+  // Anima até 40% enquanto recursos baixam
+  var t=0,iv=setInterval(function(){
+    t++;go(Math.min(38,t*1.2));
+    if(t>=32)clearInterval(iv);
+  },25);
+  // DOM pronto + scripts executados → 85%
+  document.addEventListener('DOMContentLoaded',function(){go(85);});
+  // React renderizou → 100% → fade out
+  new MutationObserver(function(m,obs){
+    var r=document.getElementById('root');
+    if(r&&r.children.length){
+      go(100);
+      var el=document.getElementById('vg-loading');
+      if(el){setTimeout(function(){el.classList.add('hide');setTimeout(function(){el.remove();},550);},180);}
+      obs.disconnect();
+    }
+  }).observe(document.body,{childList:true,subtree:true});
+})();
 </script>`;
 
   // Inserir loading screen antes de </body>
