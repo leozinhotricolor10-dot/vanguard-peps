@@ -2268,6 +2268,11 @@ function App() {
   const [importForm, setImportForm] = useState({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', desconto:'', outrosBrl:'', invoiceTotal:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:'',precoVenda:''}] });
   const [importHistory, setImportHistory] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-imports')||'[]'); } catch { return []; } });
   const [editingImportId, setEditingImportId] = useState(null);
+  const [despesas, setDespesas] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-expenses')||'[]'); } catch { return []; } });
+  const [despesaForm, setDespesaForm] = useState({ desc:'', valor:'', categoria:'outros', data: new Date().toLocaleDateString('pt-BR') });
+  const [shippingCosts, setShippingCosts] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-shipping-costs')||'{}'); } catch { return {}; } });
+  function persistDespesas(d) { setDespesas(d); localStorage.setItem('vg-expenses', JSON.stringify(d)); }
+  function persistShippingCosts(s) { setShippingCosts(s); localStorage.setItem('vg-shipping-costs', JSON.stringify(s)); }
   const [cambioInfo, setCambioInfo] = useState({ loading: false, hora: null, error: null });
   const [meSettings, setMeSettings] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-me-settings')||'null'); } catch { return null; } });
   const [etiquetaModal, setEtiquetaModal] = useState(null); // order being processed
@@ -2491,9 +2496,15 @@ function App() {
 
       const trackCode = cartRes.tracking || genRes[meOrderId]?.tracking || '';
 
+      const shippingCost = service.price ? parseFloat(service.price) : 0;
       if (sb) await sb.from('orders').update({ me_order_id: meOrderId, tracking_code: trackCode, label_url: typeof labelUrl === 'string' ? labelUrl : '' }).eq('id', order.id);
-      const updated = orders.map(o => o.id === order.id ? { ...o, me_order_id: meOrderId, tracking_code: trackCode, label_url: typeof labelUrl === 'string' ? labelUrl : '' } : o);
+      const updated = orders.map(o => o.id === order.id ? { ...o, me_order_id: meOrderId, tracking_code: trackCode, label_url: typeof labelUrl === 'string' ? labelUrl : '', shipping_cost: shippingCost } : o);
       persistOrders(updated);
+      // Registrar custo de envio para financeiro
+      if (shippingCost > 0) {
+        const sc = { ...shippingCosts, [order.id]: { cost: shippingCost, carrier: service.name || service.company?.name || 'Transportadora', orderId: order.id, date: new Date().toLocaleDateString('pt-BR') } };
+        persistShippingCosts(sc);
+      }
 
       setEtiquetaResult({ meOrderId, trackCode, labelUrl: typeof labelUrl === 'string' ? labelUrl : '' });
       setEtiquetaStep('done');
@@ -5078,8 +5089,144 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               });
               const maxTrend = Math.max(...trendData.map(d=>d.rev),1);
 
+              // ── DESPESAS ──────────────────────────────────────────────────
+              // 1) Frete de saída (ME labels)
+              const totalFreteEnvio = Object.values(shippingCosts).reduce((s,e)=>s+(e.cost||0), 0);
+
+              // 2) Taxas MP — calculadas por pedido confirmado baseado no pagamento
+              const calcMpFee = o => {
+                const pay = JSON.stringify(o._payment || '').toLowerCase();
+                if (pay.includes('pix')) return 0;
+                const base = o._total || 0;
+                if (pay.includes('2x') || pay.includes('parcel')) return base * (1.0498 * 1.0459 - 1);
+                return base * 0.0498; // receber na hora
+              };
+              const totalTaxasMP = confirmedOrds.reduce((s,o)=>s+calcMpFee(o), 0);
+
+              // 3) Despesas manuais
+              const totalDespManuais = despesas.reduce((s,d)=>s+(parseFloat(d.valor)||0), 0);
+
+              // 4) P&L
+              const totalDespesas = cogs + totalFreteEnvio + totalTaxasMP + totalDespManuais;
+              const lucroOperacional = confirmed - totalDespesas;
+              const margemOperacional = confirmed > 0 ? (lucroOperacional / confirmed) * 100 : 0;
+
+              // Despesas CRUD
+              function addDespesa() {
+                const v = parseFloat(despesaForm.valor);
+                if (!despesaForm.desc || isNaN(v) || v <= 0) { showToast('Preencha descrição e valor','error'); return; }
+                const nd = [{ id: Date.now(), ...despesaForm, valor: v }, ...despesas];
+                persistDespesas(nd);
+                setDespesaForm({ desc:'', valor:'', categoria:'outros', data: new Date().toLocaleDateString('pt-BR') });
+                showToast('Despesa registrada ✓', 'success');
+              }
+              function removeDespesa(id) { persistDespesas(despesas.filter(d=>d.id!==id)); }
+
+              const DESP_CATS = { operacional:'⚙️ Operacional', embalagem:'📦 Embalagem', marketing:'📣 Marketing', outros:'📌 Outros' };
+
               return (
                 <>
+                  {/* ── P&L PANEL ── */}
+                  <div style={{background:'rgba(0,0,0,0.25)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:14,padding:'16px 20px',marginBottom:20}}>
+                    <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--accent)',letterSpacing:'1.5px',marginBottom:14}}>💼 RESULTADO OPERACIONAL</div>
+                    {[
+                      { label:'Receita bruta (confirmada)', val: confirmed, color:'#4cffb0', sign:'+' },
+                      { label:'(-) CMV — custo das mercadorias', val: cogs, color:'#ff5050', sign:'-', sub: hasCost ? null : '⚠️ Defina custo/vial nos produtos' },
+                      { label:'(-) Frete de envio (ME)', val: totalFreteEnvio, color:'#ffa040', sign:'-', sub: totalFreteEnvio===0?'Será registrado ao gerar etiquetas':null },
+                      { label:'(-) Taxas Mercado Pago', val: totalTaxasMP, color:'#ffa040', sign:'-', sub:'Estimado por tipo de pagamento' },
+                      { label:'(-) Despesas manuais', val: totalDespManuais, color:'#ffa040', sign:'-', sub: despesas.length===0?'Nenhuma lançada ainda':null },
+                    ].map((row,i)=>(
+                      <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
+                        <div>
+                          <span style={{fontSize:'0.8rem',color:'var(--text)'}}>{row.label}</span>
+                          {row.sub && <span style={{display:'block',fontSize:'0.6rem',color:'var(--muted)',marginTop:1}}>{row.sub}</span>}
+                        </div>
+                        <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.8rem',color:row.val>0?row.color:'var(--muted)',fontWeight:700}}>
+                          {row.val > 0 ? `${row.sign} R$${row.val.toLocaleString('pt-BR',{minimumFractionDigits:2})}` : '—'}
+                        </span>
+                      </div>
+                    ))}
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',padding:'10px 0 0',marginTop:4}}>
+                      <span style={{fontFamily:"'Syne',sans-serif",fontSize:'1rem',fontWeight:800,color:'var(--text)'}}>LUCRO OPERACIONAL</span>
+                      <div style={{textAlign:'right'}}>
+                        <span style={{fontFamily:"'Space Mono',monospace",fontSize:'1.1rem',fontWeight:700,color:lucroOperacional>=0?'#4cffb0':'#ff5050'}}>
+                          R${lucroOperacional.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                        </span>
+                        <span style={{display:'block',fontSize:'0.68rem',color:lucroOperacional>=0?'#4cffb0':'#ff5050',fontFamily:"'Space Mono',monospace"}}>
+                          {margemOperacional.toFixed(1)}% de margem
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── DESPESAS MANUAIS ── */}
+                  <div style={{marginBottom:20}}>
+                    <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--muted)',letterSpacing:'1.5px',marginBottom:10}}>📌 LANÇAR DESPESA</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 110px 130px 90px auto',gap:8,alignItems:'flex-end',marginBottom:8}}>
+                      <div>
+                        <div style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:3}}>Descrição</div>
+                        <input style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'7px 10px',color:'var(--text)',fontSize:'0.8rem',width:'100%'}}
+                          placeholder="ex: Embalagem bubble wrap"
+                          value={despesaForm.desc} onChange={e=>setDespesaForm(f=>({...f,desc:e.target.value}))} />
+                      </div>
+                      <div>
+                        <div style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:3}}>Valor (R$)</div>
+                        <input style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'7px 10px',color:'var(--text)',fontSize:'0.8rem',width:'100%'}} type="number" min="0" placeholder="0.00"
+                          value={despesaForm.valor} onChange={e=>setDespesaForm(f=>({...f,valor:e.target.value}))} />
+                      </div>
+                      <div>
+                        <div style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:3}}>Categoria</div>
+                        <select style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'7px 10px',color:'var(--text)',fontSize:'0.8rem',width:'100%'}}
+                          value={despesaForm.categoria} onChange={e=>setDespesaForm(f=>({...f,categoria:e.target.value}))}>
+                          {Object.entries(DESP_CATS).map(([k,v])=><option key={k} value={k}>{v}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <div style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:3}}>Data</div>
+                        <input style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'7px 10px',color:'var(--text)',fontSize:'0.8rem',width:'100%'}}
+                          value={despesaForm.data} onChange={e=>setDespesaForm(f=>({...f,data:e.target.value}))} />
+                      </div>
+                      <button onClick={addDespesa} style={{padding:'7px 16px',background:'var(--accent)',border:'none',borderRadius:6,color:'#000',fontWeight:700,fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace",whiteSpace:'nowrap'}}>
+                        + Adicionar
+                      </button>
+                    </div>
+                    {/* Lista de despesas manuais */}
+                    {despesas.length > 0 && (
+                      <div style={{background:'rgba(255,255,255,0.02)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}}>
+                        {despesas.map(d=>(
+                          <div key={d.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 14px',borderBottom:'1px solid rgba(255,255,255,0.03)',fontSize:'0.78rem'}}>
+                            <div style={{display:'flex',alignItems:'center',gap:10,flex:1,minWidth:0}}>
+                              <span style={{fontSize:'0.72rem'}}>{DESP_CATS[d.categoria]||'📌'}</span>
+                              <span style={{flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.desc}</span>
+                              <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.62rem',color:'var(--muted)',flexShrink:0}}>{d.data}</span>
+                            </div>
+                            <div style={{display:'flex',alignItems:'center',gap:10,flexShrink:0,marginLeft:12}}>
+                              <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.78rem',color:'#ff5050',fontWeight:700}}>R${parseFloat(d.valor).toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                              <button onClick={()=>removeDespesa(d.id)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.85rem',padding:0}}>✕</button>
+                            </div>
+                          </div>
+                        ))}
+                        <div style={{padding:'8px 14px',background:'rgba(255,80,80,0.04)',display:'flex',justifyContent:'space-between',fontSize:'0.72rem',fontFamily:"'Space Mono',monospace"}}>
+                          <span style={{color:'var(--muted)'}}>Total despesas manuais</span>
+                          <span style={{color:'#ff5050',fontWeight:700}}>R${totalDespManuais.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Fretes ME registrados */}
+                    {Object.keys(shippingCosts).length > 0 && (
+                      <div style={{marginTop:10}}>
+                        <div style={{fontSize:'0.6rem',color:'var(--muted)',fontFamily:"'Space Mono',monospace",marginBottom:6}}>📦 FRETES ME GERADOS — R${totalFreteEnvio.toLocaleString('pt-BR',{minimumFractionDigits:2})} total</div>
+                        <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                          {Object.values(shippingCosts).map((s,i)=>(
+                            <span key={i} style={{fontSize:'0.65rem',fontFamily:"'Space Mono',monospace",background:'rgba(255,160,64,0.07)',border:'1px solid rgba(255,160,64,0.2)',borderRadius:6,padding:'3px 8px',color:'var(--muted)'}}>
+                              {s.date} · {s.carrier} · R${s.cost.toFixed(2)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Cards principais */}
                   <div className="fin-cards">
                     <div className="fin-card green">
