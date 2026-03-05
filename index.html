@@ -1981,7 +1981,7 @@ function CalcView() {
   );
 }
 
-const ADMIN_PASS_HASH = "8faa9282109e610699e9ab8417e11626c53cd87b293a0876d0f6bb1e168452f6";
+// Senha admin verificada server-side via Edge Function (hash nunca exposto no código)
 
 function PortalView({ po, preorders, persistPreorders, cancelPreorderByToken, showToast, setPortalToken, setView, orders, stock, persistOrders, saveStock, setStock, setCheckoutOpen, setMyName }) {
   const statusInfo = {
@@ -3423,18 +3423,25 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
     }
     const pw = window.prompt("Código de administrador:");
     if (!pw) return;
-    const encoded = new TextEncoder().encode(pw);
-    const hashBuf = await crypto.subtle.digest('SHA-256', encoded);
-    const hashHex = Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2,'0')).join('');
-    if (hashHex === ADMIN_PASS_HASH) {
-      localStorage.removeItem(lockKey);
-      setAdminUnlocked(true); showToast("Admin desbloqueado ✓"); setView("admin");
-    } else {
-      const attempts = (lockData.attempts || 0) + 1;
-      const until = attempts >= 3 ? Date.now() + 5 * 60 * 1000 : 0;
-      localStorage.setItem(lockKey, JSON.stringify({ attempts, until }));
-      if (attempts >= 3) showToast("3 tentativas — bloqueado por 5 min!", "error");
-      else showToast(`Código incorreto! (${attempts}/3)`, "error");
+    try {
+      const res = await fetch('https://aumubzvdhzvtnqfzqeqd.supabase.co/functions/v1/verify-admin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': 'sb_publishable_crfA-iUkVR2mnibsWQ2ZDA_wpwOBBY_' },
+        body: JSON.stringify({ password: pw }),
+      });
+      const { ok } = await res.json();
+      if (ok) {
+        localStorage.removeItem(lockKey);
+        setAdminUnlocked(true); showToast("Admin desbloqueado ✓"); setView("admin");
+      } else {
+        const attempts = (lockData.attempts || 0) + 1;
+        const until = attempts >= 3 ? Date.now() + 5 * 60 * 1000 : 0;
+        localStorage.setItem(lockKey, JSON.stringify({ attempts, until }));
+        if (attempts >= 3) showToast("3 tentativas — bloqueado por 5 min!", "error");
+        else showToast(`Código incorreto! (${attempts}/3)`, "error");
+      }
+    } catch {
+      showToast("Erro de conexão. Tente novamente.", "error");
     }
   }
 
