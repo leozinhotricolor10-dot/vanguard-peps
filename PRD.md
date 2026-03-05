@@ -1,5 +1,5 @@
 # PRD — Vanguard Peptides
-**Versão atual:** v2.51ce39a
+**Versão atual:** v2.1436b4d
 **Última atualização:** Março 2026
 **Stack:** React 18 SPA (esbuild build pipeline) · Supabase JS v2 · localStorage · GitHub Actions CI/CD
 
@@ -464,6 +464,7 @@ git push main → GitHub Action → npm ci → esbuild → dist/ → gh-pages �
 
 | Versão | Commit | Descrição |
 |--------|--------|-----------|
+| v2.1436b4d | `1436b4d` | fix: revert defer CDN — React/Supabase precisam ser globais antes do app |
 | v2.51ce39a | `51ce39a` | fix: loading bar travada em 85% — poll fallback + timeout de segurança |
 | v2.8405a64 | `8405a64` | feat: barra de progresso real no loading screen (marcos de carregamento) |
 | v2.e71cd4b | `e71cd4b` | perf: defer nos CDN scripts (React/ReactDOM/Supabase), Supabase .min.js |
