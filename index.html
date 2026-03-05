@@ -4404,6 +4404,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               <button className={`admin-tab ${adminTab==="importacao"?"active":""}`} onClick={()=>setAdminTab("importacao")}>📦 IMPORTAÇÃO</button>
   <button className={`admin-tab ${adminTab==="cupons"?"active":""}`} onClick={()=>setAdminTab("cupons")}>🏷️ CUPONS</button>
               <button className={`admin-tab ${adminTab==="clientes"?"active":""}`} onClick={()=>setAdminTab("clientes")}>👥 CLIENTES</button>
+              <button className={`admin-tab ${adminTab==="mapa"?"active":""}`} onClick={()=>setAdminTab("mapa")}>🗺️ MAPA</button>
             </div>
 
             {/* TAB: PEDIDOS */}
@@ -5956,6 +5957,174 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 }
               </>;
             })()}
+
+            {/* TAB: MAPA DE CALOR */}
+            {adminTab==="mapa" && (()=>{
+              const GRID = [
+                { uf:'RR', name:'Roraima',             col:4, row:0 },
+                { uf:'AP', name:'Amapá',               col:7, row:0 },
+                { uf:'AM', name:'Amazonas',            col:2, row:1 },
+                { uf:'PA', name:'Pará',                col:5, row:1 },
+                { uf:'MA', name:'Maranhão',            col:8, row:1 },
+                { uf:'AC', name:'Acre',                col:1, row:2 },
+                { uf:'RO', name:'Rondônia',            col:2, row:2 },
+                { uf:'TO', name:'Tocantins',           col:6, row:2 },
+                { uf:'PI', name:'Piauí',               col:9, row:2 },
+                { uf:'CE', name:'Ceará',               col:10, row:2 },
+                { uf:'RN', name:'R.G.Norte',           col:11, row:2 },
+                { uf:'MT', name:'Mato Grosso',         col:3, row:3 },
+                { uf:'GO', name:'Goiás',               col:5, row:3 },
+                { uf:'BA', name:'Bahia',               col:8, row:3 },
+                { uf:'PB', name:'Paraíba',             col:11, row:3 },
+                { uf:'PE', name:'Pernambuco',          col:10, row:3 },
+                { uf:'DF', name:'Brasília/DF',         col:5, row:4 },
+                { uf:'MS', name:'Mato Grosso do Sul',  col:4, row:4 },
+                { uf:'MG', name:'Minas Gerais',        col:7, row:4 },
+                { uf:'SE', name:'Sergipe',             col:10, row:4 },
+                { uf:'AL', name:'Alagoas',             col:11, row:4 },
+                { uf:'ES', name:'Espírito Santo',      col:9, row:4 },
+                { uf:'SP', name:'São Paulo',           col:6, row:5 },
+                { uf:'RJ', name:'Rio de Janeiro',      col:8, row:5 },
+                { uf:'PR', name:'Paraná',              col:5, row:6 },
+                { uf:'SC', name:'Santa Catarina',      col:5, row:7 },
+                { uf:'RS', name:'Rio Grande do Sul',   col:5, row:8 },
+              ];
+
+              const byState = {};
+              const byCity  = {};
+              orders.forEach(order => {
+                const addr = order._address || {};
+                const uf   = normUF(addr.estado || '');
+                const city = addr.cidade ? addr.cidade.trim() : '';
+                if (uf) byState[uf] = (byState[uf] || 0) + 1;
+                if (city && uf) {
+                  const key = `${city} / ${uf}`;
+                  byCity[key] = (byCity[key] || 0) + 1;
+                }
+              });
+
+              const maxCount  = Math.max(1, ...Object.values(byState));
+              const spTotal   = byState['SP'] || 0;
+              const otherTotal = Object.entries(byState).filter(([k])=>k!=='SP').reduce((s,[,v])=>s+v,0);
+              const total     = spTotal + otherTotal;
+              const topCities = Object.entries(byCity).sort((a,b)=>b[1]-a[1]).slice(0,12);
+
+              function cellColor(uf, count) {
+                if (count === 0) return 'rgba(255,255,255,0.05)';
+                const t = count / maxCount;
+                if (uf === 'SP') {
+                  // light blue → deep blue
+                  const r = Math.round(147 - 88*t);
+                  const g = Math.round(197 - 67*t);
+                  const b = Math.round(253 - 7*t);
+                  return `rgb(${r},${g},${b})`;
+                } else {
+                  // amber → red
+                  const r = 251;
+                  const g = Math.round(191 - 191*t);
+                  const b = Math.round(36 - 36*t);
+                  return `rgb(${r},${g},${b})`;
+                }
+              }
+
+              const CELL = 50; const GAP = 4; const COLS = 12; const ROWS = 9;
+              return <>
+                <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}>
+                  <div style={{fontSize:'1.1rem',fontWeight:700,color:'var(--text)'}}>Mapa de Calor — Pedidos por Região</div>
+                  <div style={{fontSize:'0.7rem',fontFamily:"'Space Mono',monospace",color:'var(--muted)',background:'var(--bg2)',padding:'2px 8px',borderRadius:20}}>{total} pedidos mapeados</div>
+                </div>
+
+                {/* Summary cards */}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20}}>
+                  <div style={{background:'rgba(59,130,246,0.12)',border:'1px solid rgba(59,130,246,0.35)',borderRadius:12,padding:'14px 18px'}}>
+                    <div style={{fontSize:'0.6rem',fontFamily:"'Space Mono',monospace",color:'rgb(147,197,253)',marginBottom:6,letterSpacing:'0.08em'}}>🛵 SÃO PAULO — MOTOBOY</div>
+                    <div style={{fontSize:'2rem',fontWeight:700,color:'rgb(96,165,250)',lineHeight:1}}>{spTotal}</div>
+                    <div style={{fontSize:'0.72rem',color:'var(--muted)',marginTop:4}}>{total>0?Math.round(spTotal/total*100):0}% do total · entrega local</div>
+                  </div>
+                  <div style={{background:'rgba(251,146,60,0.1)',border:'1px solid rgba(251,146,60,0.3)',borderRadius:12,padding:'14px 18px'}}>
+                    <div style={{fontSize:'0.6rem',fontFamily:"'Space Mono',monospace",color:'rgb(251,191,36)',marginBottom:6,letterSpacing:'0.08em'}}>📮 DEMAIS ESTADOS — CORREIOS / ME</div>
+                    <div style={{fontSize:'2rem',fontWeight:700,color:'#ff9600',lineHeight:1}}>{otherTotal}</div>
+                    <div style={{fontSize:'0.72rem',color:'var(--muted)',marginTop:4}}>{total>0?Math.round(otherTotal/total*100):0}% do total · via Melhor Envios</div>
+                  </div>
+                </div>
+
+                {/* Cartogram */}
+                <div style={{overflowX:'auto',marginBottom:20}}>
+                  <div style={{
+                    display:'grid',
+                    gridTemplateColumns:`repeat(${COLS},${CELL}px)`,
+                    gridTemplateRows:`repeat(${ROWS},${CELL}px)`,
+                    gap:GAP,
+                    width:`${COLS*CELL+(COLS-1)*GAP}px`,
+                  }}>
+                    {GRID.map(({uf,name,col,row})=>{
+                      const count = byState[uf]||0;
+                      const isSP  = uf==='SP';
+                      return (
+                        <div key={uf} title={`${name}: ${count} pedido${count!==1?'s':''}`} style={{
+                          gridColumn:col+1, gridRow:row+1,
+                          background:cellColor(uf,count),
+                          border:isSP?'2px solid rgba(96,165,250,0.8)':count>0?'1px solid rgba(255,255,255,0.15)':'1px solid rgba(255,255,255,0.06)',
+                          borderRadius:8,
+                          display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',
+                          position:'relative',
+                        }}>
+                          <div style={{fontSize:'0.55rem',fontWeight:700,fontFamily:"'Space Mono',monospace",color:count>0?'rgba(0,0,0,0.75)':'var(--muted)',lineHeight:1}}>{uf}</div>
+                          {count>0&&<div style={{fontSize:'0.65rem',fontWeight:700,color:count>0?'rgba(0,0,0,0.75)':'var(--muted)'}}>{count}</div>}
+                          {isSP&&<div style={{position:'absolute',top:3,right:4,fontSize:'0.5rem'}}>🛵</div>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Legend */}
+                <div style={{display:'flex',gap:16,alignItems:'center',marginBottom:20,flexWrap:'wrap'}}>
+                  <span style={{fontSize:'0.65rem',color:'var(--muted)',fontFamily:"'Space Mono',monospace"}}>LEGENDA:</span>
+                  <div style={{display:'flex',alignItems:'center',gap:5}}>
+                    <div style={{width:14,height:14,borderRadius:4,background:'rgb(96,165,250)',border:'2px solid rgba(96,165,250,0.8)'}}/>
+                    <span style={{fontSize:'0.68rem',color:'var(--muted)'}}>SP — Motoboy 🛵</span>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:5}}>
+                    <div style={{width:14,height:14,borderRadius:4,background:'rgb(251,130,36)'}}/>
+                    <span style={{fontSize:'0.68rem',color:'var(--muted)'}}>Outros — Correios / ME 📮</span>
+                  </div>
+                  <div style={{display:'flex',alignItems:'center',gap:5}}>
+                    <div style={{width:14,height:14,borderRadius:4,background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)'}}/>
+                    <span style={{fontSize:'0.68rem',color:'var(--muted)'}}>Sem pedidos</span>
+                  </div>
+                </div>
+
+                {/* Top cities */}
+                {topCities.length>0&&<>
+                  <div style={{fontSize:'0.7rem',fontFamily:"'Space Mono',monospace",color:'var(--muted)',marginBottom:12,letterSpacing:'0.08em'}}>TOP CIDADES</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                    {topCities.map(([city,count],i)=>{
+                      const isSP = city.endsWith('/ SP');
+                      const bar  = Math.round((count/topCities[0][1])*100);
+                      return (
+                        <div key={city} style={{display:'flex',alignItems:'center',gap:10}}>
+                          <div style={{width:20,fontSize:'0.6rem',color:'var(--muted)',textAlign:'right',fontFamily:"'Space Mono',monospace",flexShrink:0}}>#{i+1}</div>
+                          <div style={{flex:1}}>
+                            <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+                              <span style={{fontSize:'0.78rem',color:'var(--text)'}}>{city}</span>
+                              <span style={{fontSize:'0.72rem',fontFamily:"'Space Mono',monospace",color:isSP?'rgb(96,165,250)':'#ff9600',fontWeight:700}}>{count}</span>
+                            </div>
+                            <div style={{height:4,borderRadius:2,background:'rgba(255,255,255,0.07)',overflow:'hidden'}}>
+                              <div style={{height:'100%',width:`${bar}%`,borderRadius:2,background:isSP?'rgb(96,165,250)':'#ff9600',transition:'width 0.3s'}}/>
+                            </div>
+                          </div>
+                          <div style={{fontSize:'0.7rem',width:22,textAlign:'center',flexShrink:0}}>{isSP?'🛵':'📮'}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>}
+
+                {total===0&&<div style={{textAlign:'center',color:'var(--muted)',padding:48,fontSize:'0.82rem'}}>Nenhum pedido com endereço registrado ainda.</div>}
+              </>;
+            })()}
+
             </>}
           </div>
 
