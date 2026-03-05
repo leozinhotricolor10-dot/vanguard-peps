@@ -5990,8 +5990,31 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 { uf:'RS', name:'Rio Grande do Sul',   col:5, row:8 },
               ];
 
+              // Cidades da RMSP (~50km de São Bernardo do Campo) — zona motoboy
+              const RMSP = new Set([
+                'sao paulo','santo andre','sao bernardo do campo','sao caetano do sul',
+                'diadema','maua','ribeirao pires','rio grande da serra',
+                'guarulhos','osasco','carapicuiba','barueri','santana de parnaiba',
+                'itapevi','jandira','cajamar','taboao da serra','embu das artes',
+                'embu guacu','embu-guacu','itapecerica da serra','sao lourenco da serra',
+                'cotia','vargem grande paulista','franco da rocha','francisco morato',
+                'caieiras','mairipora','aruja','santa isabel','suzano',
+                'ferraz de vasconcelos','poa','itaquaquecetuba','mogi das cruzes',
+                'poá','biritiba mirim','salesopolis','guararema',
+              ]);
+
+              function normCity(s) {
+                return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+              }
+              function cityZone(city, uf) {
+                if (uf !== 'SP') return 'correios';
+                return RMSP.has(normCity(city)) ? 'motoboy' : 'sp-interior';
+              }
+
               const byState = {};
               const byCity  = {};
+              const zoneCounts = { motoboy:0, 'sp-interior':0, correios:0 };
+
               orders.forEach(order => {
                 const addr = order._address || {};
                 const uf   = normUF(addr.estado || '');
@@ -6000,32 +6023,37 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 if (city && uf) {
                   const key = `${city} / ${uf}`;
                   byCity[key] = (byCity[key] || 0) + 1;
+                  const zone = cityZone(city, uf);
+                  zoneCounts[zone]++;
                 }
               });
 
-              const maxCount  = Math.max(1, ...Object.values(byState));
-              const spTotal   = byState['SP'] || 0;
-              const otherTotal = Object.entries(byState).filter(([k])=>k!=='SP').reduce((s,[,v])=>s+v,0);
-              const total     = spTotal + otherTotal;
-              const topCities = Object.entries(byCity).sort((a,b)=>b[1]-a[1]).slice(0,12);
+              const maxCount   = Math.max(1, ...Object.values(byState));
+              const total      = Object.values(byState).reduce((s,v)=>s+v,0);
+              const topCities  = Object.entries(byCity).sort((a,b)=>b[1]-a[1]).slice(0,12);
 
               function cellColor(uf, count) {
                 if (count === 0) return 'rgba(255,255,255,0.05)';
                 const t = count / maxCount;
                 if (uf === 'SP') {
-                  // light blue → deep blue
-                  const r = Math.round(147 - 88*t);
-                  const g = Math.round(197 - 67*t);
-                  const b = Math.round(253 - 7*t);
-                  return `rgb(${r},${g},${b})`;
-                } else {
-                  // amber → red
-                  const r = 251;
-                  const g = Math.round(191 - 191*t);
-                  const b = Math.round(36 - 36*t);
+                  // SP: azul médio (misto — detalhe por cidade no ranking)
+                  const r = Math.round(103 - 44*t);
+                  const g = Math.round(181 - 51*t);
+                  const b = Math.round(246 - 0*t);
                   return `rgb(${r},${g},${b})`;
                 }
+                // outros: amber → vermelho
+                const r = 251;
+                const g = Math.round(191 - 191*t);
+                const b = Math.round(36  - 36*t);
+                return `rgb(${r},${g},${b})`;
               }
+
+              const zoneStyle = {
+                motoboy:     { color:'rgb(96,165,250)',  bg:'rgba(59,130,246,0.12)',  border:'rgba(59,130,246,0.35)',  icon:'🛵', label:'RMSP — MOTOBOY',       sub:'Grande SP (~50km de SBC)' },
+                'sp-interior':{ color:'rgb(52,211,153)', bg:'rgba(16,185,129,0.1)',   border:'rgba(52,211,153,0.3)',   icon:'🚗', label:'SP INTERIOR — CORREIOS', sub:'Fora da Grande SP' },
+                correios:    { color:'#ff9600',          bg:'rgba(251,146,60,0.1)',   border:'rgba(251,146,60,0.3)',   icon:'📮', label:'OUTROS ESTADOS — ME',    sub:'Via Melhor Envios' },
+              };
 
               const CELL = 50; const GAP = 4; const COLS = 12; const ROWS = 9;
               return <>
@@ -6034,18 +6062,15 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   <div style={{fontSize:'0.7rem',fontFamily:"'Space Mono',monospace",color:'var(--muted)',background:'var(--bg2)',padding:'2px 8px',borderRadius:20}}>{total} pedidos mapeados</div>
                 </div>
 
-                {/* Summary cards */}
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:20}}>
-                  <div style={{background:'rgba(59,130,246,0.12)',border:'1px solid rgba(59,130,246,0.35)',borderRadius:12,padding:'14px 18px'}}>
-                    <div style={{fontSize:'0.6rem',fontFamily:"'Space Mono',monospace",color:'rgb(147,197,253)',marginBottom:6,letterSpacing:'0.08em'}}>🛵 SÃO PAULO — MOTOBOY</div>
-                    <div style={{fontSize:'2rem',fontWeight:700,color:'rgb(96,165,250)',lineHeight:1}}>{spTotal}</div>
-                    <div style={{fontSize:'0.72rem',color:'var(--muted)',marginTop:4}}>{total>0?Math.round(spTotal/total*100):0}% do total · entrega local</div>
-                  </div>
-                  <div style={{background:'rgba(251,146,60,0.1)',border:'1px solid rgba(251,146,60,0.3)',borderRadius:12,padding:'14px 18px'}}>
-                    <div style={{fontSize:'0.6rem',fontFamily:"'Space Mono',monospace",color:'rgb(251,191,36)',marginBottom:6,letterSpacing:'0.08em'}}>📮 DEMAIS ESTADOS — CORREIOS / ME</div>
-                    <div style={{fontSize:'2rem',fontWeight:700,color:'#ff9600',lineHeight:1}}>{otherTotal}</div>
-                    <div style={{fontSize:'0.72rem',color:'var(--muted)',marginTop:4}}>{total>0?Math.round(otherTotal/total*100):0}% do total · via Melhor Envios</div>
-                  </div>
+                {/* 3-zone summary cards */}
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:20}}>
+                  {Object.entries(zoneStyle).map(([zone,s])=>(
+                    <div key={zone} style={{background:s.bg,border:`1px solid ${s.border}`,borderRadius:12,padding:'12px 14px'}}>
+                      <div style={{fontSize:'0.55rem',fontFamily:"'Space Mono',monospace",color:s.color,marginBottom:5,letterSpacing:'0.07em'}}>{s.icon} {s.label}</div>
+                      <div style={{fontSize:'1.8rem',fontWeight:700,color:s.color,lineHeight:1}}>{zoneCounts[zone]}</div>
+                      <div style={{fontSize:'0.65rem',color:'var(--muted)',marginTop:4}}>{total>0?Math.round(zoneCounts[zone]/total*100):0}% · {s.sub}</div>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Cartogram */}
@@ -6070,8 +6095,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                           position:'relative',
                         }}>
                           <div style={{fontSize:'0.55rem',fontWeight:700,fontFamily:"'Space Mono',monospace",color:count>0?'rgba(0,0,0,0.75)':'var(--muted)',lineHeight:1}}>{uf}</div>
-                          {count>0&&<div style={{fontSize:'0.65rem',fontWeight:700,color:count>0?'rgba(0,0,0,0.75)':'var(--muted)'}}>{count}</div>}
-                          {isSP&&<div style={{position:'absolute',top:3,right:4,fontSize:'0.5rem'}}>🛵</div>}
+                          {count>0&&<div style={{fontSize:'0.65rem',fontWeight:700,color:'rgba(0,0,0,0.75)'}}>{count}</div>}
+                          {isSP&&<div style={{position:'absolute',top:2,right:3,fontSize:'0.45rem'}}>🛵🚗</div>}
                         </div>
                       );
                     })}
@@ -6079,42 +6104,46 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 </div>
 
                 {/* Legend */}
-                <div style={{display:'flex',gap:16,alignItems:'center',marginBottom:20,flexWrap:'wrap'}}>
+                <div style={{display:'flex',gap:14,alignItems:'center',marginBottom:20,flexWrap:'wrap'}}>
                   <span style={{fontSize:'0.65rem',color:'var(--muted)',fontFamily:"'Space Mono',monospace"}}>LEGENDA:</span>
+                  {Object.entries(zoneStyle).map(([zone,s])=>(
+                    <div key={zone} style={{display:'flex',alignItems:'center',gap:5}}>
+                      <div style={{width:13,height:13,borderRadius:3,background:s.color}}/>
+                      <span style={{fontSize:'0.67rem',color:'var(--muted)'}}>{s.icon} {s.label.split(' — ')[0]}</span>
+                    </div>
+                  ))}
                   <div style={{display:'flex',alignItems:'center',gap:5}}>
-                    <div style={{width:14,height:14,borderRadius:4,background:'rgb(96,165,250)',border:'2px solid rgba(96,165,250,0.8)'}}/>
-                    <span style={{fontSize:'0.68rem',color:'var(--muted)'}}>SP — Motoboy 🛵</span>
-                  </div>
-                  <div style={{display:'flex',alignItems:'center',gap:5}}>
-                    <div style={{width:14,height:14,borderRadius:4,background:'rgb(251,130,36)'}}/>
-                    <span style={{fontSize:'0.68rem',color:'var(--muted)'}}>Outros — Correios / ME 📮</span>
-                  </div>
-                  <div style={{display:'flex',alignItems:'center',gap:5}}>
-                    <div style={{width:14,height:14,borderRadius:4,background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)'}}/>
-                    <span style={{fontSize:'0.68rem',color:'var(--muted)'}}>Sem pedidos</span>
+                    <div style={{width:13,height:13,borderRadius:3,background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.1)'}}/>
+                    <span style={{fontSize:'0.67rem',color:'var(--muted)'}}>Sem pedidos</span>
                   </div>
                 </div>
 
-                {/* Top cities */}
+                {/* Top cities com 3 zonas */}
                 {topCities.length>0&&<>
                   <div style={{fontSize:'0.7rem',fontFamily:"'Space Mono',monospace",color:'var(--muted)',marginBottom:12,letterSpacing:'0.08em'}}>TOP CIDADES</div>
                   <div style={{display:'flex',flexDirection:'column',gap:6}}>
-                    {topCities.map(([city,count],i)=>{
-                      const isSP = city.endsWith('/ SP');
-                      const bar  = Math.round((count/topCities[0][1])*100);
+                    {topCities.map(([cityKey,count],i)=>{
+                      const parts = cityKey.split(' / ');
+                      const cityName = parts[0];
+                      const uf      = parts[1] || '';
+                      const zone    = cityZone(cityName, uf);
+                      const s       = zoneStyle[zone];
+                      const bar     = Math.round((count/topCities[0][1])*100);
                       return (
-                        <div key={city} style={{display:'flex',alignItems:'center',gap:10}}>
+                        <div key={cityKey} style={{display:'flex',alignItems:'center',gap:10}}>
                           <div style={{width:20,fontSize:'0.6rem',color:'var(--muted)',textAlign:'right',fontFamily:"'Space Mono',monospace",flexShrink:0}}>#{i+1}</div>
                           <div style={{flex:1}}>
-                            <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
-                              <span style={{fontSize:'0.78rem',color:'var(--text)'}}>{city}</span>
-                              <span style={{fontSize:'0.72rem',fontFamily:"'Space Mono',monospace",color:isSP?'rgb(96,165,250)':'#ff9600',fontWeight:700}}>{count}</span>
+                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:3}}>
+                              <div style={{display:'flex',alignItems:'center',gap:6}}>
+                                <span style={{fontSize:'0.78rem',color:'var(--text)'}}>{cityKey}</span>
+                                <span style={{fontSize:'0.55rem',fontFamily:"'Space Mono',monospace",color:s.color,background:s.bg,border:`1px solid ${s.border}`,borderRadius:4,padding:'1px 5px'}}>{s.icon} {zone==='motoboy'?'MOTOBOY':zone==='sp-interior'?'SP INTERIOR':'CORREIOS'}</span>
+                              </div>
+                              <span style={{fontSize:'0.72rem',fontFamily:"'Space Mono',monospace",color:s.color,fontWeight:700,flexShrink:0,marginLeft:8}}>{count}</span>
                             </div>
                             <div style={{height:4,borderRadius:2,background:'rgba(255,255,255,0.07)',overflow:'hidden'}}>
-                              <div style={{height:'100%',width:`${bar}%`,borderRadius:2,background:isSP?'rgb(96,165,250)':'#ff9600',transition:'width 0.3s'}}/>
+                              <div style={{height:'100%',width:`${bar}%`,borderRadius:2,background:s.color,transition:'width 0.3s'}}/>
                             </div>
                           </div>
-                          <div style={{fontSize:'0.7rem',width:22,textAlign:'center',flexShrink:0}}>{isSP?'🛵':'📮'}</div>
                         </div>
                       );
                     })}
