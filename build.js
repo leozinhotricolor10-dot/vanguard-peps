@@ -55,18 +55,18 @@ esbuild.transform(jsxCode, {
     'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js'
   );
 
-  // Adicionar defer aos scripts CDN (React, ReactDOM, Supabase) — evita bloqueio de render
+  // crossorigin para melhor cache nos CDN scripts
   dist = dist.replace(
     /(<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/react\/[^"]+")><\/script>/g,
-    '$1 defer crossorigin></script>'
+    '$1 crossorigin></script>'
   );
   dist = dist.replace(
     /(<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/react-dom\/[^"]+")><\/script>/g,
-    '$1 defer crossorigin></script>'
+    '$1 crossorigin></script>'
   );
   dist = dist.replace(
     /(<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/[^"]+")><\/script>/g,
-    '$1 defer crossorigin></script>'
+    '$1 crossorigin></script>'
   );
 
   // Adicionar preconnect hints logo após <meta charset> (reduz DNS lookup time)
