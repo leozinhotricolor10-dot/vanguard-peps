@@ -45,10 +45,28 @@ esbuild.transform(jsxCode, {
     ''
   );
 
-  // Trocar Supabase de unpkg → jsDelivr (CDN mais rápido e cacheado)
+  // Trocar Supabase de unpkg → jsDelivr + usar .min.js
   dist = dist.replace(
     'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js',
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js'
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js'
+  );
+  dist = dist.replace(
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
+    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js'
+  );
+
+  // Adicionar defer aos scripts CDN (React, ReactDOM, Supabase) — evita bloqueio de render
+  dist = dist.replace(
+    /(<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/react\/[^"]+")><\/script>/g,
+    '$1 defer crossorigin></script>'
+  );
+  dist = dist.replace(
+    /(<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/react-dom\/[^"]+")><\/script>/g,
+    '$1 defer crossorigin></script>'
+  );
+  dist = dist.replace(
+    /(<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/[^"]+")><\/script>/g,
+    '$1 defer crossorigin></script>'
   );
 
   // Adicionar preconnect hints logo após <meta charset> (reduz DNS lookup time)
