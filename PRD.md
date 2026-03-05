@@ -1,5 +1,5 @@
 # PRD — Vanguard Peptides
-**Versão atual:** v2.5ffc33a
+**Versão atual:** v2.e49b0da
 **Última atualização:** Março 2026
 **Stack:** React 18 SPA (esbuild build pipeline) · Supabase JS v2 · localStorage · GitHub Actions CI/CD
 
@@ -463,6 +463,7 @@ git push main → GitHub Action → npm ci → esbuild → dist/ → gh-pages �
 
 | Versão | Commit | Descrição |
 |--------|--------|-----------|
+| v2.e49b0da | `e49b0da` | Previsão de demanda de pré-orders na aba Mapa |
 | v2.5ffc33a | `5ffc33a` | Mapa de calor — pedidos por estado, zonas motoboy SP vs Correios |
 | v2.6a854a7 | `6a854a7` | Segurança: senha admin verificada via Edge Function server-side |
 | v2.db55e5 | `db55e5c` | Build pipeline esbuild + GitHub Actions CI/CD |
