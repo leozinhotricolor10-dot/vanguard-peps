@@ -81,9 +81,8 @@ esbuild.transform(jsxCode, {
 <link rel="dns-prefetch" href="https://economia.awesomeapi.com.br"/>`
   );
 
-  // Adicionar loading screen inline com barra de progresso real
-  const loadingScreen = `
-<style>
+  // Loading screen CSS no <head> — estilo disponível antes do primeiro paint
+  const loadingCSS = `<style id="vg-ls-css">
 #vg-loading{position:fixed;inset:0;background:#050a0e;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:99999;transition:opacity .5s ease}
 #vg-loading.hide{opacity:0;pointer-events:none}
 .vg-logo{font-family:'Space Mono',monospace;font-size:.8rem;letter-spacing:4px;color:#00e5c3;opacity:.9;margin-bottom:28px;text-align:center}
@@ -92,13 +91,17 @@ esbuild.transform(jsxCode, {
 .vg-pb{height:100%;width:0%;background:linear-gradient(90deg,#00b4d8,#00e5c3);border-radius:2px;transition:width .35s cubic-bezier(.4,0,.2,1);position:relative}
 .vg-pb::after{content:'';position:absolute;right:-1px;top:-3px;width:8px;height:8px;border-radius:50%;background:#00e5c3;box-shadow:0 0 8px #00e5c3;transition:opacity .2s}
 .vg-pct{font-family:'Space Mono',monospace;font-size:.58rem;color:rgba(0,229,195,.45);letter-spacing:1px}
-</style>
-<div id="vg-loading">
+</style>`;
+
+  // Loading screen HTML logo após <body> — visível antes dos CDN scripts carregarem
+  const loadingHTML = `<div id="vg-loading">
   <div class="vg-logo">VANGUARD PEPTIDES<span>CARREGANDO</span></div>
   <div class="vg-pw"><div class="vg-pb" id="vg-pb"></div></div>
   <div class="vg-pct" id="vg-pct">0%</div>
-</div>
-<script>
+</div>`;
+
+  // Loading screen JS no final do <body> — executa depois do app script (síncrono)
+  const loadingJS = `<script>
 (function(){
   var pb=document.getElementById('vg-pb'),pct=document.getElementById('vg-pct'),cur=0,done=false;
   function go(p){cur=Math.max(cur,p);if(pb)pb.style.width=cur+'%';if(pct)pct.textContent=Math.round(cur)+'%';}
@@ -108,41 +111,42 @@ esbuild.transform(jsxCode, {
     var el=document.getElementById('vg-loading');
     if(el){setTimeout(function(){el.classList.add('hide');setTimeout(function(){if(el.parentNode)el.remove();},550);},200);}
   }
-  // Anima até 38% enquanto recursos baixam
-  var t=0,iv=setInterval(function(){t++;go(Math.min(38,t*1.2));if(t>=32)clearInterval(iv);},25);
-  // DOMContentLoaded → 85% (com defer, dispara depois que os scripts executam)
-  document.addEventListener('DOMContentLoaded',function(){
-    go(85);
-    // Fallback: se React não renderizar em 3s, fecha mesmo assim
-    setTimeout(finish,3000);
-  });
-  // MutationObserver: detecta React renderizando no #root
-  var obs=new MutationObserver(function(){
-    var r=document.getElementById('root');
-    if(r&&r.hasChildNodes()){obs.disconnect();finish();}
-  });
-  obs.observe(document.body,{childList:true,subtree:true});
-  // Segurança extra: poll a cada 200ms caso o observer falhe
+  // Anima barra (app script já rodou síncrono, React deve ter renderizado)
+  var t=0,iv=setInterval(function(){t++;go(Math.min(85,t*1.5));if(t>=57)clearInterval(iv);},25);
+  // Verifica se React já renderizou (caso síncrono)
+  var r=document.getElementById('root');
+  if(r&&r.hasChildNodes()){setTimeout(finish,400);return;}
+  // Poll a cada 100ms para render assíncrono (React 18 concurrent)
   var poll=setInterval(function(){
-    var r=document.getElementById('root');
-    if(r&&r.hasChildNodes()){clearInterval(poll);finish();}
-  },200);
+    var r2=document.getElementById('root');
+    if(r2&&r2.hasChildNodes()){clearInterval(poll);finish();}
+  },100);
+  // Timeout máximo de 6 segundos
+  setTimeout(function(){clearInterval(poll);if(!done)finish();},6000);
+  // Mostrar erro JS visualmente no loading screen
+  window.addEventListener('error',function(e){
+    clearInterval(poll);clearInterval(iv);
+    var el=document.getElementById('vg-loading');
+    if(el&&!done){
+      el.innerHTML='<div style="text-align:center;padding:24px"><div style="font-family:monospace;font-size:.75rem;color:#00e5c3;letter-spacing:3px;margin-bottom:16px">VANGUARD PEPTIDES</div><div style="color:#ff6b6b;font-family:monospace;font-size:.65rem;margin-bottom:8px">Erro ao inicializar</div><div style="color:rgba(255,107,107,.6);font-family:monospace;font-size:.55rem;max-width:280px;word-break:break-all;margin-bottom:16px">'+e.message+'</div><button onclick="location.reload()" style="background:rgba(0,229,195,.15);border:1px solid #00e5c3;color:#00e5c3;padding:8px 20px;border-radius:6px;cursor:pointer;font-family:monospace;font-size:.65rem">RECARREGAR</button></div>';
+    }
+  });
 })();
 </script>`;
 
-  // Inserir loading screen antes de </body>
-  dist = dist.replace('</body>', loadingScreen + '\n</body>');
+  // Injetar CSS no <head>
+  dist = dist.replace('</head>', loadingCSS + '\n</head>');
 
-  // Substituir <script type="text/babel"> pelo JS compilado (com defer para não bloquear)
+  // Injetar HTML logo após <body>
+  dist = dist.replace('<body>', '<body>\n' + loadingHTML);
+
+  // Injetar JS antes de </body>
+  dist = dist.replace('</body>', loadingJS + '\n</body>');
+
+  // Substituir <script type="text/babel"> pelo JS compilado (sem defer — inline ignora defer)
   dist = dist.replace(
     /<script type="text\/babel">[\s\S]*?<\/script>/,
-    `<script defer>\n${result.code}\n</script>`
-  );
-
-  // Garantir crossorigin nos scripts React/ReactDOM para melhor cache
-  dist = dist.replace(
-    /(<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/react(?:-dom)?\/[^"]+">)(<\/script>)/g,
-    '$1</script>'
+    `<script>\n${result.code}\n</script>`
   );
 
   // 4) Escrever dist/
