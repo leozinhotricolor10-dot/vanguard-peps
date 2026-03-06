@@ -286,6 +286,26 @@ main { padding: 36px 44px; max-width: 980px; }
 .toast.error { background: rgba(255,80,60,0.12); border: 1px solid rgba(255,80,60,0.3); color: #ff6b5b; }
 .toast.info { background: rgba(0,168,255,0.12); border: 1px solid rgba(0,168,255,0.3); color: var(--accent2); }
 
+/* CHECKOUT STEPPER */
+.checkout-stepper { display: flex; align-items: center; justify-content: center; gap: 0; margin-bottom: 24px; }
+.checkout-step-item { display: flex; align-items: center; gap: 0; }
+.checkout-step-bubble { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Space Mono', monospace; font-size: 0.65rem; font-weight: 700; transition: all 0.25s; flex-shrink: 0; }
+.checkout-step-bubble.done { background: var(--accent); color: #050a0e; }
+.checkout-step-bubble.active { background: rgba(0,229,195,0.15); border: 2px solid var(--accent); color: var(--accent); }
+.checkout-step-bubble.pending { background: rgba(255,255,255,0.04); border: 1px solid var(--border); color: var(--muted); }
+.checkout-step-label { font-family: 'Space Mono', monospace; font-size: 0.48rem; text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; text-align: center; }
+.checkout-step-label.active { color: var(--accent); }
+.checkout-step-label.done { color: var(--accent); opacity: 0.7; }
+.checkout-step-label.pending { color: var(--muted); }
+.checkout-step-line { width: 32px; height: 1px; background: var(--border); flex-shrink: 0; margin: 0 2px; }
+.checkout-step-line.done { background: var(--accent); opacity: 0.5; }
+.checkout-step-wrapper { display: flex; flex-direction: column; align-items: center; }
+.checkout-nav { display: flex; gap: 10px; margin-top: 16px; }
+.checkout-nav-back { flex: 1; padding: 13px; border-radius: 10px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+.checkout-nav-back:hover { border-color: var(--accent); color: var(--accent); }
+.checkout-nav-next { flex: 2; padding: 13px; border-radius: 10px; border: none; background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #050a0e; font-family: 'Syne', sans-serif; font-size: 0.85rem; font-weight: 800; cursor: pointer; transition: filter 0.2s; letter-spacing: 0.3px; }
+.checkout-nav-next:hover { filter: brightness(1.08); }
+
 /* CHECKOUT MODAL */
 .checkout-modal { background: #0a1219; border: 1px solid var(--border); border-radius: 20px 20px 0 0; padding: 28px 24px 32px; width: 100%; max-width: 520px; animation: slideIn 0.25s ease forwards; max-height: 90vh; overflow-y: auto; }
 .checkout-modal::-webkit-scrollbar { width: 3px; }
@@ -2235,6 +2255,7 @@ function App() {
     try { return JSON.parse(localStorage.getItem('vg-checkout') || 'null') || { nomeCompleto:'', cpf:'', telefone:'', email:'', cep:'', estado:'', cidade:'', bairro:'', rua:'', numero:'', complemento:'', pagamento:'', observacoes:'' }; } catch { return { nomeCompleto:'', cpf:'', telefone:'', email:'', cep:'', estado:'', cidade:'', bairro:'', rua:'', numero:'', complemento:'', pagamento:'', observacoes:'' }; }
   });
   const [checkoutErrors, setCheckoutErrors] = useState({});
+  const [checkoutStep, setCheckoutStep] = useState(1);
   const [notifyInputs, setNotifyInputs] = useState({});
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [prevView, setPrevView] = useState(null);
@@ -2988,6 +3009,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       persistOrders(orders.filter(o => o._supabase || (o.buyerName || '').toLowerCase() !== myName.toLowerCase()));
       localStorage.removeItem('vg-checkout');
       setCheckoutOpen(false);
+      setCheckoutStep(1);
       setDisclaimer(false);
       setAppliedCoupon(null);
       setCouponInput('');
@@ -3568,258 +3590,316 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
         const totalFinal = myTotal - pixDiscount - couponDiscount - pointsDiscount + freight.value;
         const isFree = freight.value === 0;
         return (
-          <div className="modal-overlay" onClick={e=>{ if(e.target===e.currentTarget) setCheckoutOpen(false); }}>
+          <div className="modal-overlay" onClick={e=>{ if(e.target===e.currentTarget){ setCheckoutOpen(false); setCheckoutStep(1); } }}>
             <div className="checkout-modal">
               <div className="modal-title">📦 Finalizar Pedido</div>
-              <div className="modal-sub" style={{marginBottom:22}}>Preencha seus dados para enviar o pedido via WhatsApp.</div>
 
-              {/* Dados pessoais */}
-              <div className="checkout-section">
-                <div className="checkout-section-title">👤 Dados Pessoais</div>
-                <div className="input-group">
-                  <label>Nome completo *</label>
-                  <input placeholder="Seu nome completo" value={checkout.nomeCompleto}
-                    className={checkoutErrors.nomeCompleto ? 'error' : ''}
-                    onChange={e=>updateCheckout('nomeCompleto', e.target.value)} />
-                </div>
-                <div className="input-row">
-                  <div className="input-group">
-                    <label>CPF *</label>
-                    <input placeholder="000.000.000-00" value={checkout.cpf}
-                      className={checkoutErrors.cpf ? 'error' : ''}
-                      onChange={e=>{ updateCheckout('cpf', e.target.value); const clean=e.target.value.replace(/\D/g,''); if(clean.length===11) checkPoints(e.target.value); else setPointsBalance(null); }} />
+              {/* STEPPER */}
+              {(() => {
+                const steps = [
+                  { label: 'Dados' },
+                  { label: 'Endereço' },
+                  { label: 'Pagamento' },
+                  { label: 'Revisão' },
+                ];
+                return (
+                  <div className="checkout-stepper">
+                    {steps.map((s, i) => {
+                      const n = i + 1;
+                      const state = n < checkoutStep ? 'done' : n === checkoutStep ? 'active' : 'pending';
+                      return (
+                        <div key={n} className="checkout-step-item">
+                          <div className="checkout-step-wrapper">
+                            <div className={`checkout-step-bubble ${state}`}>
+                              {state === 'done' ? '✓' : n}
+                            </div>
+                            <div className={`checkout-step-label ${state}`}>{s.label}</div>
+                          </div>
+                          {i < steps.length - 1 && <div className={`checkout-step-line ${n < checkoutStep ? 'done' : ''}`} />}
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="input-group">
-                    <label>Telefone *</label>
-                    <input placeholder="(00) 00000-0000" value={checkout.telefone}
-                      className={checkoutErrors.telefone ? 'error' : ''}
-                      onChange={e=>updateCheckout('telefone', e.target.value)} />
-                  </div>
-                </div>
-                <div className="input-group">
-                  <label>E-mail <span style={{color:'var(--muted)',fontSize:'0.75rem'}}>(opcional)</span></label>
-                  <input placeholder="seu@email.com" type="email" value={checkout.email}
-                    className={checkoutErrors.email ? 'error' : ''}
-                    onChange={e=>updateCheckout('email', e.target.value)} />
-                </div>
-              </div>
+                );
+              })()}
 
-              {/* Endereço */}
-              <div className="checkout-section">
-                <div className="checkout-section-title">📍 Endereço de Entrega</div>
-                <div className="input-row">
+              {/* PASSO 1 — Dados Pessoais */}
+              {checkoutStep === 1 && (
+                <div className="checkout-section">
+                  <div className="checkout-section-title">👤 Dados Pessoais</div>
                   <div className="input-group">
-                    <label>CEP *</label>
-                    <input placeholder="00000-000" value={checkout.cep}
-                      className={checkoutErrors.cep ? 'error' : ''}
-                      onChange={e=>{ updateCheckout('cep', e.target.value); fetchCep(e.target.value); }} />
+                    <label>Nome completo *</label>
+                    <input placeholder="Seu nome completo" value={checkout.nomeCompleto}
+                      className={checkoutErrors.nomeCompleto ? 'error' : ''}
+                      onChange={e=>updateCheckout('nomeCompleto', e.target.value)} />
                   </div>
-                  <div className="input-group">
-                    <label>Estado</label>
-                    <input placeholder="SP" value={checkout.estado}
-                      className={checkoutErrors.estado ? 'error' : ''}
-                      onChange={e=>updateCheckout('estado', e.target.value.toUpperCase())} />
-                  </div>
-                </div>
-                <div className="input-group">
-                  <label>Cidade</label>
-                  <input placeholder="São Paulo" value={checkout.cidade}
-                    className={checkoutErrors.cidade ? 'error' : ''}
-                    onChange={e=>updateCheckout('cidade', e.target.value)} />
-                </div>
-                <div className="input-group">
-                  <label>Bairro</label>
-                  <input placeholder="Centro" value={checkout.bairro}
-                    onChange={e=>updateCheckout('bairro', e.target.value)} />
-                </div>
-                <div className="input-row">
-                  <div className="input-group" style={{flex:2}}>
-                    <label>Rua / Avenida *</label>
-                    <input placeholder="Rua Exemplo" value={checkout.rua}
-                      className={checkoutErrors.rua ? 'error' : ''}
-                      onChange={e=>updateCheckout('rua', e.target.value)} />
-                  </div>
-                  <div className="input-group">
-                    <label>Número *</label>
-                    <input placeholder="123" value={checkout.numero}
-                      className={checkoutErrors.numero ? 'error' : ''}
-                      onChange={e=>updateCheckout('numero', e.target.value)} />
-                  </div>
-                </div>
-                <div className="input-group">
-                  <label>Complemento</label>
-                  <input placeholder="Apto, bloco, referência..." value={checkout.complemento}
-                    onChange={e=>updateCheckout('complemento', e.target.value)} />
-                </div>
-              </div>
-
-              {/* Pagamento */}
-              <div className="checkout-section">
-                <div className="checkout-section-title">💳 Forma de Pagamento</div>
-                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
-
-                  {/* PIX — destaque */}
-                  <div onClick={()=>updateCheckout('pagamento','pix')} className="pix-card" style={{
-                    border: `2px solid ${checkoutErrors.pagamento ? 'rgba(255,107,53,0.5)' : 'rgba(0,229,195,0.45)'}`,
-                    borderRadius:12, padding:'14px 10px', cursor:'pointer', textAlign:'center',
-                    background: checkout.pagamento==='pix' ? 'rgba(0,229,195,0.12)' : 'rgba(0,229,195,0.04)',
-                    transition:'background 0.18s', position:'relative', overflow:'hidden'
-                  }}>
-                    <div style={{position:'absolute',top:6,left:8,background:'linear-gradient(135deg,#ff3b3b,#ff6a00)',color:'#fff',fontSize:'0.5rem',fontWeight:700,fontFamily:"'Space Mono',monospace",padding:'2px 7px',borderRadius:20,letterSpacing:'0.5px',boxShadow:'0 2px 8px rgba(255,60,0,0.45)'}}>★ RECOMENDADO</div>
-                    <div style={{position:'absolute',top:6,right:8,background:'var(--accent)',color:'#000',fontSize:'0.55rem',fontWeight:700,fontFamily:"'Space Mono',monospace",padding:'2px 6px',borderRadius:20}}>10% OFF</div>
-                    <div style={{fontSize:'1.5rem', marginBottom:4, marginTop:10}}>⚡</div>
-                    <div style={{fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:'0.9rem', color:'var(--accent)'}}>PIX</div>
-                    <div style={{fontSize:'0.65rem', color:'var(--accent)', marginTop:2, fontWeight:700}}>À vista</div>
-                    <div style={{fontSize:'0.62rem',color:'var(--accent)',marginTop:6,fontFamily:"'Space Mono',monospace",opacity:0.85}}>
-                      economize R$ {Math.round(myTotal*0.1).toLocaleString('pt-BR')}
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>CPF *</label>
+                      <input placeholder="000.000.000-00" value={checkout.cpf}
+                        className={checkoutErrors.cpf ? 'error' : ''}
+                        onChange={e=>{ updateCheckout('cpf', e.target.value); const clean=e.target.value.replace(/\D/g,''); if(clean.length===11) checkPoints(e.target.value); else setPointsBalance(null); }} />
+                    </div>
+                    <div className="input-group">
+                      <label>Telefone *</label>
+                      <input placeholder="(00) 00000-0000" value={checkout.telefone}
+                        className={checkoutErrors.telefone ? 'error' : ''}
+                        onChange={e=>updateCheckout('telefone', e.target.value)} />
                     </div>
                   </div>
+                  <div className="input-group">
+                    <label>E-mail <span style={{color:'var(--muted)',fontSize:'0.75rem'}}>(opcional)</span></label>
+                    <input placeholder="seu@email.com" type="email" value={checkout.email}
+                      className={checkoutErrors.email ? 'error' : ''}
+                      onChange={e=>updateCheckout('email', e.target.value)} />
+                  </div>
+                  <div className="checkout-nav">
+                    <button className="checkout-nav-back" onClick={()=>{ setCheckoutOpen(false); setCheckoutStep(1); }}>cancelar</button>
+                    <button className="checkout-nav-next" onClick={()=>{
+                      const errs = {};
+                      if (!(checkout.nomeCompleto||'').trim()) errs.nomeCompleto = true;
+                      if (!/^\d{11}$/.test((checkout.cpf||'').replace(/\D/g,''))) errs.cpf = true;
+                      if (!(checkout.telefone||'').trim()) errs.telefone = true;
+                      if (checkout.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(checkout.email.trim())) errs.email = true;
+                      setCheckoutErrors(errs);
+                      if (Object.keys(errs).length === 0) setCheckoutStep(2);
+                      else showToast("Preencha os campos obrigatórios", "error");
+                    }}>Continuar →</button>
+                  </div>
+                </div>
+              )}
 
-                  {/* Cartão 2x */}
-                  {(() => {
-                    const MP_RECEBER_HORA = 0.0498; // taxa receber na hora
-                    const MP_PARCELAMENTO = 0.0459; // taxa parcelamento 2x
-                    const totalComJuros = Math.round(myTotal * (1 + MP_RECEBER_HORA) * (1 + MP_PARCELAMENTO));
-                    const juros = totalComJuros - myTotal;
-                    const parcela = Math.round(totalComJuros / 2);
-                    return (
-                      <div onClick={()=>updateCheckout('pagamento','2x')} style={{
-                        border: `1px solid ${checkout.pagamento==='2x' ? 'rgba(0,229,195,0.4)' : (checkoutErrors.pagamento ? 'rgba(255,107,53,0.5)' : 'var(--border)')}`,
+              {/* PASSO 2 — Endereço */}
+              {checkoutStep === 2 && (
+                <div className="checkout-section">
+                  <div className="checkout-section-title">📍 Endereço de Entrega</div>
+                  <div className="input-row">
+                    <div className="input-group">
+                      <label>CEP *</label>
+                      <input placeholder="00000-000" value={checkout.cep}
+                        className={checkoutErrors.cep ? 'error' : ''}
+                        onChange={e=>{ updateCheckout('cep', e.target.value); fetchCep(e.target.value); }} />
+                    </div>
+                    <div className="input-group">
+                      <label>Estado</label>
+                      <input placeholder="SP" value={checkout.estado}
+                        className={checkoutErrors.estado ? 'error' : ''}
+                        onChange={e=>updateCheckout('estado', e.target.value.toUpperCase())} />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label>Cidade</label>
+                    <input placeholder="São Paulo" value={checkout.cidade}
+                      className={checkoutErrors.cidade ? 'error' : ''}
+                      onChange={e=>updateCheckout('cidade', e.target.value)} />
+                  </div>
+                  <div className="input-group">
+                    <label>Bairro</label>
+                    <input placeholder="Centro" value={checkout.bairro}
+                      onChange={e=>updateCheckout('bairro', e.target.value)} />
+                  </div>
+                  <div className="input-row">
+                    <div className="input-group" style={{flex:2}}>
+                      <label>Rua / Avenida *</label>
+                      <input placeholder="Rua Exemplo" value={checkout.rua}
+                        className={checkoutErrors.rua ? 'error' : ''}
+                        onChange={e=>updateCheckout('rua', e.target.value)} />
+                    </div>
+                    <div className="input-group">
+                      <label>Número *</label>
+                      <input placeholder="123" value={checkout.numero}
+                        className={checkoutErrors.numero ? 'error' : ''}
+                        onChange={e=>updateCheckout('numero', e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="input-group">
+                    <label>Complemento</label>
+                    <input placeholder="Apto, bloco, referência..." value={checkout.complemento}
+                      onChange={e=>updateCheckout('complemento', e.target.value)} />
+                  </div>
+                  <div className="checkout-nav">
+                    <button className="checkout-nav-back" onClick={()=>setCheckoutStep(1)}>← Voltar</button>
+                    <button className="checkout-nav-next" onClick={()=>{
+                      const errs = {};
+                      if (!/^\d{8}$/.test((checkout.cep||'').replace(/\D/g,''))) errs.cep = true;
+                      if (!(checkout.rua||'').trim()) errs.rua = true;
+                      if (!(checkout.numero||'').trim()) errs.numero = true;
+                      if (!(checkout.cidade||'').trim()) errs.cidade = true;
+                      if (!(checkout.estado||'').trim()) errs.estado = true;
+                      setCheckoutErrors(errs);
+                      if (Object.keys(errs).length === 0) setCheckoutStep(3);
+                      else showToast("Preencha os campos obrigatórios", "error");
+                    }}>Continuar →</button>
+                  </div>
+                </div>
+              )}
+
+              {/* PASSO 3 — Pagamento + Descontos */}
+              {checkoutStep === 3 && (
+                <div>
+                  <div className="checkout-section">
+                    <div className="checkout-section-title">💳 Forma de Pagamento</div>
+                    <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:8}}>
+                      <div onClick={()=>updateCheckout('pagamento','pix')} className="pix-card" style={{
+                        border: `2px solid ${checkoutErrors.pagamento ? 'rgba(255,107,53,0.5)' : 'rgba(0,229,195,0.45)'}`,
                         borderRadius:12, padding:'14px 10px', cursor:'pointer', textAlign:'center',
-                        background: checkout.pagamento==='2x' ? 'rgba(0,229,195,0.07)' : 'rgba(255,255,255,0.02)',
-                        transition:'all 0.18s'
+                        background: checkout.pagamento==='pix' ? 'rgba(0,229,195,0.12)' : 'rgba(0,229,195,0.04)',
+                        transition:'background 0.18s', position:'relative', overflow:'hidden'
                       }}>
-                        <div style={{fontSize:'1.5rem', marginBottom:4}}>💳</div>
-                        <div style={{fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'0.9rem', color: checkout.pagamento==='2x' ? 'var(--accent)' : 'var(--text)'}}>2x Cartão</div>
-                        <div style={{fontSize:'0.72rem', fontWeight:700, color:'var(--text)', marginTop:4, fontFamily:"'Space Mono',monospace"}}>
-                          2x R$ {parcela.toLocaleString('pt-BR')}
-                        </div>
-                        <div style={{fontSize:'0.58rem', color:'#ff7a7a', marginTop:3}}>
-                          +R$ {juros.toLocaleString('pt-BR')} de juros MP
+                        <div style={{position:'absolute',top:6,left:8,background:'linear-gradient(135deg,#ff3b3b,#ff6a00)',color:'#fff',fontSize:'0.5rem',fontWeight:700,fontFamily:"'Space Mono',monospace",padding:'2px 7px',borderRadius:20,letterSpacing:'0.5px',boxShadow:'0 2px 8px rgba(255,60,0,0.45)'}}>★ RECOMENDADO</div>
+                        <div style={{position:'absolute',top:6,right:8,background:'var(--accent)',color:'#000',fontSize:'0.55rem',fontWeight:700,fontFamily:"'Space Mono',monospace",padding:'2px 6px',borderRadius:20}}>10% OFF</div>
+                        <div style={{fontSize:'1.5rem', marginBottom:4, marginTop:10}}>⚡</div>
+                        <div style={{fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:'0.9rem', color:'var(--accent)'}}>PIX</div>
+                        <div style={{fontSize:'0.65rem', color:'var(--accent)', marginTop:2, fontWeight:700}}>À vista</div>
+                        <div style={{fontSize:'0.62rem',color:'var(--accent)',marginTop:6,fontFamily:"'Space Mono',monospace",opacity:0.85}}>
+                          economize R$ {Math.round(myTotal*0.1).toLocaleString('pt-BR')}
                         </div>
                       </div>
-                    );
-                  })()}
-
-                </div>
-              </div>
-
-              {/* Cupom de desconto */}
-              <div className="checkout-section">
-                <div className="checkout-section-title">🏷️ Cupom de Desconto</div>
-                {appliedCoupon
-                  ? <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',background:'rgba(255,150,0,0.07)',border:'1px solid rgba(255,150,0,0.3)',borderRadius:8}}>
-                      <span style={{color:'#ff9600',fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:'0.85rem'}}>{appliedCoupon.code} <span style={{color:'var(--muted)',fontWeight:400,fontSize:'0.72rem'}}>{appliedCoupon.type==='percent'?`-${appliedCoupon.value}%`:`-R$ ${appliedCoupon.value}`}</span></span>
-                      <button onClick={()=>{setAppliedCoupon(null);setCouponInput('');}} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.85rem'}}>✕</button>
-                    </div>
-                  : <div className="coupon-row">
-                      <input className="coupon-input" placeholder="Código do cupom" value={couponInput} onChange={e=>setCouponInput(e.target.value.toUpperCase())} onKeyDown={e=>e.key==='Enter'&&applyCouponCode()} />
-                      <button onClick={applyCouponCode} style={{padding:'9px 16px',background:'rgba(255,150,0,0.1)',border:'1px solid rgba(255,150,0,0.3)',borderRadius:8,color:'#ff9600',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',whiteSpace:'nowrap',fontFamily:"'Space Mono',monospace"}}>APLICAR</button>
-                    </div>
-                }
-              </div>
-
-              {/* Vanguard Points */}
-              <div className="checkout-section">
-                <div className="checkout-section-title">⭐ Vanguard Points</div>
-                {pointsBalance === null
-                  ? <div style={{fontSize:'0.75rem',color:'var(--muted)'}}>Preencha seu CPF acima para verificar seu saldo de pontos.</div>
-                  : (pointsBalance.points ?? 0) >= 100
-                    ? appliedPoints > 0
-                      ? <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',background:'rgba(255,200,0,0.07)',border:'1px solid rgba(255,200,0,0.3)',borderRadius:8}}>
-                          <span style={{color:'#ffc800',fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:'0.85rem'}}>⭐ {appliedPoints} pts <span style={{fontWeight:400,color:'var(--muted)',fontSize:'0.72rem'}}>→ -R$ {(Math.floor(appliedPoints/100)*(pointsConfig.redeem||5)).toLocaleString('pt-BR')}</span></span>
-                          <button onClick={()=>setAppliedPoints(0)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.85rem'}}>✕</button>
-                        </div>
-                      : <div>
-                          <div style={{fontSize:'0.78rem',color:'var(--muted)',marginBottom:8}}>Você tem <strong style={{color:'#ffc800'}}>{pointsBalance.points ?? 0} pontos</strong> → vale até <strong style={{color:'#ffc800'}}>R$ {Math.floor((pointsBalance.points??0)/100)*(pointsConfig.redeem||5)}</strong> de desconto</div>
-                          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                            {[100,200,500].filter(p=>p<=pointsBalance.points).map(p=>(
-                              <button key={p} onClick={()=>setAppliedPoints(p)} style={{padding:'6px 12px',background:'rgba(255,200,0,0.1)',border:'1px solid rgba(255,200,0,0.3)',borderRadius:8,color:'#ffc800',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>{p} pts → -R$ {Math.floor(p/100)*(pointsConfig.redeem||5)}</button>
-                            ))}
-                            {pointsBalance.points >= 100 && <button onClick={()=>setAppliedPoints(pointsBalance.points - (pointsBalance.points % 100))} style={{padding:'6px 12px',background:'rgba(255,200,0,0.1)',border:'1px solid rgba(255,200,0,0.3)',borderRadius:8,color:'#ffc800',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>Usar tudo ({pointsBalance.points-(pointsBalance.points%100)} pts)</button>}
+                      {(() => {
+                        const MP_RECEBER_HORA = 0.0498;
+                        const MP_PARCELAMENTO = 0.0459;
+                        const totalComJuros = Math.round(myTotal * (1 + MP_RECEBER_HORA) * (1 + MP_PARCELAMENTO));
+                        const juros = totalComJuros - myTotal;
+                        const parcela = Math.round(totalComJuros / 2);
+                        return (
+                          <div onClick={()=>updateCheckout('pagamento','2x')} style={{
+                            border: `1px solid ${checkout.pagamento==='2x' ? 'rgba(0,229,195,0.4)' : (checkoutErrors.pagamento ? 'rgba(255,107,53,0.5)' : 'var(--border)')}`,
+                            borderRadius:12, padding:'14px 10px', cursor:'pointer', textAlign:'center',
+                            background: checkout.pagamento==='2x' ? 'rgba(0,229,195,0.07)' : 'rgba(255,255,255,0.02)',
+                            transition:'all 0.18s'
+                          }}>
+                            <div style={{fontSize:'1.5rem', marginBottom:4}}>💳</div>
+                            <div style={{fontFamily:"'Syne',sans-serif", fontWeight:700, fontSize:'0.9rem', color: checkout.pagamento==='2x' ? 'var(--accent)' : 'var(--text)'}}>2x Cartão</div>
+                            <div style={{fontSize:'0.72rem', fontWeight:700, color:'var(--text)', marginTop:4, fontFamily:"'Space Mono',monospace"}}>2x R$ {parcela.toLocaleString('pt-BR')}</div>
+                            <div style={{fontSize:'0.58rem', color:'#ff7a7a', marginTop:3}}>+R$ {juros.toLocaleString('pt-BR')} de juros MP</div>
                           </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                  <div className="checkout-section">
+                    <div className="checkout-section-title">🏷️ Cupom de Desconto</div>
+                    {appliedCoupon
+                      ? <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',background:'rgba(255,150,0,0.07)',border:'1px solid rgba(255,150,0,0.3)',borderRadius:8}}>
+                          <span style={{color:'#ff9600',fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:'0.85rem'}}>{appliedCoupon.code} <span style={{color:'var(--muted)',fontWeight:400,fontSize:'0.72rem'}}>{appliedCoupon.type==='percent'?`-${appliedCoupon.value}%`:`-R$ ${appliedCoupon.value}`}</span></span>
+                          <button onClick={()=>{setAppliedCoupon(null);setCouponInput('');}} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.85rem'}}>✕</button>
                         </div>
-                    : <div style={{fontSize:'0.75rem',color:'var(--muted)'}}>{(pointsBalance.points??0) > 0 ? `Você tem ${pointsBalance.points??0} pts — mínimo 100 pts para resgatar.` : 'Nenhum ponto acumulado neste CPF ainda.'}</div>
-                }
-              </div>
+                      : <div className="coupon-row">
+                          <input className="coupon-input" placeholder="Código do cupom" value={couponInput} onChange={e=>setCouponInput(e.target.value.toUpperCase())} onKeyDown={e=>e.key==='Enter'&&applyCouponCode()} />
+                          <button onClick={applyCouponCode} style={{padding:'9px 16px',background:'rgba(255,150,0,0.1)',border:'1px solid rgba(255,150,0,0.3)',borderRadius:8,color:'#ff9600',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',whiteSpace:'nowrap',fontFamily:"'Space Mono',monospace"}}>APLICAR</button>
+                        </div>
+                    }
+                  </div>
+                  <div className="checkout-section">
+                    <div className="checkout-section-title">⭐ Vanguard Points</div>
+                    {pointsBalance === null
+                      ? <div style={{fontSize:'0.75rem',color:'var(--muted)'}}>CPF informado no passo 1 será usado para verificar seu saldo.</div>
+                      : (pointsBalance.points ?? 0) >= 100
+                        ? appliedPoints > 0
+                          ? <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 14px',background:'rgba(255,200,0,0.07)',border:'1px solid rgba(255,200,0,0.3)',borderRadius:8}}>
+                              <span style={{color:'#ffc800',fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:'0.85rem'}}>⭐ {appliedPoints} pts <span style={{fontWeight:400,color:'var(--muted)',fontSize:'0.72rem'}}>→ -R$ {(Math.floor(appliedPoints/100)*(pointsConfig.redeem||5)).toLocaleString('pt-BR')}</span></span>
+                              <button onClick={()=>setAppliedPoints(0)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.85rem'}}>✕</button>
+                            </div>
+                          : <div>
+                              <div style={{fontSize:'0.78rem',color:'var(--muted)',marginBottom:8}}>Você tem <strong style={{color:'#ffc800'}}>{pointsBalance.points ?? 0} pontos</strong> → vale até <strong style={{color:'#ffc800'}}>R$ {Math.floor((pointsBalance.points??0)/100)*(pointsConfig.redeem||5)}</strong> de desconto</div>
+                              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                                {[100,200,500].filter(p=>p<=pointsBalance.points).map(p=>(
+                                  <button key={p} onClick={()=>setAppliedPoints(p)} style={{padding:'6px 12px',background:'rgba(255,200,0,0.1)',border:'1px solid rgba(255,200,0,0.3)',borderRadius:8,color:'#ffc800',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>{p} pts → -R$ {Math.floor(p/100)*(pointsConfig.redeem||5)}</button>
+                                ))}
+                                {pointsBalance.points >= 100 && <button onClick={()=>setAppliedPoints(pointsBalance.points - (pointsBalance.points % 100))} style={{padding:'6px 12px',background:'rgba(255,200,0,0.1)',border:'1px solid rgba(255,200,0,0.3)',borderRadius:8,color:'#ffc800',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>Usar tudo ({pointsBalance.points-(pointsBalance.points%100)} pts)</button>}
+                              </div>
+                            </div>
+                        : <div style={{fontSize:'0.75rem',color:'var(--muted)'}}>{(pointsBalance.points??0) > 0 ? `Você tem ${pointsBalance.points??0} pts — mínimo 100 pts para resgatar.` : 'Nenhum ponto acumulado neste CPF ainda.'}</div>
+                    }
+                  </div>
+                  <div className="checkout-nav">
+                    <button className="checkout-nav-back" onClick={()=>setCheckoutStep(2)}>← Voltar</button>
+                    <button className="checkout-nav-next" onClick={()=>{
+                      if (!checkout.pagamento) { setCheckoutErrors({pagamento:true}); showToast("Escolha uma forma de pagamento", "error"); return; }
+                      setCheckoutErrors({});
+                      setCheckoutStep(4);
+                    }}>Revisar pedido →</button>
+                  </div>
+                </div>
+              )}
 
-              {/* Resumo + frete */}
-              <div className="checkout-section">
-                <div className="checkout-section-title">💰 Resumo do Pedido</div>
-                <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',color:'var(--muted)',marginBottom:8}}>
-                  <span>Subtotal ({myOrders.reduce((s,o)=>s+(o.qty||0),0)} itens)</span>
-                  <span style={{color:'var(--text)',fontFamily:"'Space Mono',monospace"}}>R$ {myTotal.toLocaleString('pt-BR')}</span>
+              {/* PASSO 4 — Revisão + Enviar */}
+              {checkoutStep === 4 && (
+                <div>
+                  <div className="checkout-section">
+                    <div className="checkout-section-title">💰 Resumo do Pedido</div>
+                    <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',color:'var(--muted)',marginBottom:8}}>
+                      <span>Subtotal ({myOrders.reduce((s,o)=>s+(o.qty||0),0)} itens)</span>
+                      <span style={{color:'var(--text)',fontFamily:"'Space Mono',monospace"}}>R$ {myTotal.toLocaleString('pt-BR')}</span>
+                    </div>
+                    {pixDiscount > 0 && (
+                      <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',marginBottom:8,padding:'8px 12px',background:'rgba(0,229,195,0.06)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:8}}>
+                        <span style={{color:'var(--accent)'}}>💚 Desconto PIX (10%)</span>
+                        <span style={{color:'var(--accent)',fontFamily:"'Space Mono',monospace",fontWeight:700}}>-R$ {pixDiscount.toLocaleString('pt-BR')}</span>
+                      </div>
+                    )}
+                    {couponDiscount > 0 && (
+                      <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',marginBottom:8,padding:'8px 12px',background:'rgba(255,150,0,0.06)',border:'1px solid rgba(255,150,0,0.2)',borderRadius:8}}>
+                        <span style={{color:'#ff9600'}}>🏷️ Cupom {appliedCoupon.code}</span>
+                        <span style={{color:'#ff9600',fontFamily:"'Space Mono',monospace",fontWeight:700}}>-R$ {couponDiscount.toLocaleString('pt-BR')}</span>
+                      </div>
+                    )}
+                    {pointsDiscount > 0 && (
+                      <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',marginBottom:8,padding:'8px 12px',background:'rgba(255,200,0,0.06)',border:'1px solid rgba(255,200,0,0.2)',borderRadius:8}}>
+                        <span style={{color:'#ffc800'}}>⭐ Pontos VG ({appliedPoints} pts)</span>
+                        <span style={{color:'#ffc800',fontFamily:"'Space Mono',monospace",fontWeight:700}}>-R$ {pointsDiscount.toLocaleString('pt-BR')}</span>
+                      </div>
+                    )}
+                    <div className={`freight-box ${isFree?'free':'paid'}`}>
+                      <div className="freight-label">
+                        <strong>{isFree ? '🎉 Frete Grátis' : '🚚 Frete'}</strong>
+                        <small>{freight.reason}</small>
+                      </div>
+                      <div className={`freight-value ${isFree?'free':'paid'}`}>{isFree ? 'GRÁTIS' : 'R$ 60'}</div>
+                    </div>
+                    {!isFree && myTotal < 600 && (
+                      <div style={{fontSize:'0.75rem',color:'var(--muted)',marginTop:6,padding:'8px 12px',background:'rgba(0,168,255,0.04)',border:'1px solid rgba(0,168,255,0.12)',borderRadius:8}}>
+                        💡 Faltam <strong style={{color:'var(--accent2)'}}>R$ {(600 - myTotal).toLocaleString('pt-BR')}</strong> para frete grátis em SP, ou <strong style={{color:'var(--accent)'}}>R$ {(1000 - myTotal).toLocaleString('pt-BR')}</strong> para frete grátis em qualquer estado.
+                      </div>
+                    )}
+                    <div className="order-total-row">
+                      <span className="order-total-label">Total final</span>
+                      <span className="order-total-value">R$ {totalFinal.toLocaleString('pt-BR')}</span>
+                    </div>
+                  </div>
+                  <div className="checkout-section">
+                    <div className="checkout-section-title">📝 Observações</div>
+                    <div className="input-group">
+                      <label>Alguma instrução especial? (opcional)</label>
+                      <input placeholder="Ex: pode entregar após 18h, portão azul..." value={checkout.observacoes||''}
+                        onChange={e=>updateCheckout('observacoes', e.target.value)} />
+                    </div>
+                  </div>
+                  <div style={{
+                    background: disclaimer ? 'rgba(0,229,195,0.04)' : 'rgba(255,107,53,0.04)',
+                    border: `1px solid ${disclaimer ? 'rgba(0,229,195,0.2)' : 'rgba(255,107,53,0.2)'}`,
+                    borderRadius:10, padding:'14px 16px', marginBottom:16, cursor:'pointer',
+                    display:'flex', gap:12, alignItems:'flex-start', transition:'all 0.2s'
+                  }} onClick={()=>setDisclaimer(d=>!d)}>
+                    <div style={{
+                      width:20, height:20, borderRadius:5, flexShrink:0, marginTop:1,
+                      border: `2px solid ${disclaimer ? 'var(--accent)' : 'rgba(255,107,53,0.5)'}`,
+                      background: disclaimer ? 'var(--accent)' : 'transparent',
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      fontSize:'0.75rem', color:'#050a0e', fontWeight:700, transition:'all 0.2s'
+                    }}>{disclaimer ? '✓' : ''}</div>
+                    <div style={{fontSize:'0.77rem', color:'var(--muted)', lineHeight:1.6}}>
+                      <strong style={{color:'var(--text)'}}>Aviso Legal *</strong><br/>
+                      Declaro que tenho 18 anos ou mais e que este produto é adquirido exclusivamente para fins de pesquisa científica. Não me responsabilizo pelo uso indevido dos compostos.
+                    </div>
+                  </div>
+                  <button className="modal-confirm-btn" onClick={sendToWhatsApp} disabled={myOrders.length===0||isSubmitting} style={{opacity:isSubmitting?0.7:1}}>
+                    {isSubmitting ? 'SALVANDO PEDIDO...' : 'ENVIAR PEDIDO VIA WHATSAPP →'}
+                  </button>
+                  <button className="checkout-nav-back" style={{width:'100%',marginTop:8}} onClick={()=>setCheckoutStep(3)}>← Voltar</button>
                 </div>
-                {pixDiscount > 0 && (
-                  <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',marginBottom:8,padding:'8px 12px',background:'rgba(0,229,195,0.06)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:8}}>
-                    <span style={{color:'var(--accent)'}}>💚 Desconto PIX (10%)</span>
-                    <span style={{color:'var(--accent)',fontFamily:"'Space Mono',monospace",fontWeight:700}}>-R$ {pixDiscount.toLocaleString('pt-BR')}</span>
-                  </div>
-                )}
-                {couponDiscount > 0 && (
-                  <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',marginBottom:8,padding:'8px 12px',background:'rgba(255,150,0,0.06)',border:'1px solid rgba(255,150,0,0.2)',borderRadius:8}}>
-                    <span style={{color:'#ff9600'}}>🏷️ Cupom {appliedCoupon.code}</span>
-                    <span style={{color:'#ff9600',fontFamily:"'Space Mono',monospace",fontWeight:700}}>-R$ {couponDiscount.toLocaleString('pt-BR')}</span>
-                  </div>
-                )}
-                {pointsDiscount > 0 && (
-                  <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',marginBottom:8,padding:'8px 12px',background:'rgba(255,200,0,0.06)',border:'1px solid rgba(255,200,0,0.2)',borderRadius:8}}>
-                    <span style={{color:'#ffc800'}}>⭐ Pontos VG ({appliedPoints} pts)</span>
-                    <span style={{color:'#ffc800',fontFamily:"'Space Mono',monospace",fontWeight:700}}>-R$ {pointsDiscount.toLocaleString('pt-BR')}</span>
-                  </div>
-                )}
-                <div className={`freight-box ${isFree?'free':'paid'}`}>
-                  <div className="freight-label">
-                    <strong>{isFree ? '🎉 Frete Grátis' : '🚚 Frete'}</strong>
-                    <small>{freight.reason}</small>
-                  </div>
-                  <div className={`freight-value ${isFree?'free':'paid'}`}>{isFree ? 'GRÁTIS' : 'R$ 60'}</div>
-                </div>
-                {!isFree && myTotal < 600 && (
-                  <div style={{fontSize:'0.75rem',color:'var(--muted)',marginTop:6,padding:'8px 12px',background:'rgba(0,168,255,0.04)',border:'1px solid rgba(0,168,255,0.12)',borderRadius:8}}>
-                    💡 Faltam <strong style={{color:'var(--accent2)'}}>R$ {(600 - myTotal).toLocaleString('pt-BR')}</strong> para frete grátis em SP, ou <strong style={{color:'var(--accent)'}}>R$ {(1000 - myTotal).toLocaleString('pt-BR')}</strong> para frete grátis em qualquer estado.
-                  </div>
-                )}
-                <div className="order-total-row">
-                  <span className="order-total-label">Total final</span>
-                  <span className="order-total-value">R$ {totalFinal.toLocaleString('pt-BR')}</span>
-                </div>
-              </div>
+              )}
 
-              {/* Observações */}
-              <div className="checkout-section">
-                <div className="checkout-section-title">📝 Observações</div>
-                <div className="input-group">
-                  <label>Alguma instrução especial? (opcional)</label>
-                  <input placeholder="Ex: pode entregar após 18h, portão azul..." value={checkout.observacoes||''}
-                    onChange={e=>updateCheckout('observacoes', e.target.value)} />
-                </div>
-              </div>
-
-              {/* Disclaimer */}
-              <div style={{
-                background: disclaimer ? 'rgba(0,229,195,0.04)' : 'rgba(255,107,53,0.04)',
-                border: `1px solid ${disclaimer ? 'rgba(0,229,195,0.2)' : 'rgba(255,107,53,0.2)'}`,
-                borderRadius:10, padding:'14px 16px', marginBottom:16, cursor:'pointer',
-                display:'flex', gap:12, alignItems:'flex-start', transition:'all 0.2s'
-              }} onClick={()=>setDisclaimer(d=>!d)}>
-                <div style={{
-                  width:20, height:20, borderRadius:5, flexShrink:0, marginTop:1,
-                  border: `2px solid ${disclaimer ? 'var(--accent)' : 'rgba(255,107,53,0.5)'}`,
-                  background: disclaimer ? 'var(--accent)' : 'transparent',
-                  display:'flex', alignItems:'center', justifyContent:'center',
-                  fontSize:'0.75rem', color:'#050a0e', fontWeight:700, transition:'all 0.2s'
-                }}>{disclaimer ? '✓' : ''}</div>
-                <div style={{fontSize:'0.77rem', color:'var(--muted)', lineHeight:1.6}}>
-                  <strong style={{color:'var(--text)'}}>Aviso Legal *</strong><br/>
-                  Declaro que tenho 18 anos ou mais e que este produto é adquirido exclusivamente para fins de pesquisa científica. Não me responsabilizo pelo uso indevido dos compostos.
-                </div>
-              </div>
-
-              <button className="modal-confirm-btn" onClick={sendToWhatsApp} disabled={myOrders.length===0||isSubmitting} style={{opacity:isSubmitting?0.7:1}}>
-                {isSubmitting ? 'SALVANDO PEDIDO...' : 'ENVIAR PEDIDO VIA WHATSAPP →'}
-              </button>
-              <button className="modal-cancel-btn" onClick={()=>setCheckoutOpen(false)}>cancelar</button>
             </div>
           </div>
         );
