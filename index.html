@@ -1107,6 +1107,19 @@ const BUNDLES = [
   { id: "bundle-longe",    name: "Stack Longevidade Premium", desc: "Epithalon 10mg + Selank 5mg — longevidade celular e equilíbrio mental",         items: ["epithalon","selank"],        price: 399,  originalPrice: 448, badge: "⭐ Economize R$ 49" },
 ];
 
+function validarCPF(cpf) {
+  const d = cpf.replace(/\D/g, '');
+  if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
+  let s = 0;
+  for (let i = 0; i < 9; i++) s += parseInt(d[i]) * (10 - i);
+  let r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+  if (r !== parseInt(d[9])) return false;
+  s = 0;
+  for (let i = 0; i < 10; i++) s += parseInt(d[i]) * (11 - i);
+  r = (s * 10) % 11; if (r === 10 || r === 11) r = 0;
+  return r === parseInt(d[10]);
+}
+
 function loadProducts() {
   try { const s = localStorage.getItem("vg-products"); return s ? JSON.parse(s) : DEFAULT_PEPTIDES; } catch { return DEFAULT_PEPTIDES; }
 }
@@ -2906,7 +2919,7 @@ function App() {
   function validateCheckout() {
     const errs = {};
     if (!(checkout.nomeCompleto || '').trim()) errs.nomeCompleto = true;
-    if (!/^\d{11}$/.test((checkout.cpf || '').replace(/\D/g,''))) errs.cpf = true;
+    if (!validarCPF(checkout.cpf || '')) errs.cpf = true;
     if (!(checkout.telefone || '').trim()) errs.telefone = true;
     if (checkout.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(checkout.email.trim())) errs.email = true;
     if (!/^\d{8}$/.test((checkout.cep || '').replace(/\D/g,''))) errs.cep = true;
@@ -3651,7 +3664,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       <label>CPF *</label>
                       <input placeholder="000.000.000-00" value={checkout.cpf}
                         className={checkoutErrors.cpf ? 'error' : ''}
-                        onChange={e=>{ updateCheckout('cpf', e.target.value); const clean=e.target.value.replace(/\D/g,''); if(clean.length===11) checkPoints(e.target.value); else setPointsBalance(null); }} />
+                        onChange={e=>{ updateCheckout('cpf', e.target.value); const clean=e.target.value.replace(/\D/g,''); if(clean.length===11){ checkPoints(e.target.value); if(!validarCPF(e.target.value)) setCheckoutErrors(prev=>({...prev,cpf:true})); else setCheckoutErrors(prev=>({...prev,cpf:false})); } else setPointsBalance(null); }} />
+                      {checkoutErrors.cpf && (checkout.cpf||'').replace(/\D/g,'').length===11 && (
+                        <span style={{color:'#e05555',fontSize:'0.7rem',marginTop:3,display:'block'}}>CPF inválido — verifique os números</span>
+                      )}
                     </div>
                     <div className="input-group">
                       <label>Telefone *</label>
@@ -3671,7 +3687,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     <button className="checkout-nav-next" onClick={()=>{
                       const errs = {};
                       if (!(checkout.nomeCompleto||'').trim()) errs.nomeCompleto = true;
-                      if (!/^\d{11}$/.test((checkout.cpf||'').replace(/\D/g,''))) errs.cpf = true;
+                      if (!validarCPF(checkout.cpf||'')) errs.cpf = true;
                       if (!(checkout.telefone||'').trim()) errs.telefone = true;
                       if (checkout.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(checkout.email.trim())) errs.email = true;
                       setCheckoutErrors(errs);
