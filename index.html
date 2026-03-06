@@ -2345,6 +2345,7 @@ function App() {
   const [disclaimer, setDisclaimer] = useState(false);
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
   const [adminSearch, setAdminSearch] = useState('');
+  const [adminPage, setAdminPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [carouselTouchX, setCarouselTouchX] = useState(null);
@@ -4539,11 +4540,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     <input
                       type="text"
                       value={adminSearch}
-                      onChange={e=>setAdminSearch(e.target.value)}
+                      onChange={e=>{ setAdminSearch(e.target.value); setAdminPage(1); }}
                       placeholder="Buscar por nome, CPF, telefone, código VG ou produto..."
                       style={{width:'100%',boxSizing:'border-box',padding:'9px 36px 9px 34px',borderRadius:10,border:'1px solid var(--border)',background:'rgba(255,255,255,0.04)',color:'var(--text)',fontSize:'0.82rem',fontFamily:"'DM Sans',sans-serif",outline:'none'}}
                     />
-                    {adminSearch && <button onClick={()=>setAdminSearch('')} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'transparent',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.9rem',lineHeight:1}}>✕</button>}
+                    {adminSearch && <button onClick={()=>{ setAdminSearch(''); setAdminPage(1); }} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'transparent',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.9rem',lineHeight:1}}>✕</button>}
                   </div>
                   <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
                     {[
@@ -4553,7 +4554,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       {id:'enviado',label:'📦 Enviado',count:statusCounts.enviado},
                       {id:'entregue',label:'🎉 Entregue',count:statusCounts.entregue},
                     ].map(f=>(
-                      <button key={f.id} onClick={()=>setAdminStatusFilter(f.id)}
+                      <button key={f.id} onClick={()=>{ setAdminStatusFilter(f.id); setAdminPage(1); }}
                         style={{padding:'5px 12px',borderRadius:20,border:'1px solid',cursor:'pointer',fontSize:'0.72rem',fontFamily:"'Space Mono',monospace",
                           borderColor: adminStatusFilter===f.id ? 'var(--accent)' : 'var(--border)',
                           background: adminStatusFilter===f.id ? 'rgba(0,229,195,0.1)' : 'transparent',
@@ -4567,6 +4568,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     {filteredOrders.length} resultado{filteredOrders.length!==1?'s':''} encontrado{filteredOrders.length!==1?'s':''}
                   </div>
                 )}
+                {(() => {
+                  const ADMIN_PAGE_SIZE = 20;
+                  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ADMIN_PAGE_SIZE));
+                  const safePage = Math.min(adminPage, totalPages);
+                  const pagedOrders = filteredOrders.slice((safePage-1)*ADMIN_PAGE_SIZE, safePage*ADMIN_PAGE_SIZE);
+                  return (<>
                 <div className="admin-table">
                   <div className="admin-table-header">
                     <span>Produto</span>
@@ -4575,12 +4582,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     <span>Total</span>
                     <span></span>
                   </div>
-                  {filteredOrders.length === 0 && (
+                  {pagedOrders.length === 0 && (
                     <div style={{textAlign:'center',color:'var(--muted)',padding:'32px 20px',fontSize:'0.82rem'}}>
-                      Nenhum pedido encontrado para "{adminSearch}"
+                      {adminSearch ? `Nenhum pedido encontrado para "${adminSearch}"` : 'Nenhum pedido nesta categoria'}
                     </div>
                   )}
-                  {filteredOrders.map(order => {
+                  {pagedOrders.map(order => {
                     const items = order._items && order._items.length > 0 ? order._items : [{peptideId: order.peptideId, qty: order.qty || 1}];
                     const firstP = products.find(x => x.id === items[0].peptideId);
                     if (!firstP) return null;
@@ -4627,6 +4634,23 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     <span style={{color:"var(--accent)",fontWeight:700}}>R$ {totalRevenue.toLocaleString("pt-BR")}</span>
                   </div>
                 </div>
+                {totalPages > 1 && (
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:14}}>
+                    <button onClick={()=>setAdminPage(p=>Math.max(1,p-1))} disabled={safePage===1}
+                      style={{padding:'6px 14px',borderRadius:8,border:'1px solid var(--border)',background:'transparent',color:safePage===1?'var(--muted)':'var(--text)',cursor:safePage===1?'default':'pointer',fontSize:'0.78rem'}}>
+                      ← Anterior
+                    </button>
+                    <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.68rem',color:'var(--muted)'}}>
+                      {safePage} / {totalPages}
+                    </span>
+                    <button onClick={()=>setAdminPage(p=>Math.min(totalPages,p+1))} disabled={safePage===totalPages}
+                      style={{padding:'6px 14px',borderRadius:8,border:'1px solid var(--border)',background:'transparent',color:safePage===totalPages?'var(--muted)':'var(--text)',cursor:safePage===totalPages?'default':'pointer',fontSize:'0.78rem'}}>
+                      Próximo →
+                    </button>
+                  </div>
+                )}
+                  </>);
+                })()}
                 </div>
                 );
               })()}
