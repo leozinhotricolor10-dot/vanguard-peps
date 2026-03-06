@@ -3281,10 +3281,18 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       .filter(po => po.productId === productId && ['pending','notified'].includes(po.status || 'pending'))
       .reduce((sum, po) => sum + (po.qty || 1), 0);
     const baseAvail = Math.max(0, total - reservedByPreorders);
-    // Purchase order cap: limit reservations to qty ordered from supplier
-    const poCapQty = purchaseOrders
+    // Purchase order cap: from standalone POs + pending import history entries
+    const standaloneCap = purchaseOrders
       .filter(po => po.productId === productId && po.status === 'pending')
       .reduce((sum, po) => sum + (po.qty || 0), 0);
+    const productSku = products.find(p => p.id === productId)?.sku;
+    const importCap = productSku ? importHistory
+      .filter(h => h.status && h.status !== 'entregue')
+      .reduce((sum, h) => {
+        const item = (h.items || []).find(it => it.sku === productSku);
+        return sum + (item ? parseInt(item.boxes) || 0 : 0);
+      }, 0) : 0;
+    const poCapQty = standaloneCap + importCap;
     if (poCapQty > 0) {
       const liveReservations = orders
         .filter(o => {
@@ -5938,12 +5946,26 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 setImportForm({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', desconto:'', outrosBrl:'', invoiceTotal:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:'',precoVenda:''}] });
               }
 
+              const IMPORT_STATUS = {
+                aguardando:  { label: '⏳ Aguardando',   color: '#ffaa00', next: 'em_transito' },
+                em_transito: { label: '✈️ Em Trânsito',  color: '#78aaff', next: 'alfandega' },
+                alfandega:   { label: '🛃 Alfândega',    color: '#ff9f43', next: 'entregue' },
+                entregue:    { label: '✅ Entregue',      color: '#4ade80', next: null },
+              };
+              function updateImportStatus(id, newStatus) {
+                const hist = importHistory.map(h => h.id === id ? { ...h, status: newStatus } : h);
+                setImportHistory(hist);
+                localStorage.setItem('vg-imports', JSON.stringify(hist));
+                showToast(`Status: ${IMPORT_STATUS[newStatus]?.label || newStatus}`);
+              }
               function saveImport() {
                 if (calcs.length === 0) { showToast('Adicione produtos antes de salvar','error'); return; }
+                const existingStatus = editingImportId ? (importHistory.find(h => h.id === editingImportId)?.status || 'aguardando') : 'aguardando';
                 const entry = {
                   id: editingImportId || Date.now(),
                   date: importForm.date, cambio, freteUsd, fedexBrl, desconto, outrosBrl, invoiceTotal,
                   overheadBrl, totalOrderUsd,
+                  status: existingStatus,
                   items: calcs
                 };
                 let hist;
@@ -6174,14 +6196,27 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     {importHistory.map(h=>(
                       <div key={h.id} style={{padding:'10px 14px',background: editingImportId===h.id ? 'rgba(255,193,7,0.06)' : 'rgba(255,255,255,0.02)',border:`1px solid ${editingImportId===h.id?'rgba(255,193,7,0.4)':'var(--border)'}`,borderRadius:8,marginBottom:6,fontSize:'0.78rem'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}}>
-                          <div>
-                            <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.65rem',color:'var(--accent)'}}>{h.date}</span>
-                            <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--muted)',marginLeft:10}}>
+                          <div style={{flex:1}}>
+                            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
+                              <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.65rem',color:'var(--accent)'}}>{h.date}</span>
+                              {(() => {
+                                const st = h.status || 'aguardando';
+                                const cfg = IMPORT_STATUS[st];
+                                return (
+                                  <span
+                                    onClick={()=>{ if(cfg?.next) updateImportStatus(h.id, cfg.next); }}
+                                    style={{fontFamily:"'Space Mono',monospace",fontSize:'0.55rem',fontWeight:700,padding:'2px 8px',borderRadius:20,color:cfg?.color,border:`1px solid ${cfg?.color}`,background:`${cfg?.color}18`,cursor:cfg?.next?'pointer':'default',whiteSpace:'nowrap',userSelect:'none',letterSpacing:'0.5px'}}
+                                    title={cfg?.next ? `Avançar para: ${IMPORT_STATUS[cfg.next]?.label}` : 'Pedido entregue'}
+                                  >{cfg?.label}{cfg?.next ? ' ›' : ''}</span>
+                                );
+                              })()}
+                            </div>
+                            <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--muted)'}}>
                               Câmbio: {h.cambio} · USD {h.totalOrderUsd?.toFixed(2)} · Overhead: R${h.overheadBrl?.toFixed(2)}
                               {h.invoiceTotal > 0 && <> · Invoice: R${parseFloat(h.invoiceTotal).toFixed(2)}</>}
                             </span>
                           </div>
-                          <button onClick={()=>editImport(h)} style={{background:'rgba(255,255,255,0.04)',border:'1px solid var(--border)',borderRadius:6,color:'var(--muted)',cursor:'pointer',fontSize:'0.68rem',fontFamily:"'Space Mono',monospace",padding:'3px 10px',flexShrink:0}}>
+                          <button onClick={()=>editImport(h)} style={{background:'rgba(255,255,255,0.04)',border:'1px solid var(--border)',borderRadius:6,color:'var(--muted)',cursor:'pointer',fontSize:'0.68rem',fontFamily:"'Space Mono',monospace",padding:'3px 10px',flexShrink:0,marginLeft:10}}>
                             ✏️ Editar
                           </button>
                         </div>
