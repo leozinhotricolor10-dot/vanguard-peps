@@ -144,9 +144,10 @@ esbuild.transform(jsxCode, {
   dist = dist.replace('</body>', loadingJS + '\n</body>');
 
   // Substituir <script type="text/babel"> pelo JS compilado (sem defer — inline ignora defer)
+  // IMPORTANTE: usar função como replacement para evitar interpretação de $& no código minificado
   dist = dist.replace(
     /<script type="text\/babel">[\s\S]*?<\/script>/,
-    `<script>\n${result.code}\n</script>`
+    () => `<script>\n${result.code}\n</script>`
   );
 
   // 4) Escrever dist/
