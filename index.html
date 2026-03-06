@@ -1134,6 +1134,7 @@ function saveProducts(p) {
     compounds: prod.compounds || null,
     cost_per_vial: prod._custoVial || null,
     packs: prod.packs || [],
+    image_url: prod.image_url || null,
     sort_order: i, updated_at: new Date().toISOString()
   }));
   sb.from('products').upsert(rows, { onConflict: 'id' })
@@ -2691,6 +2692,7 @@ function App() {
           compounds: p.compounds || null,
           _custoVial: p.cost_per_vial ? Number(p.cost_per_vial) : null,
           packs: p.packs || [],
+          image_url: p.image_url || null,
         }));
       }
       sb.from('products').select('*').order('sort_order', { ascending: true }).then(({ data, error }) => {
@@ -4204,8 +4206,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       <div className="carousel-track" style={{transform:`translateX(calc(-${carouselIdx * 274}px))`}}>
                         {hotProducts.map((p,i)=>(
                           <div key={p.id} className="carousel-card" onClick={()=>{ setSelectedProduct(p); setView('detail', p); }}>
-                            {PRODUCT_IMAGES[p.id]
-                              ? <img src={PRODUCT_IMAGES[p.id]} className="carousel-card-img" alt={p.name} />
+                            {(PRODUCT_IMAGES[p.id] || p.image_url)
+                              ? <img src={PRODUCT_IMAGES[p.id] || p.image_url} className="carousel-card-img" alt={p.name} />
                               : <div style={{height:160,background:'rgba(0,229,195,0.05)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'2.5rem'}}>⚗️</div>
                             }
                             <div className="product-hot-badge" style={{top:10,left:10,right:'auto'}}>🔥 HOT</div>
@@ -4265,7 +4267,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     {(productPromo[peptide.id]||0) > 0 && availableStock(peptide.id)>0 && <div className="promo-badge">🔥 -{productPromo[peptide.id]}% PROMO</div>}
                     {peptide.hot && availableStock(peptide.id)>0 && !(productPromo[peptide.id]>0) && <div className="product-hot-badge">🔥 HOT</div>}
                     {peptide.badge && !peptide.hot && availableStock(peptide.id)>0 && !(productPromo[peptide.id]>0) && <div className="product-label-badge">{peptide.badge}</div>}
-                    {PRODUCT_IMAGES[peptide.id] && <img src={PRODUCT_IMAGES[peptide.id]} className="product-card-img" alt={peptide.name} style={{cursor:'pointer'}} onClick={()=>{ setSelectedProduct(peptide); setView('detail', peptide); }} />}
+                    {(PRODUCT_IMAGES[peptide.id] || peptide.image_url) && <img src={PRODUCT_IMAGES[peptide.id] || peptide.image_url} className="product-card-img" alt={peptide.name} style={{cursor:'pointer'}} onClick={()=>{ setSelectedProduct(peptide); setView('detail', peptide); }} />}
                     {peptide.sku && <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:"var(--muted)",marginBottom:6}}>{peptide.sku}</div>}
                     <div className="product-card-name" style={{cursor:"pointer"}} onClick={()=>{ setSelectedProduct(peptide); setView("detail", peptide); }}>{peptide.name} <span style={{fontSize:"0.6rem",color:"var(--accent)",fontFamily:"'Space Mono',monospace",opacity:0.7}}>ver mais ›</span></div>
                     {peptide.compounds && <div style={{fontSize:"0.65rem",color:"var(--accent)",opacity:0.75,marginBottom:"4px",marginTop:"-2px",letterSpacing:"0.02em"}}>{peptide.compounds}</div>}
@@ -4374,8 +4376,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   <div className="detail-hero">
                     {/* LEFT — imagem */}
                     <div>
-                      {PRODUCT_IMAGES[p.id]
-                        ? <img src={PRODUCT_IMAGES[p.id]} className="detail-hero-img" alt={p.name} />
+                      {(PRODUCT_IMAGES[p.id] || p.image_url)
+                        ? <img src={PRODUCT_IMAGES[p.id] || p.image_url} className="detail-hero-img" alt={p.name} />
                         : <div className="detail-hero-img-placeholder">🧪</div>
                       }
                     </div>
@@ -5054,6 +5056,35 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                           <input type="checkbox" checked={!!form.hot} onChange={e=>setProdForm(f=>({...f,hot:e.target.checked}))} style={{width:16,height:16,accentColor:'var(--warn)',cursor:'pointer'}} />
                           <span>🔥 Produto em destaque (aparece no carousel "Em Alta" e com badge HOT)</span>
                         </label>
+                      </div>
+                      <div className="prod-form-group prod-form-full">
+                        <label>🖼️ Imagem do produto</label>
+                        <div style={{display:'flex',gap:10,alignItems:'flex-start'}}>
+                          {form.image_url && (
+                            <img src={form.image_url} alt="" style={{width:64,height:64,objectFit:'cover',borderRadius:8,border:'1px solid var(--border)',flexShrink:0}} />
+                          )}
+                          <div style={{flex:1}}>
+                            <label style={{display:'inline-flex',alignItems:'center',gap:7,padding:'8px 14px',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.25)',borderRadius:8,cursor:'pointer',fontSize:'0.78rem',color:'var(--accent)',fontFamily:"'Space Mono',monospace",fontWeight:700}}>
+                              {form._imgUploading ? '⏳ Enviando...' : '📤 Selecionar imagem'}
+                              <input type="file" accept="image/*" style={{display:'none'}} disabled={!!form._imgUploading} onChange={async e => {
+                                const file = e.target.files?.[0];
+                                if (!file || !sb) return;
+                                setProdForm(f=>({...f,_imgUploading:true}));
+                                const ext = file.name.split('.').pop();
+                                const path = `${form.id || ('new-' + Date.now())}.${ext}`;
+                                const { error } = await sb.storage.from('product-images').upload(path, file, { upsert: true, contentType: file.type });
+                                if (error) { showToast('Erro no upload: ' + error.message, 'error'); setProdForm(f=>({...f,_imgUploading:false})); return; }
+                                const { data: { publicUrl } } = sb.storage.from('product-images').getPublicUrl(path);
+                                setProdForm(f=>({...f, image_url: publicUrl, _imgUploading:false}));
+                                showToast('Imagem enviada ✓');
+                              }} />
+                            </label>
+                            {form.image_url && (
+                              <button onClick={()=>setProdForm(f=>({...f,image_url:null}))} style={{marginLeft:8,background:'none',border:'none',color:'#ff5050',cursor:'pointer',fontSize:'0.75rem',fontFamily:"'Space Mono',monospace"}}>✕ remover</button>
+                            )}
+                            <div style={{fontSize:'0.62rem',color:'var(--muted)',marginTop:5}}>JPG, PNG ou WebP · máx 5MB</div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     {/* PACKS DE PROTOCOLO */}
