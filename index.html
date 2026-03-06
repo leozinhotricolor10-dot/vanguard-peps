@@ -1133,6 +1133,7 @@ function saveProducts(p) {
     hot: prod.hot || false, badge: prod.badge || null,
     compounds: prod.compounds || null,
     cost_per_vial: prod._custoVial || null,
+    packs: prod.packs || [],
     sort_order: i, updated_at: new Date().toISOString()
   }));
   sb.from('products').upsert(rows, { onConflict: 'id' })
@@ -2259,6 +2260,7 @@ function App() {
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const [adminTab, setAdminTab] = useState("pedidos");
   const [prodForm, setProdForm] = useState(null); // null = fechado, {} = novo, {id} = editando
+  const [packForm, setPackForm] = useState(null); // null = fechado, {} = novo pack em edição
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showNameModal, setShowNameModal] = useState(false);
@@ -2668,6 +2670,7 @@ function App() {
           hot: p.hot || false, badge: p.badge || null,
           compounds: p.compounds || null,
           _custoVial: p.cost_per_vial ? Number(p.cost_per_vial) : null,
+          packs: p.packs || [],
         }));
       }
       sb.from('products').select('*').order('sort_order', { ascending: true }).then(({ data, error }) => {
@@ -2989,7 +2992,8 @@ function App() {
     setIsSubmitting(true);
     try {
       const freight = calcFreight(checkout.estado, myTotal);
-      const pixDiscount = checkout.pagamento === 'pix' ? Math.round(myTotal * 0.1) : 0;
+      const packItemsTotal = myOrders.reduce((s,o) => o._packPrice !== undefined ? s + (o.qty||0)*o._packPrice : s, 0);
+      const pixDiscount = checkout.pagamento === 'pix' ? Math.round((myTotal - packItemsTotal) * 0.1) : 0;
       const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round((myTotal - pixDiscount) * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal - pixDiscount)) : 0;
       const pointsDiscount = Math.floor(appliedPoints / 100) * (pointsConfig.redeem || 5);
       const totalFinal = myTotal - pixDiscount - couponDiscount - pointsDiscount + freight.value;
@@ -3353,13 +3357,35 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
   // Cart for current user
   const myOrders = useMemo(() => orders.filter(o => !o._supabase && (o.buyerName || '').toLowerCase() === myName.toLowerCase()), [orders, myName]);
-  const myTotal  = useMemo(() => myOrders.reduce((s, o) => { const p = products.find(x => x.id === o.peptideId); return s + (o.qty||0) * effectivePrice(p); }, 0), [myOrders, productPromo]);
+  const myTotal  = useMemo(() => myOrders.reduce((s, o) => { const p = products.find(x => x.id === o.peptideId); const unitPrice = o._packPrice !== undefined ? o._packPrice : effectivePrice(p); return s + (o.qty||0) * unitPrice; }, 0), [myOrders, productPromo]);
   const cartCount = myOrders.reduce((s, o) => s + (o.qty || 0), 0);
 
   function openModal(peptide) {
     setModal({ peptide });
     setFormName(myName);
     setFormQty(1);
+  }
+
+  async function addPackToCart(product, pack) {
+    const name = myName.trim();
+    if (!name) { showToast('Informe seu nome primeiro', 'error'); return; }
+    const existing = orders.find(o => !o._supabase && o.peptideId === product.id && (o.buyerName||'').toLowerCase() === name.toLowerCase());
+    if (existing) { showToast('Remova o produto do carrinho antes de adicionar um pack', 'error'); return; }
+    const avail = availableStock(product.id);
+    if (avail !== null && avail >= 0 && avail < pack.qty) { showToast(`Estoque insuficiente para este pack (disponível: ${avail})`, 'error'); return; }
+    const packUnitPrice = Math.round(effectivePrice(product) * (1 - pack.discount / 100));
+    const _now = new Date(); const _pad = n=>String(n).padStart(2,'0'); const _rand = Math.random().toString(36).slice(2,6);
+    const newOrder = { id: `${_now.getFullYear()}${_pad(_now.getMonth()+1)}${_pad(_now.getDate())}${_pad(_now.getHours())}${_pad(_now.getMinutes())}${_pad(_now.getSeconds())}_${_rand}`, peptideId: product.id, buyerName: name, qty: pack.qty, createdAt: new Date().toISOString(), _packId: pack.id, _packName: pack.name, _packPrice: packUnitPrice };
+    if (sb && stock[product.id] != null) {
+      const { data: newQty, error } = await sb.rpc('decrement_stock', { p_product_id: product.id, p_qty: pack.qty });
+      if (error || newQty === -1) { showToast('Estoque insuficiente para este pack 😅', 'error'); return; }
+      const newStock = { ...stock, [product.id]: newQty };
+      localStorage.setItem('vg-stock', JSON.stringify(newStock));
+      setStock(newStock);
+    }
+    persistOrders([...orders, newOrder]);
+    saveName(name);
+    showToast(`Pack "${pack.name}" adicionado ao carrinho ✓`, 'success');
   }
 
   async function handleAddToCart() {
@@ -3650,7 +3676,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       {/* CHECKOUT MODAL */}
       {checkoutOpen && (() => {
         const freight = calcFreight(checkout.estado, myTotal);
-        const pixDiscount = checkout.pagamento === 'pix' ? Math.round(myTotal * 0.1) : 0;
+        const packItemsTotal = myOrders.reduce((s,o) => o._packPrice !== undefined ? s + (o.qty||0)*o._packPrice : s, 0);
+        const pixDiscount = checkout.pagamento === 'pix' ? Math.round((myTotal - packItemsTotal) * 0.1) : 0;
         const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round((myTotal - pixDiscount) * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal - pixDiscount)) : 0;
         const pointsDiscount = Math.floor(appliedPoints / 100) * (pointsConfig.redeem || 5);
         const totalFinal = myTotal - pixDiscount - couponDiscount - pointsDiscount + freight.value;
@@ -4894,9 +4921,59 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                         </label>
                       </div>
                     </div>
+                    {/* PACKS DE PROTOCOLO */}
+                    {editing && (
+                      <div style={{marginTop:20,paddingTop:16,borderTop:'1px solid var(--border)'}}>
+                        <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--accent)',letterSpacing:'1.5px',marginBottom:12}}>📦 PACKS DE PROTOCOLO</div>
+                        {(form.packs||[]).length === 0 && !packForm && (
+                          <div style={{fontSize:'0.75rem',color:'var(--muted)',marginBottom:10}}>Nenhum pack cadastrado.</div>
+                        )}
+                        {(form.packs||[]).map(pk => (
+                          <div key={pk.id} style={{display:'flex',alignItems:'center',gap:10,padding:'8px 12px',background:'rgba(0,229,195,0.04)',border:'1px solid rgba(0,229,195,0.12)',borderRadius:8,marginBottom:6,fontSize:'0.78rem'}}>
+                            <div style={{flex:1}}>
+                              <span style={{fontWeight:700,color:'var(--text)'}}>{pk.name}</span>
+                              <span style={{color:'var(--muted)',marginLeft:8}}>{pk.qty} ampolas · -{pk.discount}%</span>
+                              {pk.desc && <span style={{color:'var(--muted)',marginLeft:8,fontSize:'0.68rem'}}>— {pk.desc}</span>}
+                            </div>
+                            <span style={{fontFamily:"'Space Mono',monospace",color:'var(--accent)',fontSize:'0.75rem'}}>
+                              R$ {Math.round(effectivePrice(form) * (1 - pk.discount/100) * pk.qty).toLocaleString('pt-BR')}
+                            </span>
+                            <button onClick={()=>{ const updated = (form.packs||[]).filter(x=>x.id!==pk.id); setProdForm(f=>({...f,packs:updated})); }} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.85rem',padding:'0 4px'}}>✕</button>
+                          </div>
+                        ))}
+                        {packForm ? (
+                          <div style={{background:'rgba(0,229,195,0.03)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:10,padding:14,marginTop:8}}>
+                            <div style={{display:'grid',gridTemplateColumns:'2fr 1fr 1fr',gap:8,marginBottom:8}}>
+                              <div><div style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:3}}>Nome do pack *</div><input placeholder="Protocolo Completo" value={packForm.name||''} onChange={e=>setPackForm(f=>({...f,name:e.target.value}))} style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'7px 10px',color:'var(--text)',fontSize:'0.8rem',width:'100%',boxSizing:'border-box'}} /></div>
+                              <div><div style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:3}}>Qtd (ampolas) *</div><input type="number" min="2" placeholder="5" value={packForm.qty||''} onChange={e=>setPackForm(f=>({...f,qty:e.target.value}))} style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'7px 10px',color:'var(--text)',fontSize:'0.8rem',width:'100%',boxSizing:'border-box'}} /></div>
+                              <div><div style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:3}}>Desconto % *</div><input type="number" min="1" max="99" placeholder="15" value={packForm.discount||''} onChange={e=>setPackForm(f=>({...f,discount:e.target.value}))} style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'7px 10px',color:'var(--text)',fontSize:'0.8rem',width:'100%',boxSizing:'border-box'}} /></div>
+                            </div>
+                            <div style={{marginBottom:10}}><div style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:3}}>Descrição (opcional)</div><input placeholder="ex: Ciclo de 12–24 semanas" value={packForm.desc||''} onChange={e=>setPackForm(f=>({...f,desc:e.target.value}))} style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'7px 10px',color:'var(--text)',fontSize:'0.8rem',width:'100%',boxSizing:'border-box'}} /></div>
+                            {packForm.name && packForm.qty && packForm.discount && form.price && (
+                              <div style={{fontSize:'0.68rem',color:'var(--accent)',fontFamily:"'Space Mono',monospace",marginBottom:10}}>
+                                {packForm.qty}x por R$ {Math.round(parseFloat(form.price)*(1-parseFloat(packForm.discount)/100)*parseFloat(packForm.qty)).toLocaleString('pt-BR')} (economiza R$ {Math.round(parseFloat(form.price)*parseFloat(packForm.qty) - parseFloat(form.price)*(1-parseFloat(packForm.discount)/100)*parseFloat(packForm.qty)).toLocaleString('pt-BR')})
+                              </div>
+                            )}
+                            <div style={{display:'flex',gap:8}}>
+                              <button onClick={()=>{
+                                if (!packForm.name?.trim() || !packForm.qty || !packForm.discount) { showToast('Preencha nome, qtd e desconto','error'); return; }
+                                const newPack = { id: Date.now().toString(), name: packForm.name.trim(), qty: parseInt(packForm.qty), discount: parseFloat(packForm.discount), desc: packForm.desc?.trim()||'' };
+                                setProdForm(f=>({...f, packs:[...(f.packs||[]), newPack]}));
+                                setPackForm(null);
+                                showToast('Pack adicionado ✓','success');
+                              }} style={{padding:'7px 14px',background:'var(--accent)',border:'none',borderRadius:6,color:'#050a0e',fontWeight:700,fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>Salvar Pack</button>
+                              <button onClick={()=>setPackForm(null)} style={{padding:'7px 14px',background:'transparent',border:'1px solid var(--border)',borderRadius:6,color:'var(--muted)',fontSize:'0.72rem',cursor:'pointer'}}>Cancelar</button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button onClick={()=>setPackForm({name:'',qty:'',discount:'',desc:''})} style={{marginTop:4,padding:'7px 14px',background:'rgba(0,229,195,0.06)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:8,color:'var(--accent)',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontWeight:700}}>＋ Adicionar Pack</button>
+                        )}
+                      </div>
+                    )}
+
                     <div style={{display:"flex",gap:8,marginTop:16}}>
                       <button className="admin-action-btn" onClick={saveProd}>💾 Salvar</button>
-                      <button className="admin-action-btn" style={{background:"transparent"}} onClick={()=>setProdForm(null)}>Cancelar</button>
+                      <button className="admin-action-btn" style={{background:"transparent"}} onClick={()=>{ setProdForm(null); setPackForm(null); }}>Cancelar</button>
                     </div>
                   </div>
                 )}
@@ -6948,6 +7025,37 @@ _Vanguard Peptides_ 🧬`;
               🛒 ADICIONAR AO CARRINHO
             </button>
             <button className="modal-cancel-btn" onClick={()=>setModal(null)}>CANCELAR</button>
+
+            {modal.peptide.packs && modal.peptide.packs.length > 0 && (
+              <div style={{marginTop:16,paddingTop:16,borderTop:'1px solid var(--border)'}}>
+                <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--accent)',letterSpacing:'1.5px',textTransform:'uppercase',marginBottom:12}}>📦 Packs Protocolo</div>
+                {modal.peptide.packs.map((pack, pi) => {
+                  const basePrice = effectivePrice(modal.peptide);
+                  const packUnitPrice = Math.round(basePrice * (1 - pack.discount / 100));
+                  const packTotal = packUnitPrice * pack.qty;
+                  const originalTotal = basePrice * pack.qty;
+                  return (
+                    <div key={pi} style={{background:'rgba(0,229,195,0.04)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:10,padding:'12px',marginBottom:8}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}}>
+                        <div style={{flex:1}}>
+                          <div style={{fontFamily:"'Syne',sans-serif",fontWeight:700,fontSize:'0.88rem',color:'var(--text)'}}>{pack.name}</div>
+                          {pack.desc && <div style={{fontSize:'0.68rem',color:'var(--muted)',marginTop:2}}>{pack.desc}</div>}
+                          <div style={{fontSize:'0.7rem',color:'var(--muted)',marginTop:4}}>{pack.qty} ampola{pack.qty!==1?'s':''}</div>
+                        </div>
+                        <div style={{textAlign:'right',flexShrink:0,marginLeft:12}}>
+                          <div style={{fontSize:'0.65rem',color:'var(--muted)',textDecoration:'line-through'}}>R$ {originalTotal.toLocaleString('pt-BR')}</div>
+                          <div style={{fontFamily:"'Space Mono',monospace",fontWeight:700,color:'var(--accent)',fontSize:'0.9rem'}}>R$ {packTotal.toLocaleString('pt-BR')}</div>
+                          <div style={{fontSize:'0.6rem',color:'#4ade80',fontFamily:"'Space Mono',monospace"}}>-{pack.discount}% OFF</div>
+                        </div>
+                      </div>
+                      <button onClick={()=>{ addPackToCart(modal.peptide, pack); setModal(null); }} style={{width:'100%',padding:'9px',background:'linear-gradient(135deg,rgba(0,229,195,0.18),rgba(0,229,195,0.08))',border:'1px solid rgba(0,229,195,0.35)',borderRadius:8,color:'var(--accent)',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',fontWeight:700,cursor:'pointer',letterSpacing:'0.5px'}}>
+                        📦 ADICIONAR PACK
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
