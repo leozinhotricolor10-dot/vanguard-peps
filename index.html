@@ -2744,6 +2744,46 @@ function App() {
     });
   }, []);
 
+  // ── Supabase: carregar cupons ────────────────────────────────────────────
+  React.useEffect(() => {
+    if (!sb) return;
+    sb.from('coupons').select('*').order('created_at', { ascending: false }).then(({ data }) => {
+      if (data && data.length > 0) {
+        setCoupons(data.map(r => ({ id: r.id, code: r.code, type: r.type, value: r.value, minOrder: r.min_order, expiresAt: r.expires_at, active: r.active })));
+      } else {
+        // Migrar localStorage → Supabase
+        const local = (() => { try { return JSON.parse(localStorage.getItem('vg-coupons')||'[]'); } catch { return []; } })();
+        if (local.length > 0) {
+          Promise.all(local.map(c => sb.from('coupons').insert({ code: c.code, type: c.type||'percent', value: c.value, min_order: c.minOrder||0, expires_at: c.expiresAt||null, active: c.active!==false }))).then(() => {
+            sb.from('coupons').select('*').order('created_at', { ascending: false }).then(({ data: d2 }) => {
+              if (d2) setCoupons(d2.map(r => ({ id: r.id, code: r.code, type: r.type, value: r.value, minOrder: r.min_order, expiresAt: r.expires_at, active: r.active })));
+            });
+          });
+        }
+      }
+    });
+  }, []);
+
+  // ── Supabase: carregar despesas ──────────────────────────────────────────
+  React.useEffect(() => {
+    if (!sb) return;
+    sb.from('expenses').select('*').order('created_at', { ascending: false }).then(({ data }) => {
+      if (data && data.length > 0) {
+        setDespesas(data.map(r => ({ id: r.id, desc: r.description, valor: r.value, categoria: r.category, data: r.expense_date })));
+      } else {
+        // Migrar localStorage → Supabase
+        const local = (() => { try { return JSON.parse(localStorage.getItem('vg-expenses')||'[]'); } catch { return []; } })();
+        if (local.length > 0) {
+          Promise.all(local.map(d => sb.from('expenses').insert({ description: d.desc, value: d.valor, category: d.categoria||'outros', expense_date: d.data||'' }))).then(() => {
+            sb.from('expenses').select('*').order('created_at', { ascending: false }).then(({ data: d2 }) => {
+              if (d2) setDespesas(d2.map(r => ({ id: r.id, desc: r.description, valor: r.value, categoria: r.category, data: r.expense_date })));
+            });
+          });
+        }
+      }
+    });
+  }, []);
+
   // ── Tracking polling: check ME tracking events when admin unlocks ──────────
   React.useEffect(() => {
     if (!adminUnlocked) return;
@@ -5288,15 +5328,22 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               const margemOperacional = confirmed > 0 ? (lucroOperacional / confirmed) * 100 : 0;
 
               // Despesas CRUD
-              function addDespesa() {
+              async function addDespesa() {
                 const v = parseFloat(despesaForm.valor);
                 if (!despesaForm.desc || isNaN(v) || v <= 0) { showToast('Preencha descrição e valor','error'); return; }
-                const nd = [{ id: Date.now(), ...despesaForm, valor: v }, ...despesas];
-                persistDespesas(nd);
+                if (sb) {
+                  const { data } = await sb.from('expenses').insert({ description: despesaForm.desc, value: v, category: despesaForm.categoria||'outros', expense_date: despesaForm.data }).select().single();
+                  if (data) setDespesas(ds => [{ id:data.id, desc:data.description, valor:data.value, categoria:data.category, data:data.expense_date }, ...ds]);
+                } else {
+                  persistDespesas([{ id: Date.now(), ...despesaForm, valor: v }, ...despesas]);
+                }
                 setDespesaForm({ desc:'', valor:'', categoria:'outros', data: new Date().toLocaleDateString('pt-BR') });
                 showToast('Despesa registrada ✓', 'success');
               }
-              function removeDespesa(id) { persistDespesas(despesas.filter(d=>d.id!==id)); }
+              async function removeDespesa(id) {
+                if (sb) { await sb.from('expenses').delete().eq('id', id); setDespesas(ds => ds.filter(d=>d.id!==id)); }
+                else { persistDespesas(despesas.filter(d=>d.id!==id)); }
+              }
 
               const DESP_CATS = { operacional:'⚙️ Operacional', embalagem:'📦 Embalagem', marketing:'📣 Marketing', outros:'📌 Outros' };
 
@@ -6050,20 +6097,22 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               const lStyle = { fontSize:'0.65rem', color:'var(--muted)', marginBottom:3, display:'block' };
               const editing = couponForm?.id && coupons.find(c=>c.id===couponForm.id);
 
-              function saveCoupon() {
+              async function saveCoupon() {
                 if (!couponForm.code?.trim()) { showToast('Código obrigatório','error'); return; }
                 if (!couponForm.value || parseFloat(couponForm.value) <= 0) { showToast('Valor inválido','error'); return; }
-                const entry = {
-                  id: editing ? couponForm.id : Date.now(),
-                  code: couponForm.code.trim().toUpperCase(),
-                  type: couponForm.type || 'percent',
-                  value: parseFloat(couponForm.value),
-                  minOrder: parseFloat(couponForm.minOrder) || 0,
-                  expiresAt: couponForm.expiresAt || null,
-                  active: couponForm.active !== false,
-                };
-                const updated = editing ? coupons.map(c=>c.id===entry.id?entry:c) : [...coupons, entry];
-                persistCoupons(updated);
+                const row = { code: couponForm.code.trim().toUpperCase(), type: couponForm.type||'percent', value: parseFloat(couponForm.value), min_order: parseFloat(couponForm.minOrder)||0, expires_at: couponForm.expiresAt||null, active: couponForm.active!==false };
+                if (sb) {
+                  if (editing) {
+                    await sb.from('coupons').update(row).eq('id', couponForm.id);
+                    setCoupons(cs => cs.map(c => c.id===couponForm.id ? {...c, ...row, minOrder:row.min_order, expiresAt:row.expires_at} : c));
+                  } else {
+                    const { data } = await sb.from('coupons').insert(row).select().single();
+                    if (data) setCoupons(cs => [{ id:data.id, code:data.code, type:data.type, value:data.value, minOrder:data.min_order, expiresAt:data.expires_at, active:data.active }, ...cs]);
+                  }
+                } else {
+                  const entry = { id: editing ? couponForm.id : Date.now(), ...row, minOrder:row.min_order, expiresAt:row.expires_at };
+                  persistCoupons(editing ? coupons.map(c=>c.id===entry.id?entry:c) : [...coupons, entry]);
+                }
                 setCouponForm(null);
                 showToast(editing ? 'Cupom atualizado ✓' : 'Cupom criado ✓', 'success');
               }
@@ -6115,9 +6164,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                             {expired && <span style={{color:'#ff5050'}}> · EXPIRADO</span>}
                           </div>
                           <div style={{fontSize:'0.65rem',fontFamily:"'Space Mono',monospace",color:c.active&&!expired?'var(--accent)':'var(--muted)'}}>{c.active&&!expired?'ATIVO':'INATIVO'}</div>
-                          <button onClick={()=>{ const u=coupons.map(x=>x.id===c.id?{...x,active:!x.active}:x); persistCoupons(u); }} style={{background:'none',border:'1px solid var(--border)',borderRadius:6,color:'var(--muted)',cursor:'pointer',fontSize:'0.65rem',padding:'3px 8px',fontFamily:"'Space Mono',monospace"}}>{c.active?'PAUSAR':'ATIVAR'}</button>
+                          <button onClick={async()=>{ const na=!c.active; if(sb) await sb.from('coupons').update({active:na}).eq('id',c.id); setCoupons(cs=>cs.map(x=>x.id===c.id?{...x,active:na}:x)); if(!sb) persistCoupons(coupons.map(x=>x.id===c.id?{...x,active:na}:x)); }} style={{background:'none',border:'1px solid var(--border)',borderRadius:6,color:'var(--muted)',cursor:'pointer',fontSize:'0.65rem',padding:'3px 8px',fontFamily:"'Space Mono',monospace"}}>{c.active?'PAUSAR':'ATIVAR'}</button>
                           <button onClick={()=>setCouponForm({...c,value:String(c.value),minOrder:String(c.minOrder||''),expiresAt:c.expiresAt||''})} style={{background:'none',border:'1px solid var(--border)',borderRadius:6,color:'var(--muted)',cursor:'pointer',fontSize:'0.65rem',padding:'3px 8px'}}>✏️</button>
-                          <button onClick={()=>{ if(!confirm('Excluir cupom '+c.code+'?')) return; persistCoupons(coupons.filter(x=>x.id!==c.id)); }} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.85rem'}}>✕</button>
+                          <button onClick={async()=>{ if(!confirm('Excluir cupom '+c.code+'?')) return; if(sb) await sb.from('coupons').delete().eq('id',c.id); setCoupons(cs=>cs.filter(x=>x.id!==c.id)); if(!sb) persistCoupons(coupons.filter(x=>x.id!==c.id)); }} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.85rem'}}>✕</button>
                         </div>
                       );
                     })}
