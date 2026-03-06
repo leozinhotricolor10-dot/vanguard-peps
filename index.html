@@ -1089,12 +1089,12 @@ const CATEGORIES = [
 const DEFAULT_PEPTIDES = [
   { id: "tirzepatida", sku: "TZ15",   name: "Tirzepatida 15mg",    desc: "Agonista dual GIP/GLP-1 para perda de peso avançada",             category: "emagrecedores", price: 299, hot: true,  badge: "🔥 Mais Vendido" },
   { id: "retatrutida", sku: "RT15",   name: "Retatrutida 15mg",    desc: "Agonista triplo GIP/GLP-1/Glucagon de nova geração",              category: "emagrecedores", price: 399, hot: false, badge: "✨ Novo" },
-  { id: "ghkcu",       sku: "GHK50",  name: "GHK-Cu 50mg",         desc: "Peptídeo cúprico para colágeno, pele e cabelo",                  category: "beleza",        price: 299, hot: true,  badge: "🔥 Popular" },
-  { id: "glow",        sku: "GLOW70", name: "GLOW Blend 70mg",     desc: "BPC-157 + TB-500 + GHK-Cu — stack completo recuperação e beleza", compounds: "BPC-157 · TB-500 · GHK-Cu", category: "beleza", price: 699, hot: false, badge: "⭐ Destaque" },
+  { id: "ghkcu",       sku: "CU50",   name: "GHK-Cu 50mg",         desc: "Peptídeo cúprico para colágeno, pele e cabelo",                  category: "beleza",        price: 299, hot: true,  badge: "🔥 Popular" },
+  { id: "glow",        sku: "BBG70",  name: "GLOW Blend 70mg",     desc: "BPC-157 + TB-500 + GHK-Cu — stack completo recuperação e beleza", compounds: "BPC-157 · TB-500 · GHK-Cu", category: "beleza", price: 699, hot: false, badge: "⭐ Destaque" },
   { id: "snap8",       sku: "SNAP10", name: "SNAP-8 10mg",         desc: "Botox natural, reduz linhas de expressão",                       category: "beleza",        price: 290, hot: false, badge: null },
   { id: "tesamorelin", sku: "TSM5",   name: "Tesamorelin 5mg",     desc: "Queima de gordura visceral sem efeitos GLP-1",                   category: "corpo",         price: 299, hot: false, badge: "⚡ Limitado" },
   { id: "epithalon",   sku: "EPT10",  name: "Epithalon 10mg",      desc: "Longevidade celular, telômeros, sono e energia",                 category: "longevidade",   price: 249, hot: false, badge: null },
-  { id: "pt141",       sku: "PT141",  name: "PT-141 10mg",         desc: "Modulador de libido masculino e feminino",                       category: "libido",        price: 280, hot: false, badge: null },
+  { id: "pt141",       sku: "P41",    name: "PT-141 10mg",         desc: "Modulador de libido masculino e feminino",                       category: "libido",        price: 280, hot: false, badge: null },
   { id: "selank",      sku: "SLK5",   name: "Selank 5mg",          desc: "Ansiolítico peptídico, foco e clareza mental",                   category: "neuro",         price: 199, hot: false, badge: "✨ Novo" },
   { id: "agua-bact",   sku: "AGUA5",  name: "Água Bacteriostática 5ml", desc: "Solvente estéril para reconstituição de peptídeos — compatível com todos os produtos do catálogo", category: "insumos", price: 25, hot: false, badge: null },
   { id: "kit-reconst", sku: "KIT01",  name: "Kit de Reconstituição", desc: "Água bacteriostática + lenços de álcool + frasco vazio estéril — tudo que você precisa para reconstituir seus peptídeos com segurança", category: "insumos", price: 49, hot: false, badge: "📦 Kit Completo" },
@@ -3290,7 +3290,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       .filter(h => h.status && h.status !== 'entregue')
       .reduce((sum, h) => {
         const item = (h.items || []).find(it => it.sku === productSku);
-        return sum + (item ? parseInt(item.boxes) || 0 : 0);
+        return sum + (item ? parseInt(item.vials) || parseInt(item.boxes) * 10 || 0 : 0);
       }, 0) : 0;
     const poCapQty = standaloneCap + importCap;
     if (poCapQty > 0) {
@@ -4870,7 +4870,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                           const baseAvail = Math.max(0,(tot??0)-preorderRes);
                           // Cap total = standalone POs + import-based
                           const standaloneCap = purchaseOrders.filter(po=>po.productId===p.id&&po.status==='pending').reduce((s,po)=>s+(po.qty||0),0);
-                          const importCap = p.sku ? importHistory.filter(h=>h.status&&h.status!=='entregue').reduce((s,h)=>{ const it=(h.items||[]).find(i=>i.sku===p.sku); return s+(it?parseInt(it.boxes)||0:0); },0) : 0;
+                          const importCap = p.sku ? importHistory.filter(h=>h.status&&h.status!=='entregue').reduce((s,h)=>{ const it=(h.items||[]).find(i=>i.sku===p.sku); return s+(it?parseInt(it.vials)||parseInt(it.boxes)*10||0:0); },0) : 0;
                           const totalCap = standaloneCap + importCap;
                           const liveRes = totalCap > 0 ? orders.filter(o=>o.peptideId===p.id&&(!o._supabase||['pendente','pago','enviado'].includes(o.status||'pendente'))).reduce((s,o)=>s+(o.qty||0),0) : 0;
                           const remaining = totalCap > 0 ? Math.max(0, totalCap - liveRes) : null;
