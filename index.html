@@ -3087,6 +3087,16 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       data = customers.find(c=>c.cpf===clean)||null;
     }
     setPointsBalance(data ? { ...data, points: data.points ?? 0 } : { cpf: clean, points: 0 });
+    if (data) {
+      const updates = {};
+      if (data.name && !checkout.nomeCompleto) updates.nomeCompleto = data.name;
+      if (data.phone && !checkout.telefone) updates.telefone = data.phone;
+      if (data.email && !checkout.email) updates.email = data.email;
+      if (Object.keys(updates).length > 0) {
+        saveCheckoutData({ ...checkout, cpf, ...updates });
+        showToast('Dados preenchidos automaticamente ✓', 'success');
+      }
+    }
   }
 
   async function redeemPoints(cpf, pts) {
