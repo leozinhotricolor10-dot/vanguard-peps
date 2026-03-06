@@ -2323,11 +2323,9 @@ function App() {
   function receivePurchaseOrder(id) {
     const po = purchaseOrders.find(p => p.id === id);
     if (!po) return;
-    const newStockVal = (stock[po.productId] ?? 0) + po.qty;
-    persistStock({ ...stock, [po.productId]: newStockVal });
     persistPurchaseOrders(purchaseOrders.map(p => p.id === id ? { ...p, status: 'received' } : p));
     const pName = products.find(p => p.id === po.productId)?.name || po.productId;
-    showToast(`Estoque de "${pName}" atualizado (+${po.qty}) ✓`);
+    showToast(`Pedido de "${pName}" marcado como recebido ✓`);
   }
   function removePurchaseOrder(id) {
     persistPurchaseOrders(purchaseOrders.filter(p => p.id !== id));
@@ -4939,7 +4937,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       )}
                       <div style={{display:'flex',gap:6}}>
                         {po.status === 'pending' && (
-                          <button onClick={()=>receivePurchaseOrder(po.id)} style={{flex:1,padding:'7px',background:'rgba(74,222,128,0.1)',border:'1px solid rgba(74,222,128,0.3)',borderRadius:7,color:'#4ade80',fontFamily:"'Space Mono',monospace",fontSize:'0.68rem',fontWeight:700,cursor:'pointer'}}>✅ RECEBIDO — Adicionar ao Estoque</button>
+                          <button onClick={()=>receivePurchaseOrder(po.id)} style={{flex:1,padding:'7px',background:'rgba(74,222,128,0.1)',border:'1px solid rgba(74,222,128,0.3)',borderRadius:7,color:'#4ade80',fontFamily:"'Space Mono',monospace",fontSize:'0.68rem',fontWeight:700,cursor:'pointer'}}>✅ MERCADORIA RECEBIDA — Encerrar Cap</button>
                         )}
                         <button onClick={()=>removePurchaseOrder(po.id)} style={{padding:'7px 12px',background:'rgba(255,80,80,0.07)',border:'1px solid rgba(255,80,80,0.2)',borderRadius:7,color:'#ff5050',fontFamily:"'Space Mono',monospace",fontSize:'0.68rem',cursor:'pointer'}}>🗑️</button>
                       </div>
