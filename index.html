@@ -2344,6 +2344,7 @@ function App() {
   const [cfgRedeem, setCfgRedeem] = useState(() => String(JSON.parse(localStorage.getItem('vg-points-config')||'null')?.redeem || 5));
   const [disclaimer, setDisclaimer] = useState(false);
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
+  const [adminSearch, setAdminSearch] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [carouselTouchX, setCarouselTouchX] = useState(null);
@@ -4506,7 +4507,22 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               </div>
               {(() => {
                 const adminOrders = sb ? orders.filter(o => o._supabase) : orders;
-                const filteredOrders = adminStatusFilter === 'all' ? adminOrders : adminOrders.filter(o => (o.status||'pendente') === adminStatusFilter);
+                const adminSearchLower = adminSearch.trim().toLowerCase();
+                const filteredOrders = adminOrders
+                  .filter(o => adminStatusFilter === 'all' || (o.status||'pendente') === adminStatusFilter)
+                  .filter(o => {
+                    if (!adminSearchLower) return true;
+                    const name = (o.buyerName||'').toLowerCase();
+                    const cpf = (o._cpf||'').replace(/\D/g,'');
+                    const phone = (o._phone||'').replace(/\D/g,'');
+                    const code = (o._code||'').toLowerCase();
+                    const productNames = (o._items||[{peptideId:o.peptideId}]).map(i => {
+                      const p2 = products.find(x=>x.id===i.peptideId);
+                      return p2 ? p2.name.toLowerCase() : '';
+                    }).join(' ');
+                    const q = adminSearchLower.replace(/\D/g,'');
+                    return name.includes(adminSearchLower) || code.includes(adminSearchLower) || productNames.includes(adminSearchLower) || (q && (cpf.includes(q) || phone.includes(q)));
+                  });
                 const statusCounts = {
                   pendente: adminOrders.filter(o=>(o.status||'pendente')==='pendente').length,
                   pago: adminOrders.filter(o=>o.status==='pago').length,
@@ -4518,6 +4534,17 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 );
                 return (
                 <div>
+                  <div style={{position:'relative',marginBottom:12}}>
+                    <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'var(--muted)',fontSize:'0.85rem',pointerEvents:'none'}}>🔍</span>
+                    <input
+                      type="text"
+                      value={adminSearch}
+                      onChange={e=>setAdminSearch(e.target.value)}
+                      placeholder="Buscar por nome, CPF, telefone, código VG ou produto..."
+                      style={{width:'100%',boxSizing:'border-box',padding:'9px 36px 9px 34px',borderRadius:10,border:'1px solid var(--border)',background:'rgba(255,255,255,0.04)',color:'var(--text)',fontSize:'0.82rem',fontFamily:"'DM Sans',sans-serif",outline:'none'}}
+                    />
+                    {adminSearch && <button onClick={()=>setAdminSearch('')} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'transparent',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.9rem',lineHeight:1}}>✕</button>}
+                  </div>
                   <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
                     {[
                       {id:'all',label:'Todos',count:adminOrders.length},
@@ -4535,6 +4562,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       </button>
                     ))}
                   </div>
+                {(adminSearch || adminStatusFilter !== 'all') && (
+                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.65rem',color:'var(--muted)',marginBottom:8,paddingLeft:2}}>
+                    {filteredOrders.length} resultado{filteredOrders.length!==1?'s':''} encontrado{filteredOrders.length!==1?'s':''}
+                  </div>
+                )}
                 <div className="admin-table">
                   <div className="admin-table-header">
                     <span>Produto</span>
@@ -4543,6 +4575,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     <span>Total</span>
                     <span></span>
                   </div>
+                  {filteredOrders.length === 0 && (
+                    <div style={{textAlign:'center',color:'var(--muted)',padding:'32px 20px',fontSize:'0.82rem'}}>
+                      Nenhum pedido encontrado para "{adminSearch}"
+                    </div>
+                  )}
                   {filteredOrders.map(order => {
                     const items = order._items && order._items.length > 0 ? order._items : [{peptideId: order.peptideId, qty: order.qty || 1}];
                     const firstP = products.find(x => x.id === items[0].peptideId);
