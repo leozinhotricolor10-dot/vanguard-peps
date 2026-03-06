@@ -3294,13 +3294,17 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       }, 0) : 0;
     const poCapQty = standaloneCap + importCap;
     if (poCapQty > 0) {
-      const liveReservations = orders
-        .filter(o => {
-          if (o.peptideId !== productId) return false;
-          if (!o._supabase) return true; // cart item (stock already decremented)
-          return ['pendente','pago','enviado'].includes(o.status || 'pendente');
-        })
-        .reduce((sum, o) => sum + (o.qty || 0), 0);
+      const liveReservations =
+        orders
+          .filter(o => {
+            if (o.peptideId !== productId) return false;
+            if (!o._supabase) return true; // cart item (stock already decremented)
+            return ['pendente','pago','enviado'].includes(o.status || 'pendente');
+          })
+          .reduce((sum, o) => sum + (o.qty || 0), 0)
+        + preorders
+          .filter(po => po.productId === productId && ['pending','notified'].includes(po.status || 'pending'))
+          .reduce((sum, po) => sum + (po.qty || 1), 0);
       return Math.min(baseAvail, Math.max(0, poCapQty - liveReservations));
     }
     return baseAvail;
@@ -4872,7 +4876,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                           const standaloneCap = purchaseOrders.filter(po=>po.productId===p.id&&po.status==='pending').reduce((s,po)=>s+(po.qty||0),0);
                           const importCap = p.sku ? importHistory.filter(h=>h.status&&h.status!=='entregue').reduce((s,h)=>{ const it=(h.items||[]).find(i=>i.sku===p.sku); return s+(it?parseInt(it.vials)||parseInt(it.boxes)*10||0:0); },0) : 0;
                           const totalCap = standaloneCap + importCap;
-                          const liveRes = totalCap > 0 ? orders.filter(o=>o.peptideId===p.id&&(!o._supabase||['pendente','pago','enviado'].includes(o.status||'pendente'))).reduce((s,o)=>s+(o.qty||0),0) : 0;
+                          const liveRes = totalCap > 0 ? (
+                            orders.filter(o=>o.peptideId===p.id&&(!o._supabase||['pendente','pago','enviado'].includes(o.status||'pendente'))).reduce((s,o)=>s+(o.qty||0),0)
+                            + preorders.filter(po=>po.productId===p.id&&['pending','notified'].includes(po.status||'pending')).reduce((s,po)=>s+(po.qty||1),0)
+                          ) : 0;
                           const remaining = totalCap > 0 ? Math.max(0, totalCap - liveRes) : null;
                           if(totalCap > 0) {
                             const pct = Math.round(liveRes/totalCap*100);
