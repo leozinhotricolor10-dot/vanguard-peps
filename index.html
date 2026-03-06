@@ -4090,6 +4090,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               }
             </div>
 
+            {/* BANNER FRETE */}
+            <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',marginBottom:18,background:'rgba(0,229,195,0.04)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:10,fontSize:'0.75rem',color:'var(--muted)'}}>
+              <span style={{fontSize:'1rem'}}>🚚</span>
+              <span><strong style={{color:'var(--text)'}}>Frete fixo R$&nbsp;60</strong> para todo o Brasil &nbsp;·&nbsp; <strong style={{color:'var(--text)'}}>Grátis</strong> para RMSP acima de R$&nbsp;300</span>
+            </div>
+
             {/* SEARCH BAR */}
             <div className="search-bar-wrap">
               <span className="search-bar-icon">🔍</span>
