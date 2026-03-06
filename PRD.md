@@ -1,5 +1,5 @@
 # PRD — Vanguard Peptides
-**Versão atual:** v2.08c6c3a
+**Versão atual:** v2.5ed6667
 **Última atualização:** Março 2026
 **Stack:** React 18 SPA (esbuild build pipeline) · Supabase JS v2 · localStorage · GitHub Actions CI/CD
 
@@ -464,6 +464,7 @@ git push main → GitHub Action → npm ci → esbuild → dist/ → gh-pages �
 
 | Versão | Commit | Descrição |
 |--------|--------|-----------|
+| v2.5ed6667 | `5ed6667` | feat: auto-fill checkout por CPF — preenche nome, telefone e email do cliente recorrente |
 | v2.08c6c3a | `08c6c3a` | feat: checkout multi-step com stepper — 4 passos (dados, endereço, pagamento, revisão) |
 | v2.016aded | `016aded` | fix: build.js — usar função como replacement para evitar $& no JS minificado |
 | v2.1282464 | `1282464` | feat: aba Mapa — breakdown por zona com pré-orders (cartograma removido) |
