@@ -471,6 +471,21 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
 .detail-add-btn:disabled { opacity: 0.35; cursor: not-allowed; background: var(--muted); }
 .detail-calc-btn { padding: 14px 20px; background: transparent; border: 1px solid var(--border); color: var(--muted); font-family: 'Space Mono', monospace; font-size: 0.72rem; border-radius: 12px; cursor: pointer; transition: all 0.2s; }
 .detail-calc-btn:hover { border-color: rgba(0,229,195,0.3); color: var(--accent); }
+/* STICKY CTA — mobile only */
+.detail-sticky-cta { display: none; }
+@media (max-width: 600px) {
+  .detail-sticky-cta {
+    display: flex; align-items: center; gap: 12px;
+    position: fixed; bottom: calc(58px + env(safe-area-inset-bottom)); left: 0; right: 0;
+    padding: 10px 16px; z-index: 140;
+    background: rgba(5,10,14,0.96); backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+  }
+  .detail-sticky-cta-info { flex: 1; min-width: 0; }
+  .detail-sticky-cta-name { font-family: 'Syne', sans-serif; font-size: 0.8rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .detail-sticky-cta-price { font-family: 'Space Mono', monospace; font-size: 0.75rem; color: var(--accent); margin-top: 2px; }
+  .detail-sticky-cta .detail-add-btn { flex: none; padding: 11px 16px; font-size: 0.6rem; min-width: 120px; white-space: nowrap; }
+}
 .detail-section-title { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; margin-top: 28px; display: flex; align-items: center; gap: 8px; }
 .detail-section-title::before { content: ''; display: inline-block; width: 3px; height: 10px; background: var(--accent); border-radius: 2px; }
 .detail-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -868,15 +883,16 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
     font-size: 0.48rem; padding: 1px 5px; font-weight: 700; line-height: 1.4;
   }
   main { padding: 14px 12px 76px 12px; }
+  .view-detail-wrap { padding-bottom: 72px; }
   .products-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
   .product-card { padding: 10px 8px; }
   .product-card-img { height: 140px !important; object-fit: contain !important; object-position: center center; }
   .product-img-wrap { height: 110px; }
   .product-img-wrap img { max-height: 100px; }
-  .product-name { font-size: 0.72rem; margin: 7px 0 3px; line-height: 1.3; }
+  .product-name { font-size: 0.78rem; margin: 7px 0 3px; line-height: 1.3; }
   .product-price { font-size: 0.88rem; }
   .product-tag { font-size: 0.48rem; padding: 2px 5px; }
-  .product-card .btn-primary { font-size: 0.6rem; padding: 7px 6px; margin-top: 8px; }
+  .product-card .btn-primary { font-size: 0.68rem; padding: 10px 6px; margin-top: 8px; min-height: 40px; }
   .product-badge { font-size: 0.46rem; padding: 2px 6px; top: 6px; right: 6px; }
   .stock-indicator { font-size: 0.56rem; }
   aside {
@@ -921,7 +937,7 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
   .input-group label { font-size: 0.54rem; }
   .input-group input, .input-group select, .input-group textarea { font-size: 0.88rem; padding: 9px 11px; }
   .detail-hero { grid-template-columns: 1fr !important; gap: 18px; }
-  .detail-hero-img { max-width: 180px !important; margin: 0 auto; }
+  .detail-hero-img { max-width: 220px !important; margin: 0 auto; }
   .detail-title { font-size: 1.2rem; }
   .detail-price { font-size: 1.5rem; }
   .detail-back { font-size: 0.7rem; padding: 6px 12px; margin-bottom: 14px; }
@@ -4365,6 +4381,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
           {/* PRODUCT DETAIL */}
           <div className={`view ${view==="detail"?"visible":""}`}>
+            <div className="view-detail-wrap">
             {selectedProduct && (()=>{
               const p = selectedProduct;
               const proto = PROTOCOLS[Object.keys(CALC_PEP_DB).find(k => CALC_PEP_DB[k].name.toLowerCase().includes(p.name.split(' ')[0].toLowerCase()))];
@@ -4426,6 +4443,17 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     </div>
                   </div>
 
+                  {/* Sticky CTA — aparece apenas no mobile via CSS */}
+                  <div className="detail-sticky-cta">
+                    <div className="detail-sticky-cta-info">
+                      <div className="detail-sticky-cta-name">{p.name}</div>
+                      <div className="detail-sticky-cta-price">R$ {effectivePrice(p).toLocaleString('pt-BR')} <span style={{fontSize:'0.6rem',color:'var(--muted)',fontFamily:"'DM Sans',sans-serif"}}>/ampola</span></div>
+                    </div>
+                    <button className="detail-add-btn" onClick={()=>{ openModal(p); }} disabled={availableStock(p.id)===0}>
+                      {availableStock(p.id)===0 ? 'ESGOTADO' : inCartQty > 0 ? '+ MAIS' : '🛒 COMPRAR'}
+                    </button>
+                  </div>
+
                   {proto && (
                     <>
                       <div className="detail-section-title">Protocolo de Referência</div>
@@ -4454,6 +4482,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 </>
               );
             })()}
+            </div>{/* /view-detail-wrap */}
           </div>
 
 
