@@ -4056,7 +4056,14 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
           <div className="logo-dot"></div>
           VANGUARD
           <span className="logo-sub">PEPTIDES</span>
-          <span style={{fontSize:'0.5rem',fontFamily:"'Space Mono',monospace",color:'var(--muted)',letterSpacing:'0.05em',marginLeft:6,opacity:0.6,alignSelf:'flex-end',marginBottom:2}}>v2.01b313f</span>
+          <span onClick={()=>{
+            const now = Date.now();
+            const key = '__vtaps';
+            const taps = (window[key] || []).filter(t => now - t < 2000);
+            taps.push(now);
+            window[key] = taps;
+            if (taps.length >= 5) { window[key] = []; adminUnlocked ? setView('admin') : handleAdminUnlock(); }
+          }} style={{fontSize:'0.5rem',fontFamily:"'Space Mono',monospace",color:'var(--muted)',letterSpacing:'0.05em',marginLeft:6,opacity:0.6,alignSelf:'flex-end',marginBottom:2,cursor:'default',userSelect:'none'}}>v2.01b313f</span>
         </div>
         <div className="nav-right">
           <button className={`nav-btn ${view==="catalog"?"active":""}`} onClick={()=>setView("catalog")}>CATÁLOGO</button>
@@ -4067,9 +4074,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
             🛒 CARRINHO
             {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
           </button>
-          <button className="nav-btn" onClick={adminUnlocked ? ()=>setView("admin") : handleAdminUnlock}>
-            {adminUnlocked ? <>ADMIN ✓{orders.filter(o=>(o.status||'pendente')==='pendente').length > 0 && <span style={{marginLeft:5,background:'var(--accent)',color:'#050a0e',borderRadius:10,padding:'1px 6px',fontSize:'0.6rem',fontWeight:700}}>{orders.filter(o=>(o.status||'pendente')==='pendente').length}</span>}</> : "ADMIN"}
-          </button>
+          {adminUnlocked && <button className="nav-btn" onClick={()=>setView("admin")} style={{opacity:0.7}}>
+            ⚙️{orders.filter(o=>(o.status||'pendente')==='pendente').length > 0 && <span style={{marginLeft:5,background:'var(--accent)',color:'#050a0e',borderRadius:10,padding:'1px 6px',fontSize:'0.6rem',fontWeight:700}}>{orders.filter(o=>(o.status||'pendente')==='pendente').length}</span>}
+          </button>}
         </div>
       </nav>
 
@@ -7292,9 +7299,10 @@ _Vanguard Peptides_ 🧬`;
         <button className={view==="faq"?"active":""} onClick={()=>setView("faq")}>
           <span className="mob-icon">❓</span>FAQ
         </button>
-        <button className={view==="admin"?"active":""} onClick={adminUnlocked?()=>setView("admin"):handleAdminUnlock}>
+        {adminUnlocked && <button className={view==="admin"?"active":""} onClick={()=>setView("admin")}>
           <span className="mob-icon">⚙️</span>ADMIN
-        </button>
+          {orders.filter(o=>(o.status||'pendente')==='pendente').length > 0 && <span className="mob-cart-badge">{orders.filter(o=>(o.status||'pendente')==='pendente').length}</span>}
+        </button>}
       </div>
 
       {/* ── LOADING OVERLAY ── */}
