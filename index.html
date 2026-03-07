@@ -2327,6 +2327,8 @@ function App() {
   const [shippingCosts, setShippingCosts] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-shipping-costs')||'{}'); } catch { return {}; } });
   const [purchaseOrders, setPurchaseOrders] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-purchase-orders')||'[]'); } catch { return []; } });
   const [poForm, setPoForm] = useState({ productId:'', qty:'', note:'' });
+  const [showStickyDetailCta, setShowStickyDetailCta] = useState(false);
+  const detailActionsRef = React.useRef(null);
   function persistDespesas(d) { setDespesas(d); localStorage.setItem('vg-expenses', JSON.stringify(d)); }
   function persistShippingCosts(s) { setShippingCosts(s); localStorage.setItem('vg-shipping-costs', JSON.stringify(s)); }
   function persistPurchaseOrders(pos) { setPurchaseOrders(pos); localStorage.setItem('vg-purchase-orders', JSON.stringify(pos)); }
@@ -2693,6 +2695,14 @@ function App() {
   React.useEffect(() => {
     if (adminTab === 'importacao' && !importForm.cambio) { fetchCambio(); }
   }, [adminTab]);
+
+  // ── Sticky detail CTA: mostra quando botão principal sai da tela ──────────
+  React.useEffect(() => {
+    if (view !== 'detail' || !detailActionsRef.current) { setShowStickyDetailCta(false); return; }
+    const obs = new IntersectionObserver(([entry]) => setShowStickyDetailCta(!entry.isIntersecting), { threshold: 0 });
+    obs.observe(detailActionsRef.current);
+    return () => obs.disconnect();
+  }, [view, selectedProduct]);
 
   // ── Supabase: carregar products + realtime ────────────────────────────────
   React.useEffect(() => {
@@ -4429,7 +4439,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                         </div>
                       )}
 
-                      <div className="detail-actions">
+                      <div className="detail-actions" ref={detailActionsRef}>
                         <button className="detail-add-btn" onClick={()=>{ openModal(p); }} disabled={availableStock(p.id)===0}>
                           {availableStock(p.id)===0 ? 'PRODUTO ESGOTADO' : inCartQty > 0 ? '+ ADICIONAR MAIS' : '🛒 ADICIONAR AO CARRINHO'}
                         </button>
@@ -4443,8 +4453,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     </div>
                   </div>
 
-                  {/* Sticky CTA — aparece apenas no mobile via CSS */}
-                  <div className="detail-sticky-cta">
+                  {/* Sticky CTA — só renderiza quando botão principal saiu da tela */}
+                  {showStickyDetailCta && <div className="detail-sticky-cta">
                     <div className="detail-sticky-cta-info">
                       <div className="detail-sticky-cta-name">{p.name}</div>
                       <div className="detail-sticky-cta-price">R$ {effectivePrice(p).toLocaleString('pt-BR')} <span style={{fontSize:'0.6rem',color:'var(--muted)',fontFamily:"'DM Sans',sans-serif"}}>/ampola</span></div>
@@ -4452,7 +4462,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     <button className="detail-add-btn" onClick={()=>{ openModal(p); }} disabled={availableStock(p.id)===0}>
                       {availableStock(p.id)===0 ? 'ESGOTADO' : inCartQty > 0 ? '+ MAIS' : '🛒 COMPRAR'}
                     </button>
-                  </div>
+                  </div>}
 
                   {proto && (
                     <>
