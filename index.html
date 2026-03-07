@@ -5006,9 +5006,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               }
 
               return <>
-                {/* FORM */}
+                {/* FORM MODAL */}
                 {prodForm !== null && (
-                  <div className="prod-form">
+                  <div className="modal-overlay" onClick={e=>{ if(e.target===e.currentTarget){ setProdForm(null); setPackForm(null); } }} style={{alignItems:'flex-start',paddingTop:24,paddingBottom:24}}>
+                  <div className="prod-form" style={{maxHeight:'calc(100vh - 48px)',overflowY:'auto',width:'100%',maxWidth:600,margin:'0 auto'}}>
                     <div className="prod-form-title">{editing ? '✏️ Editar Produto' : '＋ Novo Produto'}</div>
                     <div className="prod-form-grid">
                       <div className="prod-form-group">
@@ -5141,6 +5142,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       <button className="admin-action-btn" onClick={saveProd}>💾 Salvar</button>
                       <button className="admin-action-btn" style={{background:"transparent"}} onClick={()=>{ setProdForm(null); setPackForm(null); }}>Cancelar</button>
                     </div>
+                  </div>
                   </div>
                 )}
 
