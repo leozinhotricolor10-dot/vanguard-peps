@@ -2324,6 +2324,8 @@ function App() {
   const [shippingCosts, setShippingCosts] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-shipping-costs')||'{}'); } catch { return {}; } });
   const [purchaseOrders, setPurchaseOrders] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-purchase-orders')||'[]'); } catch { return []; } });
   const [poForm, setPoForm] = useState({ productId:'', qty:'', note:'' });
+  const [adminPwModal, setAdminPwModal] = useState(false);
+  const [adminPwInput, setAdminPwInput] = useState('');
   const [showStickyDetailCta, setShowStickyDetailCta] = useState(false);
   const detailActionsRef = React.useRef(null);
   function persistDespesas(d) { setDespesas(d); localStorage.setItem('vg-expenses', JSON.stringify(d)); }
@@ -3620,15 +3622,22 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
     showToast("Item removido", "info");
   }
 
-  async function handleAdminUnlock() {
+  function handleAdminUnlock() {
     const lockKey = 'vg-admin-lock';
     let lockData; try { lockData = JSON.parse(localStorage.getItem(lockKey) || '{"attempts":0,"until":0}'); } catch { lockData = { attempts: 0, until: 0 }; }
     if (Date.now() < lockData.until) {
       const mins = Math.ceil((lockData.until - Date.now()) / 60000);
       showToast(`Bloqueado. Tente em ${mins} min.`, "error"); return;
     }
-    const pw = window.prompt("Código de administrador:");
+    setAdminPwInput('');
+    setAdminPwModal(true);
+  }
+
+  async function submitAdminPassword() {
+    const pw = adminPwInput.trim();
     if (!pw) return;
+    const lockKey = 'vg-admin-lock';
+    let lockData; try { lockData = JSON.parse(localStorage.getItem(lockKey) || '{"attempts":0,"until":0}'); } catch { lockData = { attempts: 0, until: 0 }; }
     try {
       const res = await fetch('https://aumubzvdhzvtnqfzqeqd.supabase.co/functions/v1/verify-admin', {
         method: 'POST',
@@ -3638,12 +3647,14 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       const { ok } = await res.json();
       if (ok) {
         localStorage.removeItem(lockKey);
+        setAdminPwModal(false); setAdminPwInput('');
         setAdminUnlocked(true); showToast("Admin desbloqueado ✓"); setView("admin");
       } else {
         const attempts = (lockData.attempts || 0) + 1;
         const until = attempts >= 3 ? Date.now() + 5 * 60 * 1000 : 0;
         localStorage.setItem(lockKey, JSON.stringify({ attempts, until }));
-        if (attempts >= 3) showToast("3 tentativas — bloqueado por 5 min!", "error");
+        setAdminPwInput('');
+        if (attempts >= 3) { setAdminPwModal(false); showToast("3 tentativas — bloqueado por 5 min!", "error"); }
         else showToast(`Código incorreto! (${attempts}/3)`, "error");
       }
     } catch {
@@ -6719,6 +6730,32 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
         </main>
 
       </div>
+
+      {/* ADMIN PASSWORD MODAL */}
+      {adminPwModal && (
+        <div className="modal-overlay" onClick={e=>{ if(e.target===e.currentTarget){ setAdminPwModal(false); setAdminPwInput(''); } }}>
+          <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:360}}>
+            <div style={{textAlign:'center',marginBottom:20}}>
+              <div style={{fontSize:'2rem',marginBottom:8}}>🔒</div>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:'1.1rem',fontWeight:700}}>Acesso Admin</div>
+              <div style={{color:'var(--muted)',fontSize:'0.8rem',marginTop:4}}>Digite o código de administrador</div>
+            </div>
+            <input
+              type="password"
+              autoFocus
+              value={adminPwInput}
+              onChange={e=>setAdminPwInput(e.target.value)}
+              onKeyDown={e=>{ if(e.key==='Enter') submitAdminPassword(); if(e.key==='Escape'){ setAdminPwModal(false); setAdminPwInput(''); } }}
+              placeholder="••••••••"
+              style={{width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid var(--border)',borderRadius:10,color:'var(--text)',fontSize:'1.1rem',padding:'12px 16px',outline:'none',boxSizing:'border-box',textAlign:'center',letterSpacing:'0.2em',marginBottom:16}}
+            />
+            <div style={{display:'flex',gap:10}}>
+              <button onClick={()=>{ setAdminPwModal(false); setAdminPwInput(''); }} style={{flex:1,padding:'11px',background:'transparent',border:'1px solid var(--border)',color:'var(--muted)',borderRadius:10,cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.7rem'}}>Cancelar</button>
+              <button onClick={submitAdminPassword} style={{flex:1,padding:'11px',background:'var(--accent)',border:'none',color:'#000',borderRadius:10,cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.7rem',fontWeight:700}}>ENTRAR</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ORDER DETAIL MODAL */}
       {orderDetail && (
