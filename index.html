@@ -3272,6 +3272,23 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
   }
 
   function savePreorder(peptide, form, silent = false) {
+    const incomingQty = parseInt(form.qty)||1;
+    // Agrupar: se já existe reserva ativa do mesmo cliente+produto, incrementar qty
+    const existing = preorders.find(p =>
+      ['pending','notified'].includes(p.status||'pending') &&
+      p.productId === peptide.id &&
+      (p.name||'').toLowerCase() === (form.name||'').toLowerCase()
+    );
+    if (existing) {
+      const newQty = (existing.qty||0) + incomingQty;
+      const updated = preorders.map(p => p.id === existing.id ? {...p, qty: newQty} : p);
+      setPreorders(updated);
+      localStorage.setItem('vg-preorders', JSON.stringify(updated));
+      if (sb) sb.from('preorders').update({ qty: newQty }).eq('id', existing.id)
+        .then(({ error }) => { if (error) console.warn('[Supabase] Preorder merge error:', error.message); });
+      if (!silent) showToast(`Reserva de ${peptide.name} atualizada: ×${newQty} total 🔔`, 'success');
+      return;
+    }
     const token = generateToken();
     const entry = {
       id: Date.now() + '-' + Math.random().toString(36).slice(2,7),
@@ -3280,7 +3297,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       productName: peptide.name,
       name: form.name,
       whatsapp: form.whatsapp,
-      qty: parseInt(form.qty)||1,
+      qty: incomingQty,
       date: new Date().toLocaleDateString('pt-BR'),
       ts: Date.now(),
       status: 'pending',
