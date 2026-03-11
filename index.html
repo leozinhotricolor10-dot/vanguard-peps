@@ -2307,6 +2307,8 @@ function App() {
   const [adminPoEditModal, setAdminPoEditModal] = useState(null);
   const [orderDetail, setOrderDetail] = useState(null);
   const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms'
+  const [preorderModal, setPreorderModal] = useState(null); // {peptide}
+  const [preorderForm, setPreorderForm] = useState({name:'', whatsapp:'', qty:1});
   const [trackModal, setTrackModal] = useState(false);
   const [trackQuery, setTrackQuery] = useState('');
   const [trackResults, setTrackResults] = useState(null);
@@ -3040,7 +3042,6 @@ function App() {
     setIsSubmitting(true);
     try {
       const regularOrders = myOrders.filter(o => !o._preorder);
-      const preorderItems = myOrders.filter(o => o._preorder);
       const freight = calcFreight(checkout.estado, myTotal);
       const packItemsTotal = regularOrders.reduce((s,o) => o._packPrice !== undefined ? s + (o.qty||0)*o._packPrice : s, 0);
       const pixDiscount = checkout.pagamento === 'pix' ? Math.round((myTotal - packItemsTotal) * 0.1) : 0;
@@ -3052,29 +3053,8 @@ function App() {
         if (!p) return `• [produto removido] ×${o.qty}`;
         return `• ${p.name} ×${o.qty||0} = R$ ${(p.price * (o.qty||0)).toLocaleString('pt-BR')}`;
       }).join('\n');
-      const preorderItens = preorderItems.map(o => {
-        const p = products.find(x => x.id === o.peptideId);
-        return `• 🔔 ${p ? p.name : o.peptideId} ×${o.qty||0} (pré-venda — será cobrado quando chegar)`;
-      }).join('\n');
-      const isPurePreorder = regularOrders.length === 0;
       const pagamentoLabel = checkout.pagamento === 'pix' ? 'PIX (à vista)' : 'Cartão 2x (juros Mercado Pago)';
-      const msg = isPurePreorder
-        ? `📋 *RESERVA VANGUARD PEPTIDES*
-
-👤 *Dados do Cliente*
-Nome: ${checkout.nomeCompleto}
-Telefone: ${checkout.telefone}
-
-📦 *Endereço de Entrega*
-${checkout.rua}, ${checkout.numero}${checkout.complemento ? ' — '+checkout.complemento : ''}
-${checkout.bairro} — ${checkout.cidade}/${checkout.estado}
-CEP: ${checkout.cep}
-
-📋 *Produtos Reservados*
-${preorderItens}${checkout.observacoes ? '\n\n📝 *Obs:* ' + checkout.observacoes : ''}
-
-⚠️ _Será cobrado apenas quando o estoque chegar._`
-        : `🧬 *PEDIDO VANGUARD PEPTIDES*
+      const msg = `🧬 *PEDIDO VANGUARD PEPTIDES*
 
 👤 *Dados do Cliente*
 Nome: ${checkout.nomeCompleto}
@@ -3088,7 +3068,7 @@ ${checkout.bairro} — ${checkout.cidade}/${checkout.estado}
 CEP: ${checkout.cep}
 
 🛒 *Itens*
-${itens}${preorderItens ? '\n\n📋 *Reservas (pré-venda)*\n' + preorderItens : ''}
+${itens}
 
 💳 *Pagamento:* ${pagamentoLabel}
 
@@ -3097,9 +3077,9 @@ Subtotal: R$ ${myTotal.toLocaleString('pt-BR')}${pixDiscount > 0 ? '\n💚 Desco
 Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${couponDiscount > 0 ? '\n🏷️ Cupom '+appliedCoupon.code+': -R$ '+couponDiscount.toLocaleString('pt-BR') : ''}${pointsDiscount > 0 ? '\n⭐ Pontos VG ('+appliedPoints+' pts): -R$ '+pointsDiscount.toLocaleString('pt-BR') : ''}
 *Total: R$ ${totalFinal.toLocaleString('pt-BR')}*${checkout.observacoes ? '\n\n📝 *Obs:* ' + checkout.observacoes : ''}`;
 
-      // Salvar pedido no Supabase APENAS se há itens regulares (não criar pedido fantasma para pré-orders)
+      // Salvar pedido no Supabase
       let orderCode = null;
-      if (!isPurePreorder) {
+      if (regularOrders.length > 0) {
         orderCode = generateOrderCode();
         const _now2 = new Date();
         const _pad2 = n=>String(n).padStart(2,'0');
@@ -3132,12 +3112,6 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
           }
           if (appliedPoints > 0) await redeemPoints(checkout.cpf, appliedPoints);
         }
-      }
-
-      // Salvar preorders no sistema usando dados do checkout
-      for (const po of preorderItems) {
-        const pp = products.find(x => x.id === po.peptideId);
-        if (pp) savePreorder(pp, { name: checkout.nomeCompleto, whatsapp: checkout.telefone, qty: po.qty }, true);
       }
 
       // Adiciona código ao final da mensagem WhatsApp (só para pedidos reais)
@@ -3485,7 +3459,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
   // Cart for current user
   const myOrders = useMemo(() => orders.filter(o => !o._supabase && (o.buyerName || '').toLowerCase() === myName.toLowerCase()), [orders, myName]);
   const myTotal  = useMemo(() => myOrders.reduce((s, o) => { if (o._preorder) return s; const p = products.find(x => x.id === o.peptideId); const unitPrice = o._packPrice !== undefined ? o._packPrice : effectivePrice(p); return s + (o.qty||0) * unitPrice; }, 0), [myOrders, productPromo]);
-  const cartCount = myOrders.reduce((s, o) => s + (o.qty || 0), 0);
+  const cartCount = myOrders.filter(o=>!o._preorder).reduce((s, o) => s + (o.qty || 0), 0);
 
   function openModal(peptide) {
     setModal({ peptide });
@@ -4131,7 +4105,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       Declaro que tenho 18 anos ou mais e que este produto é adquirido exclusivamente para fins de pesquisa científica. Não me responsabilizo pelo uso indevido dos compostos.
                     </div>
                   </div>
-                  <button className="modal-confirm-btn" onClick={sendToWhatsApp} disabled={myOrders.length===0||isSubmitting} style={{opacity:isSubmitting?0.7:1}}>
+                  <button className="modal-confirm-btn" onClick={sendToWhatsApp} disabled={myOrders.filter(o=>!o._preorder).length===0||isSubmitting} style={{opacity:isSubmitting?0.7:1}}>
                     {isSubmitting ? 'SALVANDO PEDIDO...' : 'ENVIAR PEDIDO VIA WHATSAPP →'}
                   </button>
                   <button className="checkout-nav-back" style={{width:'100%',marginTop:8}} onClick={()=>setCheckoutStep(3)}>← Voltar</button>
@@ -4415,8 +4389,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                                 setNotifyInputs(n=>({...n,[peptide.id]:'sent'}));
                               }}>Enviar</button>
                             </div>
-                          : <button className="preorder-btn" onClick={()=>{ openModal(peptide); }}>
-                              📋 Reservar meu pedido
+                          : <button className="preorder-btn" onClick={()=>{ setPreorderForm({name: myName||'', whatsapp:'', qty:1}); setPreorderModal({peptide}); }}>
+                              🔔 RESERVAR QUANDO DISPONÍVEL
                             </button>
                     )}
                   </div>
@@ -4514,8 +4488,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                           💊 Abrir Calculadora
                         </button>
                       </div>
-                      <button className="preorder-btn" style={{marginTop:8}} onClick={()=>{ openModal(p); }}>
-                        📋 Reservar meu pedido
+                      <button className="preorder-btn" style={{marginTop:8}} onClick={()=>{ setPreorderForm({name: myName||'', whatsapp:'', qty:1}); setPreorderModal({peptide: p}); }}>
+                        🔔 RESERVAR QUANDO DISPONÍVEL
                       </button>
                     </div>
                   </div>
@@ -4611,7 +4585,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               </div>
             )}
 
-            {myName && myOrders.length === 0 && (
+            {myName && myOrders.filter(o=>!o._preorder).length === 0 && (
               <div className="cart-empty">
                 <div className="cart-empty-icon">🛒</div>
                 <div className="cart-empty-title">Carrinho vazio</div>
@@ -4619,11 +4593,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               </div>
             )}
 
-            {myName && myOrders.length > 0 && (() => {
+            {myName && myOrders.filter(o=>!o._preorder).length > 0 && (() => {
               return (
                 <div>
                   <div className="cart-items">
-                    {myOrders.map(order => {
+                    {myOrders.filter(o => !o._preorder).map(order => {
                       const p = products.find(x => x.id === order.peptideId);
                       if (!p) return null;
                       const cat = CATEGORIES.find(c => c.id === p.category);
@@ -4660,16 +4634,6 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                         </div>
                       );
                     })}
-                    {myOrders.filter(o=>o._preorder).map(order => {
-                      const p = products.find(x => x.id === order.peptideId);
-                      if (!p) return null;
-                      return (
-                        <div key={order.id} className="cart-summary-row" style={{color:'#ffaa00'}}>
-                          <span>🔔 {p.name} ×{order.qty || 0} (pré-venda)</span>
-                          <span>—</span>
-                        </div>
-                      );
-                    })}
                     <div className="cart-summary-total">
                       <div className="cart-summary-total-label">Total (s/ frete)</div>
                       <div className="cart-summary-total-value">R$ {myTotal.toLocaleString("pt-BR")}</div>
@@ -4683,6 +4647,40 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   <button className="checkout-btn" onClick={()=>{ if (!checkout.nomeCompleto && myName) setCheckout(c=>({...c, nomeCompleto: myName})); setCheckoutOpen(true); }}>
                     FINALIZAR PEDIDO →
                   </button>
+                </div>
+              );
+            })()}
+
+            {/* MINHAS RESERVAS */}
+            {myName && (() => {
+              const myPreorders = preorders.filter(p =>
+                ['pending','notified'].includes(p.status||'pending') &&
+                (p.name||'').toLowerCase() === myName.toLowerCase()
+              );
+              if (myPreorders.length === 0) return null;
+              return (
+                <div style={{marginTop: 24}}>
+                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.65rem",color:"#ffaa00",letterSpacing:"1.5px",marginBottom:12}}>🔔 MINHAS RESERVAS</div>
+                  {myPreorders.map(po => (
+                    <div key={po.id} style={{display:'flex',alignItems:'center',gap:10,padding:'12px 14px',background:'rgba(255,165,0,0.04)',border:'1px solid rgba(255,165,0,0.2)',borderRadius:10,marginBottom:8}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:600,fontSize:'0.88rem'}}>{po.productName}</div>
+                        <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.62rem",color:'var(--muted)',marginTop:2}}>
+                          {po.status === 'notified' ? '🔔 Disponível — aguardando sua confirmação' : '⏳ Aguardando chegada do estoque'}
+                        </div>
+                        <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.58rem",color:'var(--muted)',marginTop:2}}>{po.date}</div>
+                      </div>
+                      <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.8rem",color:"#ffaa00",fontWeight:700}}>×{po.qty}</div>
+                      <button onClick={()=>{
+                        if (window.confirm(`Cancelar reserva de ${po.productName}?`)) {
+                          persistPreorders(preorders.map(x => x.id===po.id ? {...x,status:'cancelled'} : x));
+                          showToast('Reserva cancelada','info');
+                        }
+                      }} style={{padding:'5px 10px',background:'rgba(255,80,80,0.1)',border:'1px solid rgba(255,80,80,0.3)',borderRadius:6,color:'#ff5050',fontSize:'0.68rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>
+                        Cancelar
+                      </button>
+                    </div>
+                  ))}
                 </div>
               );
             })()}
@@ -5422,6 +5420,15 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   <button className="admin-action-btn" onClick={()=>setAdminPoForm({productId:'',name:'',whatsapp:'',qty:1})}>＋ Nova Reserva Manual</button>
                   <button className="admin-action-btn" onClick={checkPreorderExpiry}>🔄 Verificar prazos</button>
                   <button className="admin-action-btn danger" onClick={()=>{ if(window.confirm("Limpar pré-orders concluídas/expiradas/canceladas?")){ const toDelete = preorders.filter(po=>['completed','expired','cancelled'].includes(po.status||'pending')); toDelete.forEach(po=>{ if(sb) sb.from('preorders').delete().eq('id',po.id).then(({error})=>{ if(error) console.warn('[Supabase] Delete preorder error:',error.message); }); }); persistPreorders(preorders.filter(po=>['pending','notified'].includes(po.status||'pending'))); showToast("Histórico limpo","info"); }}}>🗑️ Limpar concluídas</button>
+                  <button className="admin-action-btn" onClick={async ()=>{
+                    if(!window.confirm('Remover pedidos fantasma (sem itens, criados por pré-orders)?')) return;
+                    const {data, error} = await sb.from('orders').select('id,items').eq('status','pendente');
+                    if(error) { showToast('Erro: '+error.message,'error'); return; }
+                    const phantoms = (data||[]).filter(o => !o.items || o.items.length === 0);
+                    if(phantoms.length === 0) { showToast('Nenhum pedido fantasma encontrado','info'); return; }
+                    for (const p of phantoms) { await sb.from('orders').delete().eq('id',p.id); }
+                    showToast(`${phantoms.length} pedido(s) fantasma removido(s) ✓`,'success');
+                  }}>🗑️ Limpar pedidos fantasma</button>
                 </div>
 
                 {/* FORMULÁRIO MANUAL */}
@@ -6831,6 +6838,42 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
       </div>
 
+      {/* MODAL RESERVA SIMPLES */}
+      {preorderModal && (
+        <div className="preorder-modal-overlay" onClick={()=>setPreorderModal(null)}>
+          <div className="preorder-modal" onClick={e=>e.stopPropagation()}>
+            <div className="preorder-modal-title">🔔 Fazer Reserva</div>
+            <div className="preorder-modal-sub">Quando o produto chegar em estoque, você será avisado pelo WhatsApp para confirmar o pedido.</div>
+            <div className="preorder-modal-product">{preorderModal.peptide.name}</div>
+            <div className="preorder-field">
+              <label>Seu nome</label>
+              <input value={preorderForm.name} onChange={e=>setPreorderForm(f=>({...f,name:e.target.value}))} placeholder="Ex: Ana Silva" autoFocus />
+            </div>
+            <div className="preorder-field">
+              <label>WhatsApp (com DDD)</label>
+              <input value={preorderForm.whatsapp} onChange={e=>setPreorderForm(f=>({...f,whatsapp:e.target.value}))} placeholder="74999710520" type="tel" />
+            </div>
+            <div className="preorder-field">
+              <label>Quantidade</label>
+              <input type="number" min="1" max="10" value={preorderForm.qty} onChange={e=>setPreorderForm(f=>({...f,qty:parseInt(e.target.value)||1}))} />
+            </div>
+            <div className="preorder-modal-btns">
+              <button className="preorder-cancel-btn" onClick={()=>setPreorderModal(null)}>Cancelar</button>
+              <button className="preorder-confirm-btn" onClick={()=>{
+                const name = (preorderForm.name||'').trim();
+                const whatsapp = (preorderForm.whatsapp||'').trim();
+                if (!name) { showToast('Informe seu nome','error'); return; }
+                if (!whatsapp) { showToast('Informe seu WhatsApp','error'); return; }
+                savePreorder(preorderModal.peptide, {name, whatsapp, qty: preorderForm.qty||1});
+                saveName(name);
+                setPreorderModal(null);
+                showToast(`Reserva de ${preorderModal.peptide.name} registrada! Você será avisado pelo WhatsApp 🔔`, 'success');
+              }}>Confirmar Reserva</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ADMIN PASSWORD MODAL */}
       {adminPwModal && (
         <div className="modal-overlay" onClick={e=>{ if(e.target===e.currentTarget){ setAdminPwModal(false); setAdminPwInput(''); } }}>
@@ -7454,6 +7497,9 @@ _Vanguard Peptides_ 🧬`;
         <button className={view==="cart"?"active":""} onClick={()=>{ if(!myName){ setNameModalInput(""); setShowNameModal(true); } else setView("cart"); }}>
           <span className="mob-icon">🛒</span>CARRINHO
           {cartCount > 0 && <span className="mob-cart-badge">{cartCount}</span>}
+        </button>
+        <button onClick={()=>{setTrackModal(true);setTrackResults(null);setTrackQuery('');}} className={trackModal?"active":""}>
+          <span className="mob-icon">📦</span>PEDIDO
         </button>
         <button className={view==="faq"?"active":""} onClick={()=>setView("faq")}>
           <span className="mob-icon">❓</span>FAQ
