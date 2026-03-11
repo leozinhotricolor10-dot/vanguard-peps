@@ -4670,7 +4670,21 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                         </div>
                         <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.58rem",color:'var(--muted)',marginTop:2}}>{po.date}</div>
                       </div>
-                      <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.8rem",color:"#ffaa00",fontWeight:700}}>×{po.qty}</div>
+                      <div style={{display:'flex',alignItems:'center',gap:6}}>
+                        <button onClick={()=>{
+                          const newQty = Math.max(1, (po.qty||1) - 1);
+                          const updated = preorders.map(x => x.id===po.id ? {...x,qty:newQty} : x);
+                          persistPreorders(updated);
+                          if(sb) sb.from('preorders').update({qty:newQty}).eq('id',po.id).then(({error})=>{if(error) console.warn(error.message);});
+                        }} style={{width:26,height:26,background:'rgba(255,165,0,0.12)',border:'1px solid rgba(255,165,0,0.3)',borderRadius:6,color:'#ffaa00',fontSize:'1rem',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
+                        <span style={{fontFamily:"'Space Mono',monospace",fontSize:"0.8rem",color:"#ffaa00",fontWeight:700,minWidth:20,textAlign:'center'}}>{po.qty}</span>
+                        <button onClick={()=>{
+                          const newQty = (po.qty||1) + 1;
+                          const updated = preorders.map(x => x.id===po.id ? {...x,qty:newQty} : x);
+                          persistPreorders(updated);
+                          if(sb) sb.from('preorders').update({qty:newQty}).eq('id',po.id).then(({error})=>{if(error) console.warn(error.message);});
+                        }} style={{width:26,height:26,background:'rgba(255,165,0,0.12)',border:'1px solid rgba(255,165,0,0.3)',borderRadius:6,color:'#ffaa00',fontSize:'1rem',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+                      </div>
                       <button onClick={()=>{
                         if (window.confirm(`Cancelar reserva de ${po.productName}?`)) {
                           persistPreorders(preorders.map(x => x.id===po.id ? {...x,status:'cancelled'} : x));
