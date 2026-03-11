@@ -2304,6 +2304,7 @@ function App() {
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [artForm, setArtForm] = useState(null);
   const [adminPoForm, setAdminPoForm] = useState(null);
+  const [adminPoEditModal, setAdminPoEditModal] = useState(null);
   const [orderDetail, setOrderDetail] = useState(null);
   const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms'
   const [trackModal, setTrackModal] = useState(false);
@@ -3055,9 +3056,25 @@ function App() {
         const p = products.find(x => x.id === o.peptideId);
         return `• 🔔 ${p ? p.name : o.peptideId} ×${o.qty||0} (pré-venda — será cobrado quando chegar)`;
       }).join('\n');
+      const isPurePreorder = regularOrders.length === 0;
       const pagamentoLabel = checkout.pagamento === 'pix' ? 'PIX (à vista)' : 'Cartão 2x (juros Mercado Pago)';
-      const msg =
-`🧬 *PEDIDO VANGUARD PEPTIDES*
+      const msg = isPurePreorder
+        ? `📋 *RESERVA VANGUARD PEPTIDES*
+
+👤 *Dados do Cliente*
+Nome: ${checkout.nomeCompleto}
+Telefone: ${checkout.telefone}
+
+📦 *Endereço de Entrega*
+${checkout.rua}, ${checkout.numero}${checkout.complemento ? ' — '+checkout.complemento : ''}
+${checkout.bairro} — ${checkout.cidade}/${checkout.estado}
+CEP: ${checkout.cep}
+
+📋 *Produtos Reservados*
+${preorderItens}${checkout.observacoes ? '\n\n📝 *Obs:* ' + checkout.observacoes : ''}
+
+⚠️ _Será cobrado apenas quando o estoque chegar._`
+        : `🧬 *PEDIDO VANGUARD PEPTIDES*
 
 👤 *Dados do Cliente*
 Nome: ${checkout.nomeCompleto}
@@ -3080,38 +3097,41 @@ Subtotal: R$ ${myTotal.toLocaleString('pt-BR')}${pixDiscount > 0 ? '\n💚 Desco
 Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${couponDiscount > 0 ? '\n🏷️ Cupom '+appliedCoupon.code+': -R$ '+couponDiscount.toLocaleString('pt-BR') : ''}${pointsDiscount > 0 ? '\n⭐ Pontos VG ('+appliedPoints+' pts): -R$ '+pointsDiscount.toLocaleString('pt-BR') : ''}
 *Total: R$ ${totalFinal.toLocaleString('pt-BR')}*${checkout.observacoes ? '\n\n📝 *Obs:* ' + checkout.observacoes : ''}`;
 
-      // Salvar pedido no Supabase ANTES de abrir WhatsApp
-      const orderCode = generateOrderCode();
-      const _now2 = new Date();
-      const _pad2 = n=>String(n).padStart(2,'0');
-      const orderId = `${_now2.getFullYear()}${_pad2(_now2.getMonth()+1)}${_pad2(_now2.getDate())}${_pad2(_now2.getHours())}${_pad2(_now2.getMinutes())}${_pad2(_now2.getSeconds())}`;
-      const orderItems = regularOrders.map(o => {
-        const p = products.find(x => x.id === o.peptideId);
-        return { peptideId: o.peptideId, name: p ? p.name : o.peptideId, qty: o.qty, price: p ? p.price : 0 };
-      });
-      if (sb) {
-        const { error } = await sb.from('orders').insert({
-          id: orderId,
-          code: orderCode,
-          buyer_name: checkout.nomeCompleto,
-          phone: checkout.telefone,
-          email: checkout.email,
-          cpf: checkout.cpf,
-          address: { rua: checkout.rua, numero: checkout.numero, complemento: checkout.complemento,
-                      bairro: checkout.bairro, cidade: checkout.cidade, estado: checkout.estado, cep: checkout.cep },
-          items: orderItems,
-          subtotal: myTotal,
-          freight: freight.value,
-          total: totalFinal,
-          payment: checkout.pagamento,
-          notes: checkout.observacoes,
-          status: 'pendente'
+      // Salvar pedido no Supabase APENAS se há itens regulares (não criar pedido fantasma para pré-orders)
+      let orderCode = null;
+      if (!isPurePreorder) {
+        orderCode = generateOrderCode();
+        const _now2 = new Date();
+        const _pad2 = n=>String(n).padStart(2,'0');
+        const orderId = `${_now2.getFullYear()}${_pad2(_now2.getMonth()+1)}${_pad2(_now2.getDate())}${_pad2(_now2.getHours())}${_pad2(_now2.getMinutes())}${_pad2(_now2.getSeconds())}`;
+        const orderItems = regularOrders.map(o => {
+          const p = products.find(x => x.id === o.peptideId);
+          return { peptideId: o.peptideId, name: p ? p.name : o.peptideId, qty: o.qty, price: p ? p.price : 0 };
         });
-        if (error) {
-          showToast("Erro ao salvar pedido. Verifique sua conexão e tente novamente.", "error");
-          return;
+        if (sb) {
+          const { error } = await sb.from('orders').insert({
+            id: orderId,
+            code: orderCode,
+            buyer_name: checkout.nomeCompleto,
+            phone: checkout.telefone,
+            email: checkout.email,
+            cpf: checkout.cpf,
+            address: { rua: checkout.rua, numero: checkout.numero, complemento: checkout.complemento,
+                        bairro: checkout.bairro, cidade: checkout.cidade, estado: checkout.estado, cep: checkout.cep },
+            items: orderItems,
+            subtotal: myTotal,
+            freight: freight.value,
+            total: totalFinal,
+            payment: checkout.pagamento,
+            notes: checkout.observacoes,
+            status: 'pendente'
+          });
+          if (error) {
+            showToast("Erro ao salvar pedido. Verifique sua conexão e tente novamente.", "error");
+            return;
+          }
+          if (appliedPoints > 0) await redeemPoints(checkout.cpf, appliedPoints);
         }
-        if (appliedPoints > 0) await redeemPoints(checkout.cpf, appliedPoints);
       }
 
       // Salvar preorders no sistema usando dados do checkout
@@ -3120,8 +3140,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
         if (pp) savePreorder(pp, { name: checkout.nomeCompleto, whatsapp: checkout.telefone, qty: po.qty }, true);
       }
 
-      // Adiciona código ao final da mensagem WhatsApp
-      const msgComCodigo = msg + `\n\n🔑 *Código do pedido:* \`${orderCode}\`\n_Use este código em vanguardpep.com → 📦 PEDIDO para acompanhar o status_`;
+      // Adiciona código ao final da mensagem WhatsApp (só para pedidos reais)
+      const msgComCodigo = orderCode
+        ? msg + `\n\n🔑 *Código do pedido:* \`${orderCode}\`\n_Use este código em vanguardpep.com → 📦 PEDIDO para acompanhar o status_`
+        : msg;
 
       // Só abre WhatsApp e limpa carrinho após save confirmado
       window.open(`https://wa.me/447418333521?text=${encodeURIComponent(msgComCodigo)}`, '_blank');
@@ -3134,7 +3156,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       setCouponInput('');
       setAppliedPoints(0);
       setPointsBalance(null);
-      setOrderSuccessCode(orderCode);
+      if (orderCode) setOrderSuccessCode(orderCode);
       setView("catalog");
     } finally {
       setIsSubmitting(false);
@@ -5438,6 +5460,59 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   </div>
                 )}
 
+                {/* MODAL EDITAR RESERVA */}
+                {adminPoEditModal !== null && (
+                  <div style={{background:'rgba(255,165,0,0.05)',border:'1px solid rgba(255,165,0,0.3)',borderRadius:12,padding:'16px 18px',marginBottom:16}}>
+                    <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.65rem",color:'#ffaa00',letterSpacing:'1.5px',marginBottom:12}}>✏️ EDITAR RESERVA</div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
+                      <div>
+                        <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:4}}>Produto</div>
+                        <select value={adminPoEditModal.productId} onChange={e=>{const p=products.find(x=>x.id===e.target.value);setAdminPoEditModal(f=>({...f,productId:e.target.value,productName:p?p.name:f.productName}));}}
+                          style={{width:'100%',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 10px',color:'var(--text)',fontSize:'0.8rem'}}>
+                          {products.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:4}}>Quantidade</div>
+                        <input type="number" min="1" value={adminPoEditModal.qty}
+                          onChange={e=>setAdminPoEditModal(f=>({...f,qty:parseInt(e.target.value)||1}))}
+                          style={{width:'100%',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 10px',color:'var(--text)',fontSize:'0.8rem'}} />
+                      </div>
+                      <div>
+                        <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:4}}>Nome do cliente</div>
+                        <input value={adminPoEditModal.name||''} onChange={e=>setAdminPoEditModal(f=>({...f,name:e.target.value}))}
+                          style={{width:'100%',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 10px',color:'var(--text)',fontSize:'0.8rem'}} />
+                      </div>
+                      <div>
+                        <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:4}}>WhatsApp</div>
+                        <input value={adminPoEditModal.whatsapp||''} onChange={e=>setAdminPoEditModal(f=>({...f,whatsapp:e.target.value}))}
+                          style={{width:'100%',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 10px',color:'var(--text)',fontSize:'0.8rem'}} />
+                      </div>
+                    </div>
+                    <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+                      <button onClick={()=>setAdminPoEditModal(null)}
+                        style={{padding:'7px 16px',background:'none',border:'1px solid var(--border)',borderRadius:8,color:'var(--muted)',fontSize:'0.75rem',cursor:'pointer'}}>
+                        Cancelar
+                      </button>
+                      <button onClick={()=>{
+                        persistPreorders(preorders.map(x=>x.id===adminPoEditModal.id?{...adminPoEditModal}:x));
+                        if(sb) sb.from('preorders').update({
+                          product_id: adminPoEditModal.productId,
+                          product_name: adminPoEditModal.productName,
+                          qty: adminPoEditModal.qty,
+                          name: adminPoEditModal.name,
+                          whatsapp: adminPoEditModal.whatsapp
+                        }).eq('id',adminPoEditModal.id).then(({error})=>{if(error) console.warn('[Supabase] Update preorder:',error.message);});
+                        setAdminPoEditModal(null);
+                        showToast('Reserva atualizada ✓','success');
+                      }}
+                        style={{padding:'7px 20px',background:'#ffaa00',border:'none',borderRadius:8,color:'#000',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>
+                        Salvar Alterações
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Product demand chips */}
                 {Object.keys(byProduct).length > 0 && (
                   <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
@@ -5471,6 +5546,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                             onClick={()=>notifyPreorder(po)}
                             style={{padding:"7px 14px",background:"linear-gradient(135deg,#00b4d8,#0077b6)",border:"none",borderRadius:8,color:"#fff",fontWeight:700,fontSize:"0.72rem",cursor:"pointer",whiteSpace:"nowrap"}}>
                             📲 Avisar cliente
+                          </button>
+                          <button onClick={()=>setAdminPoEditModal({...po})}
+                            style={{padding:"5px 10px",background:"rgba(255,165,0,0.12)",border:"1px solid rgba(255,165,0,0.35)",borderRadius:6,color:"#ffaa00",fontSize:"0.68rem",cursor:"pointer"}}>
+                            ✏️ Editar
                           </button>
                           <button className="admin-remove-btn" title="Remover" onClick={()=>persistPreorders(preorders.map(x=>x.id===po.id?{...x,status:'cancelled'}:x))}>✕</button>
                         </div>
@@ -5508,6 +5587,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                             )}
                             <button onClick={()=>{ navigator.clipboard.writeText(portalUrl); showToast('Link copiado!','success'); }} style={{padding:"5px 10px",background:"rgba(0,180,216,0.12)",border:"1px solid rgba(0,180,216,0.3)",borderRadius:6,color:"#00b4d8",fontSize:"0.68rem",cursor:"pointer"}}>
                               🔗 Copiar link
+                            </button>
+                            <button onClick={()=>setAdminPoEditModal({...po})}
+                              style={{padding:"5px 10px",background:"rgba(255,165,0,0.12)",border:"1px solid rgba(255,165,0,0.35)",borderRadius:6,color:"#ffaa00",fontSize:"0.68rem",cursor:"pointer"}}>
+                              ✏️ Editar
                             </button>
                             <button onClick={()=>persistPreorders(preorders.map(x=>x.id===po.id?{...x,status:'expired'}:x))} style={{padding:"5px 10px",background:"rgba(255,80,80,0.1)",border:"1px solid rgba(255,80,80,0.3)",borderRadius:6,color:"#ff5050",fontSize:"0.68rem",cursor:"pointer"}}>
                               Expirar
