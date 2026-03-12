@@ -4761,40 +4761,20 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
               {freteError && <div style={{padding:'10px 14px',background:'rgba(255,80,80,0.1)',border:'1px solid rgba(255,80,80,0.3)',borderRadius:8,color:'#ff6b6b',fontSize:'0.82rem',marginBottom:16}}>{freteError}</div>}
 
-              {freteResults && (
-                <div>
-                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:"var(--muted)",letterSpacing:"2px",marginBottom:12}}>OPÇÕES DISPONÍVEIS</div>
-                  {freteResults.map((s,i) => {
-                    const isSedex = (s.name||'').toLowerCase().includes('sedex') || (s.company?.name||'').toLowerCase().includes('sedex') || s.id===2;
-                    return (
-                      <div key={i} style={{padding:'14px 16px',background:'rgba(255,255,255,0.04)',border:`1px solid ${isSedex?'rgba(255,170,0,0.25)':'rgba(255,255,255,0.08)'}`,borderRadius:10,marginBottom:10}}>
-                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:isSedex?6:0}}>
-                          <div>
-                            <div style={{fontWeight:600,fontSize:'0.9rem'}}>{s.name||s.company?.name}</div>
-                            <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.62rem",color:"var(--muted)",marginTop:2}}>
-                              Prazo: <strong style={{color:'var(--text)'}}>{s.delivery_time} dia{s.delivery_time!==1?'s':''} útil{s.delivery_time!==1?'s':''}</strong>
-                            </div>
-                          </div>
-                          <div style={{fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:'1rem',color:'var(--accent)'}}>
-                            R$ {Number(s.price).toFixed(2).replace('.',',')}
-                          </div>
-                        </div>
-                        {isSedex && (
-                          <div style={{display:'flex',alignItems:'flex-start',gap:6,padding:'6px 10px',background:'rgba(255,170,0,0.06)',borderRadius:6,marginTop:4}}>
-                            <span style={{fontSize:'0.75rem'}}>⚠️</span>
-                            <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.58rem",color:"rgba(255,170,0,0.8)",lineHeight:1.5}}>
-                              O SEDEX é mais suscetível a fiscalização pelos Correios. Recomendamos PAC ou transportadora quando disponível.
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.55rem",color:"var(--muted)",marginTop:12,lineHeight:1.6}}>
-                    * Valores e prazos estimados. O prazo conta a partir da postagem. Pode haver variação conforme a região.
+              {freteResults && (()=>{
+                const maxDays = Math.max(...freteResults.map(s => s.delivery_time||0));
+                const worstCase = maxDays + 5;
+                return (
+                  <div style={{textAlign:'center',padding:'28px 20px',background:'rgba(0,229,195,0.04)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:14}}>
+                    <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.58rem",color:"var(--muted)",letterSpacing:"2px",marginBottom:12}}>ESTIMATIVA DE ENTREGA</div>
+                    <div style={{fontFamily:"'Syne',sans-serif",fontSize:"3rem",fontWeight:800,color:"var(--accent)",lineHeight:1}}>até {worstCase}</div>
+                    <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.75rem",color:"var(--muted)",marginTop:6,marginBottom:20}}>dias úteis após o envio</div>
+                    <div style={{fontSize:"0.82rem",color:"var(--muted)",lineHeight:1.6}}>
+                      Na maioria dos casos chega antes. Este é o prazo máximo considerando o pior cenário de entrega para a sua região.
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               <div style={{marginTop:32,paddingTop:20,borderTop:'1px solid rgba(255,255,255,0.06)',textAlign:'center'}}>
                 <button onClick={()=>setView('catalog')} style={{background:'none',border:'none',color:'var(--muted)',fontSize:'0.78rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>
