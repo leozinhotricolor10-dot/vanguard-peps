@@ -2223,6 +2223,7 @@ function App() {
     if (h === 'faq') return { view: 'faq', productSlug: null };
     if (h === 'carrinho' || h === 'cart') return { view: 'cart', productSlug: null };
     if (h === 'calcular' || h === 'calc') return { view: 'calc', productSlug: null };
+    if (h === 'frete') return { view: 'frete', productSlug: null };
     if (h === 'admin') return { view: 'admin', productSlug: null };
     if (h.startsWith('produto/')) return { view: 'detail', productSlug: h.replace('produto/', '') };
     return { view: 'catalog', productSlug: null };
@@ -2240,6 +2241,7 @@ function App() {
     else if (v === 'faq')    hash = '#/faq';
     else if (v === 'cart')   hash = '#/carrinho';
     else if (v === 'calc')   hash = '#/calcular';
+    else if (v === 'frete')  hash = '#/frete';
     else if (v === 'admin')  hash = '#/admin';
     else if (v === 'detail' && product) hash = `#/produto/${product.id}`;
     else if (v === 'detail' && selectedProduct) hash = `#/produto/${selectedProduct.id}`;
@@ -2380,6 +2382,12 @@ function App() {
   const [declNome, setDeclNome] = useState('Peptídeo');
   const [declQtd, setDeclQtd] = useState('1');
   const [declValor, setDeclValor] = useState('');
+  const [freteDestCep, setFreteDestCep] = useState('');
+  const [freteResults, setFreteResults] = useState(null);
+  const [freteLoading, setFreteLoading] = useState(false);
+  const [freteError, setFreteError] = useState('');
+  const [freteOriginCep, setFreteOriginCep] = useState('');
+
   const [declPeso, setDeclPeso] = useState('0.3');
   const [declLarg, setDeclLarg] = useState('6');
   const [declAlt, setDeclAlt] = useState('5');
@@ -2510,6 +2518,35 @@ function App() {
       body: JSON.stringify({ path, method, body }),
     });
     return res.json();
+  }
+
+  React.useEffect(() => {
+    if (!sb) return;
+    sb.from('site_config').select('value').eq('key','origin_cep').single()
+      .then(({ data }) => { if (data?.value) setFreteOriginCep(data.value); });
+  }, []);
+
+  async function calcularFrete() {
+    const dest = freteDestCep.replace(/\D/g,'');
+    if (dest.length !== 8) { setFreteError('CEP inválido. Digite os 8 dígitos.'); return; }
+    if (!freteOriginCep) { setFreteError('CEP de origem não configurado. Configure no painel admin.'); return; }
+    setFreteLoading(true); setFreteError(''); setFreteResults(null);
+    try {
+      const body = {
+        from: { postal_code: freteOriginCep.replace(/\D/g,'') },
+        to: { postal_code: dest },
+        products: [{ id:'1', width:6, height:5, length:12, weight:0.3, insurance_value:200, quantity:1 }],
+        services: '1,2,3,7,8,9',
+        options: { receipt:false, own_hand:false, collect:false }
+      };
+      const res = await callME('/me/shipment/calculate', 'POST', body);
+      const available = Array.isArray(res) ? res.filter(s => !s.error && s.price) : [];
+      if (!available.length) throw new Error('Nenhum serviço disponível para este CEP.');
+      setFreteResults(available);
+    } catch(e) {
+      setFreteError(e.message);
+    }
+    setFreteLoading(false);
   }
 
   async function gerarEtiqueta(order) {
@@ -4700,6 +4737,73 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
             })()}
           </div>
 
+          {/* SIMULADOR DE FRETE */}
+          <div className={`view ${view==="frete"?"visible":""}`}>
+            <div style={{maxWidth:480,margin:'0 auto',padding:'32px 16px'}}>
+              <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:"var(--accent)",letterSpacing:"3px",marginBottom:8}}>VANGUARD PEPTIDES</div>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:"1.5rem",fontWeight:800,marginBottom:6}}>Simulador de Frete</div>
+              <div style={{color:"var(--muted)",fontSize:"0.85rem",marginBottom:28}}>Consulte o prazo e o valor do envio para o seu CEP.</div>
+
+              <div style={{display:'flex',gap:8,marginBottom:16}}>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="Digite seu CEP (ex: 01310-100)"
+                  value={freteDestCep}
+                  onChange={e => setFreteDestCep(e.target.value.replace(/[^\d-]/g,'').slice(0,9))}
+                  onKeyDown={e => e.key==='Enter' && calcularFrete()}
+                  style={{flex:1,padding:'12px 14px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.12)',borderRadius:10,color:'var(--text)',fontSize:'0.9rem',fontFamily:"'DM Sans',sans-serif",outline:'none'}}
+                />
+                <button onClick={calcularFrete} disabled={freteLoading} style={{padding:'12px 20px',background:'var(--accent)',border:'none',borderRadius:10,color:'#000',fontWeight:700,cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.7rem',whiteSpace:'nowrap',opacity:freteLoading?0.6:1}}>
+                  {freteLoading ? '...' : 'CALCULAR'}
+                </button>
+              </div>
+
+              {freteError && <div style={{padding:'10px 14px',background:'rgba(255,80,80,0.1)',border:'1px solid rgba(255,80,80,0.3)',borderRadius:8,color:'#ff6b6b',fontSize:'0.82rem',marginBottom:16}}>{freteError}</div>}
+
+              {freteResults && (
+                <div>
+                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:"var(--muted)",letterSpacing:"2px",marginBottom:12}}>OPÇÕES DISPONÍVEIS</div>
+                  {freteResults.map((s,i) => {
+                    const isSedex = (s.name||'').toLowerCase().includes('sedex') || (s.company?.name||'').toLowerCase().includes('sedex') || s.id===2;
+                    return (
+                      <div key={i} style={{padding:'14px 16px',background:'rgba(255,255,255,0.04)',border:`1px solid ${isSedex?'rgba(255,170,0,0.25)':'rgba(255,255,255,0.08)'}`,borderRadius:10,marginBottom:10}}>
+                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:isSedex?6:0}}>
+                          <div>
+                            <div style={{fontWeight:600,fontSize:'0.9rem'}}>{s.name||s.company?.name}</div>
+                            <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.62rem",color:"var(--muted)",marginTop:2}}>
+                              Prazo: <strong style={{color:'var(--text)'}}>{s.delivery_time} dia{s.delivery_time!==1?'s':''} útil{s.delivery_time!==1?'s':''}</strong>
+                            </div>
+                          </div>
+                          <div style={{fontFamily:"'Space Mono',monospace",fontWeight:700,fontSize:'1rem',color:'var(--accent)'}}>
+                            R$ {Number(s.price).toFixed(2).replace('.',',')}
+                          </div>
+                        </div>
+                        {isSedex && (
+                          <div style={{display:'flex',alignItems:'flex-start',gap:6,padding:'6px 10px',background:'rgba(255,170,0,0.06)',borderRadius:6,marginTop:4}}>
+                            <span style={{fontSize:'0.75rem'}}>⚠️</span>
+                            <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.58rem",color:"rgba(255,170,0,0.8)",lineHeight:1.5}}>
+                              O SEDEX é mais suscetível a fiscalização pelos Correios. Recomendamos PAC ou transportadora quando disponível.
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.55rem",color:"var(--muted)",marginTop:12,lineHeight:1.6}}>
+                    * Valores e prazos estimados. O prazo conta a partir da postagem. Pode haver variação conforme a região.
+                  </div>
+                </div>
+              )}
+
+              <div style={{marginTop:32,paddingTop:20,borderTop:'1px solid rgba(255,255,255,0.06)',textAlign:'center'}}>
+                <button onClick={()=>setView('catalog')} style={{background:'none',border:'none',color:'var(--muted)',fontSize:'0.78rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>
+                  ← Voltar ao catálogo
+                </button>
+              </div>
+            </div>
+          </div>
+
           {/* ADMIN */}
           <div className={`view ${view==="admin"?"visible":""}`}>
             {!adminUnlocked ? (
@@ -4778,6 +4882,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
   <button className={`admin-tab ${adminTab==="cupons"?"active":""}`} onClick={()=>setAdminTab("cupons")}>🏷️ CUPONS</button>
               <button className={`admin-tab ${adminTab==="clientes"?"active":""}`} onClick={()=>setAdminTab("clientes")}>👥 CLIENTES</button>
               <button className={`admin-tab ${adminTab==="mapa"?"active":""}`} onClick={()=>setAdminTab("mapa")}>🗺️ MAPA</button>
+              <button className={`admin-tab ${adminTab==="config"?"active":""}`} onClick={()=>setAdminTab("config")}>⚙️ CONFIG</button>
             </div>
 
             {/* TAB: PEDIDOS */}
@@ -6836,6 +6941,38 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 {activePO.length===0&&<div style={{textAlign:'center',color:'var(--muted)',padding:32,fontSize:'0.82rem'}}>Nenhuma pré-order ativa no momento.</div>}
               </>;
             })()}
+
+            {/* TAB: CONFIG */}
+            {adminTab==="config" && <>
+              <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:"var(--accent)",letterSpacing:"2px",marginBottom:16}}>⚙️ CONFIGURAÇÕES</div>
+
+              {/* CEP Origem Simulador */}
+              <div style={{padding:'16px',background:'rgba(255,255,255,0.03)',border:'1px solid rgba(255,255,255,0.08)',borderRadius:12,marginBottom:16}}>
+                <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.62rem",color:"var(--accent)",letterSpacing:"1.5px",marginBottom:6}}>📍 CEP DE ORIGEM — SIMULADOR DE FRETE</div>
+                <div style={{fontSize:"0.78rem",color:"var(--muted)",marginBottom:12}}>CEP usado como origem no simulador público <code style={{color:'var(--accent)'}}>vanguardpep.com/#/frete</code>. Configure com o seu CEP de envio.</div>
+                <div style={{display:'flex',gap:8}}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Ex: 09750-000"
+                    value={freteOriginCep}
+                    onChange={e=>setFreteOriginCep(e.target.value.replace(/[^\d-]/g,'').slice(0,9))}
+                    style={{flex:1,padding:'10px 12px',background:'rgba(255,255,255,0.05)',border:'1px solid rgba(255,255,255,0.15)',borderRadius:8,color:'var(--text)',fontSize:'0.88rem',fontFamily:"'Space Mono',monospace"}}
+                  />
+                  <button onClick={async()=>{
+                    const cep = freteOriginCep.replace(/\D/g,'');
+                    if(cep.length!==8){showToast('CEP inválido','error');return;}
+                    if(sb) await sb.from('site_config').upsert({key:'origin_cep',value:freteOriginCep});
+                    showToast('CEP de origem salvo!','success');
+                  }} style={{padding:'10px 18px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontWeight:700,cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem'}}>
+                    SALVAR
+                  </button>
+                </div>
+                <div style={{marginTop:10,fontSize:'0.72rem',color:'var(--muted)'}}>
+                  Link do simulador para enviar ao cliente: <button onClick={()=>{navigator.clipboard.writeText('https://vanguardpep.com/#/frete');showToast('Link copiado!','success');}} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontSize:'0.72rem',padding:0,fontFamily:"'Space Mono',monospace"}}>copiar link</button>
+                </div>
+              </div>
+            </>}
 
             </>}
           </div>
