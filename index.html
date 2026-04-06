@@ -2691,8 +2691,8 @@ function App() {
   function persistStock(s) { setStock(s); saveStock(s); }
 
   // ── Rastreamento de pedidos ───────────────────────────────────────────────
-  async function searchOrders() {
-    const q = trackQuery.trim().toUpperCase();
+  async function searchOrders(overrideQuery) {
+    const q = (overrideQuery || trackQuery).trim().toUpperCase();
     if (!q) return;
     if (!sb) { showToast('Indisponível no momento', 'error'); return; }
     setTrackLoading(true);
@@ -4156,7 +4156,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
           <button className={`nav-btn ${view==="catalog"?"active":""}`} onClick={()=>setView("catalog")}>CATÁLOGO</button>
           <button className={`nav-btn ${view==="calc"?"active":""}`} onClick={()=>setView("calc")}>💊 CALC</button>
           <button className={`nav-btn ${view==="faq"?"active":""}`} onClick={()=>setView("faq")}>FAQ</button>
-          <button className="nav-btn" onClick={()=>{setTrackModal(true);setTrackResults(null);setTrackQuery('');}}>📦 PEDIDO</button>
+          <button className="nav-btn" onClick={()=>{ const cpf=(()=>{try{return JSON.parse(localStorage.getItem('vg-checkout')||'{}').cpf||'';}catch{return '';}})(); setTrackModal(true); if(cpf){setTrackQuery(cpf);searchOrders(cpf);}else{setTrackResults(null);setTrackQuery('');} }}>📦 PEDIDO</button>
           <button className={`cart-nav-btn ${view==="cart"?"active":""}`} onClick={()=>setView("cart")}>
             🛒 CARRINHO
             {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
@@ -7150,26 +7150,37 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px'}}>📦 RASTREAR PEDIDO</div>
               <button onClick={()=>setTrackModal(false)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'1.1rem'}}>✕</button>
             </div>
-            <p style={{fontSize:'0.82rem',color:'var(--muted)',marginBottom:16}}>Use o código do pedido (ex: <span style={{fontFamily:"'Space Mono',monospace",color:'var(--accent)'}}>VG-A3K7P2</span>) ou seu CPF / WhatsApp.</p>
+            <p style={{fontSize:'0.82rem',color:'var(--muted)',marginBottom:16}}>Busque pelo seu <strong style={{color:'var(--text)'}}>CPF</strong> para ver o histórico completo, ou use o código <span style={{fontFamily:"'Space Mono',monospace",color:'var(--accent)'}}>VG-XXXXXX</span> de um pedido específico.</p>
             <div style={{display:'flex',gap:8,marginBottom:20}}>
               <input
                 style={{flex:1,background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 14px',color:'var(--text)',fontSize:'0.88rem',fontFamily:"'DM Sans',sans-serif"}}
-                placeholder="Código VG-XXXXXX, CPF ou WhatsApp"
+                placeholder="CPF ou código VG-XXXXXX"
                 value={trackQuery}
                 onChange={e=>setTrackQuery(e.target.value)}
                 onKeyDown={e=>e.key==='Enter'&&searchOrders()}
                 autoFocus
               />
-              <button onClick={searchOrders} disabled={trackLoading} style={{padding:'10px 18px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontWeight:700,fontSize:'0.82rem',cursor:'pointer',fontFamily:"'Space Mono',monospace",whiteSpace:'nowrap'}}>
+              <button onClick={()=>searchOrders()} disabled={trackLoading} style={{padding:'10px 18px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontWeight:700,fontSize:'0.82rem',cursor:'pointer',fontFamily:"'Space Mono',monospace",whiteSpace:'nowrap'}}>
                 {trackLoading ? '...' : 'BUSCAR'}
               </button>
             </div>
 
+            {trackLoading && (
+              <div style={{textAlign:'center',color:'var(--muted)',fontSize:'0.82rem',padding:'20px 0'}}>Buscando seus pedidos...</div>
+            )}
             {trackResults === null && !trackLoading && (
-              <div style={{textAlign:'center',color:'var(--muted)',fontSize:'0.82rem',padding:'20px 0'}}>⬆ Informe seu CPF ou WhatsApp acima</div>
+              <div style={{textAlign:'center',color:'var(--muted)',fontSize:'0.82rem',padding:'20px 0'}}>⬆ Informe seu CPF acima</div>
             )}
             {trackResults && trackResults.length === 0 && (
               <div style={{textAlign:'center',color:'var(--muted)',fontSize:'0.82rem',padding:'20px 0'}}>Nenhum pedido encontrado. Verifique os dados e tente novamente.</div>
+            )}
+            {trackResults && trackResults.length > 0 && (
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--muted)',letterSpacing:'1px'}}>
+                  {trackResults[0].buyerName && <span style={{color:'var(--text)',fontWeight:700}}>{trackResults[0].buyerName.split(' ')[0]}</span>}
+                  {' — '}{trackResults.length} pedido{trackResults.length !== 1 ? 's' : ''}
+                </div>
+              </div>
             )}
             {trackResults && trackResults.length > 0 && trackResults.map(o => {
               const STATUS = { pendente:{emoji:'🟡',label:'Aguardando confirmação',color:'#ffc107'}, pago:{emoji:'✅',label:'Pagamento confirmado',color:'#4cffb0'}, enviado:{emoji:'🚚',label:'A caminho',color:'#64a0ff'}, entregue:{emoji:'🎉',label:'Entregue',color:'var(--accent)'}, cancelado:{emoji:'❌',label:'Cancelado',color:'#ff5050'} };
@@ -7609,7 +7620,7 @@ _Vanguard Peptides_ 🧬`;
           <span className="mob-icon">🛒</span>CARRINHO
           {cartCount > 0 && <span className="mob-cart-badge">{cartCount}</span>}
         </button>
-        <button onClick={()=>{setTrackModal(true);setTrackResults(null);setTrackQuery('');}} className={trackModal?"active":""}>
+        <button onClick={()=>{ const cpf=(()=>{try{return JSON.parse(localStorage.getItem('vg-checkout')||'{}').cpf||'';}catch{return '';}})(); setTrackModal(true); if(cpf){setTrackQuery(cpf);searchOrders(cpf);}else{setTrackResults(null);setTrackQuery('');} }} className={trackModal?"active":""}>
           <span className="mob-icon">📦</span>PEDIDO
         </button>
         <button className={view==="faq"?"active":""} onClick={()=>setView("faq")}>
