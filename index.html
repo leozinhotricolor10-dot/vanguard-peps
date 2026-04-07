@@ -6286,8 +6286,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 showToast(`Status: ${IMPORT_STATUS[newStatus]?.label || newStatus}`);
               }
               function saveImport() {
-                if (calcs.length === 0) { showToast('Adicione produtos antes de salvar','error'); return; }
-                const existingStatus = editingImportId ? (importHistory.find(h => h.id === editingImportId)?.status || 'aguardando') : 'aguardando';
+                if (calcs.length === 0) { showToast('Preencha SKU, caixas e preço USD de pelo menos um produto','error'); return; }
+                const isEditing = !!editingImportId;
+                const existingStatus = isEditing ? (importHistory.find(h => h.id === editingImportId)?.status || 'aguardando') : 'aguardando';
                 const entry = {
                   id: editingImportId || Date.now(),
                   date: importForm.date, cambio, freteUsd, fedexBrl, desconto, outrosBrl, invoiceTotal,
@@ -6296,15 +6297,19 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   items: calcs
                 };
                 let hist;
-                if (editingImportId) {
+                if (isEditing) {
                   hist = importHistory.map(h => h.id === editingImportId ? entry : h);
                 } else {
                   hist = [entry, ...importHistory].slice(0, 20);
                 }
                 setImportHistory(hist);
                 localStorage.setItem('vg-imports', JSON.stringify(hist));
-                if (editingImportId) setEditingImportId(null);
-                showToast(editingImportId ? 'Importação atualizada ✓' : 'Importação salva ✓', 'success');
+                setEditingImportId(null);
+                if (!isEditing) {
+                  setImportForm({ date: new Date().toLocaleDateString('pt-BR'), cambio: importForm.cambio, freteUsd:'', fedexBrl:'', desconto:'', outrosBrl:'', invoiceTotal:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:'',precoVenda:''}] });
+                }
+                showToast(isEditing ? 'Importação atualizada ✓' : 'Importação salva ✓', 'success');
+                setTimeout(()=>{ document.querySelector('.admin-content')?.scrollTo({ top: 99999, behavior: 'smooth' }); }, 100);
               }
 
               const inputStyle = { background:'var(--bg2)', border:'1px solid var(--border)', borderRadius:6, padding:'7px 10px', color:'var(--text)', fontSize:'0.8rem', fontFamily:"'DM Sans',sans-serif", width:'100%' };
