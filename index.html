@@ -2052,7 +2052,7 @@ function PortalView({ po, preorders, persistPreorders, cancelPreorderByToken, sh
 
   const [timeLeft, setTimeLeft] = React.useState(() => {
     if (po.status !== 'notified' || !po.notifiedAt) return null;
-    return Math.max(0, 24*60*60*1000 - (Date.now() - po.notifiedAt));
+    return Math.max(0, 12*60*60*1000 - (Date.now() - po.notifiedAt));
   });
   React.useEffect(() => {
     if (!timeLeft) return;
@@ -3079,12 +3079,12 @@ function App() {
     if (!disclaimer) { showToast("Confirme o aviso legal para prosseguir", "error"); return; }
     setIsSubmitting(true);
     try {
-      const freight = calcFreight(checkout.estado, myTotal);
-      const packItemsTotal = myOrders.reduce((s,o) => o._packPrice !== undefined ? s + (o.qty||0)*o._packPrice : s, 0);
-      const pixDiscount = checkout.pagamento === 'pix' ? Math.round((myTotal - packItemsTotal) * 0.1) : 0;
-      const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round((myTotal - pixDiscount) * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal - pixDiscount)) : 0;
+      const freightRaw = calcFreight(checkout.estado, myTotal);
+      const isPix = checkout.pagamento === 'pix';
+      const freight = isPix ? { value: 0, label: 'Frete grátis', reason: 'Frete grátis no PIX' } : freightRaw;
+      const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round(myTotal * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal)) : 0;
       const pointsDiscount = Math.floor(appliedPoints / 100) * (pointsConfig.redeem || 5);
-      const totalFinal = myTotal - pixDiscount - couponDiscount - pointsDiscount + freight.value;
+      const totalFinal = myTotal - couponDiscount - pointsDiscount + freight.value;
       const itens = myOrders.map(o => {
         const p = products.find(x => x.id === o.peptideId);
         if (!p) return `• [produto removido] ×${o.qty}`;
@@ -3110,7 +3110,7 @@ ${itens}
 💳 *Pagamento:* ${pagamentoLabel}
 
 💰 *Resumo*
-Subtotal: R$ ${myTotal.toLocaleString('pt-BR')}${pixDiscount > 0 ? '\n💚 Desconto PIX (10%): -R$ '+pixDiscount.toLocaleString('pt-BR') : ''}
+Subtotal: R$ ${myTotal.toLocaleString('pt-BR')}
 Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${couponDiscount > 0 ? '\n🏷️ Cupom '+appliedCoupon.code+': -R$ '+couponDiscount.toLocaleString('pt-BR') : ''}${pointsDiscount > 0 ? '\n⭐ Pontos VG ('+appliedPoints+' pts): -R$ '+pointsDiscount.toLocaleString('pt-BR') : ''}
 *Total: R$ ${totalFinal.toLocaleString('pt-BR')}*${checkout.observacoes ? '\n\n📝 *Obs:* ' + checkout.observacoes : ''}`;
 
@@ -3815,12 +3815,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
       {/* CHECKOUT MODAL */}
       {checkoutOpen && (() => {
-        const freight = calcFreight(checkout.estado, myTotal);
-        const packItemsTotal = myOrders.reduce((s,o) => o._packPrice !== undefined ? s + (o.qty||0)*o._packPrice : s, 0);
-        const pixDiscount = checkout.pagamento === 'pix' ? Math.round((myTotal - packItemsTotal) * 0.1) : 0;
-        const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round((myTotal - pixDiscount) * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal - pixDiscount)) : 0;
+        const freightRaw = calcFreight(checkout.estado, myTotal);
+        const isPix = checkout.pagamento === 'pix';
+        const freight = isPix ? { value: 0, label: 'Frete grátis', reason: 'Frete grátis no PIX' } : freightRaw;
+        const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round(myTotal * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal)) : 0;
         const pointsDiscount = Math.floor(appliedPoints / 100) * (pointsConfig.redeem || 5);
-        const totalFinal = myTotal - pixDiscount - couponDiscount - pointsDiscount + freight.value;
+        const totalFinal = myTotal - couponDiscount - pointsDiscount + freight.value;
         const isFree = freight.value === 0;
         return (
           <div className="modal-overlay" onClick={e=>{ if(e.target===e.currentTarget){ setCheckoutOpen(false); setCheckoutStep(1); } }}>
@@ -4068,10 +4068,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       <span>Subtotal ({myOrders.reduce((s,o)=>s+(o.qty||0),0)} itens)</span>
                       <span style={{color:'var(--text)',fontFamily:"'Space Mono',monospace"}}>R$ {myTotal.toLocaleString('pt-BR')}</span>
                     </div>
-                    {pixDiscount > 0 && (
+                    {isPix && (
                       <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.83rem',marginBottom:8,padding:'8px 12px',background:'rgba(0,229,195,0.06)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:8}}>
-                        <span style={{color:'var(--accent)'}}>💚 Desconto PIX (10%)</span>
-                        <span style={{color:'var(--accent)',fontFamily:"'Space Mono',monospace",fontWeight:700}}>-R$ {pixDiscount.toLocaleString('pt-BR')}</span>
+                        <span style={{color:'var(--accent)'}}>💚 Frete grátis no PIX</span>
+                        <span style={{color:'var(--accent)',fontFamily:"'Space Mono',monospace",fontWeight:700}}>GRÁTIS</span>
                       </div>
                     )}
                     {couponDiscount > 0 && (
