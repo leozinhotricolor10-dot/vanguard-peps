@@ -4013,6 +4013,19 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       })()}
                     </div>
                   </div>
+                  {checkout.pagamento === '2x' && (() => {
+                    const freightSaving = freightRaw.value > 0 ? freightRaw.value : 60;
+                    return (
+                      <div style={{display:'flex',alignItems:'center',gap:14,padding:'14px 16px',background:'rgba(255,165,0,0.07)',border:'1px solid rgba(255,165,0,0.35)',borderRadius:12,marginBottom:4,animation:'slideIn 0.2s ease'}}>
+                        <div style={{fontSize:'1.6rem',flexShrink:0}}>🚚</div>
+                        <div style={{flex:1}}>
+                          <div style={{fontFamily:"'Syne',sans-serif",fontWeight:800,fontSize:'0.88rem',color:'#ffcc00',marginBottom:2}}>Vai perder o frete grátis?</div>
+                          <div style={{fontSize:'0.75rem',color:'var(--muted)',lineHeight:1.4}}>No PIX o frete é grátis — você economiza <strong style={{color:'#ffaa00'}}>R$ {freightSaving.toLocaleString('pt-BR')}</strong> agora.</div>
+                        </div>
+                        <button onClick={()=>updateCheckout('pagamento','pix')} style={{flexShrink:0,padding:'8px 14px',background:'linear-gradient(135deg,#ffaa00,#ff8800)',border:'none',borderRadius:9,color:'#000',fontFamily:"'Space Mono',monospace",fontSize:'0.62rem',fontWeight:700,cursor:'pointer',letterSpacing:'0.5px',whiteSpace:'nowrap'}}>USAR PIX</button>
+                      </div>
+                    );
+                  })()}
                   <div className="checkout-section">
                     <div className="checkout-section-title">🏷️ Cupom de Desconto</div>
                     {appliedCoupon
