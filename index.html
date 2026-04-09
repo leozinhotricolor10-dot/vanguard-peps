@@ -2310,6 +2310,7 @@ function App() {
   const [orderDetail, setOrderDetail] = useState(null);
   const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms'
   const [preorderModal, setPreorderModal] = useState(null); // {peptide}
+  const [preorderLocked, setPreorderLocked] = useState(()=> localStorage.getItem('vg-preorder-locked') === 'true');
   const [preorderForm, setPreorderForm] = useState({name:'', whatsapp:'', qty:1});
   const [trackModal, setTrackModal] = useState(false);
   const [trackQuery, setTrackQuery] = useState('');
@@ -3282,6 +3283,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
   }
 
   function savePreorder(peptide, form, silent = false) {
+    if (preorderLocked) { showToast('Reservas encerradas — produto já disponível para compra!', 'error'); return; }
     const incomingQty = parseInt(form.qty)||1;
     // Agrupar: se já existe reserva ativa do mesmo cliente+produto, incrementar qty
     const existing = preorders.find(p =>
@@ -4411,7 +4413,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                                 setNotifyInputs(n=>({...n,[peptide.id]:'sent'}));
                               }}>Enviar</button>
                             </div>
-                          : <button className="preorder-btn" onClick={()=>{ setPreorderForm({name: myName||'', whatsapp:'', qty:1}); setPreorderModal({peptide}); }}>
+                          : preorderLocked
+                            ? null
+                            : <button className="preorder-btn" onClick={()=>{ setPreorderForm({name: myName||'', whatsapp:'', qty:1}); setPreorderModal({peptide}); }}>
                               🔔 RESERVAR QUANDO DISPONÍVEL
                             </button>
                     )}
@@ -4510,9 +4514,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                           💊 Abrir Calculadora
                         </button>
                       </div>
-                      <button className="preorder-btn" style={{marginTop:8}} onClick={()=>{ setPreorderForm({name: myName||'', whatsapp:'', qty:1}); setPreorderModal({peptide: p}); }}>
+                      {!preorderLocked && <button className="preorder-btn" style={{marginTop:8}} onClick={()=>{ setPreorderForm({name: myName||'', whatsapp:'', qty:1}); setPreorderModal({peptide: p}); }}>
                         🔔 RESERVAR QUANDO DISPONÍVEL
-                      </button>
+                      </button>}
                     </div>
                   </div>
 
@@ -5500,6 +5504,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 <div className="admin-actions" style={{flexWrap:'wrap',gap:8}}>
                   <button className="admin-action-btn" onClick={()=>setAdminPoForm({productId:'',name:'',whatsapp:'',qty:1})}>＋ Nova Reserva Manual</button>
                   <button className="admin-action-btn" onClick={checkPreorderExpiry}>🔄 Verificar prazos</button>
+                  <button className="admin-action-btn" style={{background: preorderLocked ? 'rgba(0,229,195,0.12)' : 'rgba(255,80,80,0.12)', borderColor: preorderLocked ? 'rgba(0,229,195,0.4)' : 'rgba(255,80,80,0.4)', color: preorderLocked ? 'var(--accent)' : '#ff5050'}} onClick={()=>{ const next = !preorderLocked; setPreorderLocked(next); localStorage.setItem('vg-preorder-locked', String(next)); showToast(next ? '🔒 Novas reservas bloqueadas' : '🔓 Novas reservas liberadas', next ? 'error' : 'success'); }}>{preorderLocked ? '🔓 Liberar Pré-Orders' : '🔒 Travar Pré-Orders'}</button>
                   <button className="admin-action-btn danger" onClick={()=>{ if(window.confirm("Limpar pré-orders concluídas/expiradas/canceladas?")){ const toDelete = preorders.filter(po=>['completed','expired','cancelled'].includes(po.status||'pending')); toDelete.forEach(po=>{ if(sb) sb.from('preorders').delete().eq('id',po.id).then(({error})=>{ if(error) console.warn('[Supabase] Delete preorder error:',error.message); }); }); persistPreorders(preorders.filter(po=>['pending','notified'].includes(po.status||'pending'))); showToast("Histórico limpo","info"); }}}>🗑️ Limpar concluídas</button>
                   <button className="admin-action-btn" onClick={async ()=>{
                     if(!window.confirm('Remover pedidos fantasma (sem itens, criados por pré-orders)?')) return;
