@@ -3402,7 +3402,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
   function notifyPreorder(po) {
     const now = Date.now();
-    const expireAt = now + 24*60*60*1000;
+    const expireAt = now + 12*60*60*1000;
     const updated = preorders.map(p => p.id===po.id ? {...p, status:'notified', notifiedAt:now, reminderSent:false} : p);
     persistPreorders(updated);
     const firstName = (po.name || 'Cliente').split(' ')[0];
@@ -3411,7 +3411,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       '🎉 *Produto disponível!*\n\n' +
       'Olá ' + firstName + '! Seu produto reservado chegou ao estoque.\n\n' +
       '📦 *' + po.productName + '* (×' + po.qty + ')\n\n' +
-      '⏰ Você tem *24 horas* para confirmar.\n\n' +
+      '⏰ Você tem *12 horas* para confirmar.\n\n' +
+      '💸 *Pagando via PIX o frete é grátis!*\n\n' +
       '👇 Clique para concluir sua compra:\n' +
       portalLink
     );
@@ -3427,6 +3428,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
     const msg = encodeURIComponent(
       '⏰ *Lembrete — Sua reserva expira em 2 horas!*\n\n' +
       'Olá ' + (po.name || 'Cliente').split(' ')[0] + ', não esqueça de confirmar sua compra de *' + po.productName + '* (×' + po.qty + ').\n\n' +
+      '💸 *Pagando via PIX o frete é grátis!*\n\n' +
       '👇 Acesse agora para finalizar:\n' +
       portalLinkR
     );
@@ -3440,11 +3442,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
     const updated = preorders.map(po => {
       if (po.status === 'notified' && po.notifiedAt) {
         const elapsed = now - po.notifiedAt;
-        const total24h = 24*60*60*1000;
+        const total12h = 12*60*60*1000;
         // Mark expired
-        if (elapsed >= total24h) { changed = true; return {...po, status:'expired'}; }
-        // Auto-send reminder at 22h (2h before expiry)
-        if (elapsed >= 22*60*60*1000 && !po.reminderSent) {
+        if (elapsed >= total12h) { changed = true; return {...po, status:'expired'}; }
+        // Auto-send reminder at 10h (2h before expiry)
+        if (elapsed >= 10*60*60*1000 && !po.reminderSent) {
           sendReminder(po);
           changed = true;
           return {...po, reminderSent:true};
