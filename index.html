@@ -2412,6 +2412,7 @@ function App() {
   const [adminSearch, setAdminSearch] = useState('');
   const [adminPage, setAdminPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterInStock, setFilterInStock] = useState(false);
   const [carouselIdx, setCarouselIdx] = useState(0);
   const [carouselTouchX, setCarouselTouchX] = useState(null);
 
@@ -4358,6 +4359,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     </button>
                   );
                 })}
+                <button className={`cat-pill ${filterInStock?'active':''}`} onClick={()=>setFilterInStock(v=>!v)}
+                  style={filterInStock ? {borderColor:'rgba(0,229,195,0.6)',background:'rgba(0,229,195,0.12)',color:'var(--accent)'} : {}}>
+                  <span>✅</span> Em estoque <span className="cat-pill-count">{products.filter(p=>availableStock(p.id)>0).length}</span>
+                </button>
               </div>
             )}
 
@@ -4369,6 +4374,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               {(()=>{
                 let filtered = activeCat === 'all' ? products : products.filter(p=>p.category===activeCat);
                 if (searchQuery) filtered = products.filter(p=>(p.name||'').toLowerCase().includes(searchQuery.toLowerCase()) || (p.desc||'').toLowerCase().includes(searchQuery.toLowerCase()));
+                if (filterInStock) filtered = filtered.filter(p=>availableStock(p.id)>0);
                 return filtered.map(peptide => {
                 const inCartQty = peptideCartQty(peptide.id);
                 const cartOrder = myOrders.find(o => o.peptideId === peptide.id);
