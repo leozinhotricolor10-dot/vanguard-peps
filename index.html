@@ -2308,6 +2308,9 @@ function App() {
   const [adminPoForm, setAdminPoForm] = useState(null);
   const [adminPoEditModal, setAdminPoEditModal] = useState(null);
   const [orderDetail, setOrderDetail] = useState(null);
+  const [editItemsMode, setEditItemsMode] = useState(false);
+  const [editItems, setEditItems] = useState([]);
+  const [addItemProductId, setAddItemProductId] = useState('');
   const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms'
   const [preorderModal, setPreorderModal] = useState(null); // {peptide}
   const [preorderLocked, setPreorderLocked] = useState(()=> localStorage.getItem('vg-preorder-locked') === 'true');
@@ -7202,7 +7205,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
       {/* ORDER DETAIL MODAL */}
       {orderDetail && (
-        <div className="modal-overlay" onClick={()=>setOrderDetail(null)}>
+        <div className="modal-overlay" onClick={()=>{ setOrderDetail(null); setEditItemsMode(false); }}>
           <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:480,maxHeight:'85vh',overflowY:'auto'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
               <div>
@@ -7230,25 +7233,101 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
             {/* Itens */}
             <div style={{background:'var(--bg2)',borderRadius:10,padding:'12px 14px',marginBottom:10}}>
-              <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1px',marginBottom:8}}>🛒 ITENS</div>
-              {(orderDetail._items||[{peptideId:orderDetail.peptideId,qty:orderDetail.qty}]).map((it,i)=>{
-                const p2 = products.find(x=>x.id===it.peptideId);
-                const unitPrice = it.price || (p2 ? p2.price : 0);
-                return (
-                  <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:'0.82rem'}}>
-                    <div>
-                      <div>{p2?p2.name:it.peptideId}</div>
-                      <div style={{color:'var(--muted)',fontSize:'0.7rem',fontFamily:"'Space Mono',monospace"}}>R$ {unitPrice.toLocaleString('pt-BR')} × {it.qty||1}</div>
-                    </div>
-                    <div style={{fontFamily:"'Space Mono',monospace",fontWeight:700,color:'var(--accent)'}}>R$ {(unitPrice*(it.qty||1)).toLocaleString('pt-BR')}</div>
-                  </div>
-                );
-              })}
-              <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:3,fontSize:'0.78rem'}}>
-                {orderDetail._subtotal != null && <div style={{display:'flex',justifyContent:'space-between',color:'var(--muted)'}}><span>Subtotal</span><span style={{fontFamily:"'Space Mono',monospace"}}>R$ {orderDetail._subtotal.toLocaleString('pt-BR')}</span></div>}
-                {orderDetail._freight != null && <div style={{display:'flex',justifyContent:'space-between',color:'var(--muted)'}}><span>Frete</span><span style={{fontFamily:"'Space Mono',monospace"}}>{orderDetail._freight===0?'GRÁTIS':'R$ '+orderDetail._freight.toLocaleString('pt-BR')}</span></div>}
-                {orderDetail._total != null && <div style={{display:'flex',justifyContent:'space-between',fontWeight:700,fontSize:'0.85rem',paddingTop:4,borderTop:'1px solid var(--border)'}}><span>Total</span><span style={{fontFamily:"'Space Mono',monospace",color:'var(--accent)'}}>R$ {orderDetail._total.toLocaleString('pt-BR')}</span></div>}
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1px'}}>🛒 ITENS</div>
+                {(orderDetail.status||'pendente')==='pendente' && !editItemsMode && (
+                  <button onClick={()=>{ setEditItems((orderDetail._items||[{peptideId:orderDetail.peptideId,qty:orderDetail.qty||1}]).map(it=>({...it}))); setEditItemsMode(true); setAddItemProductId(''); }}
+                    style={{background:'none',border:'none',color:'var(--accent)',fontSize:'0.62rem',cursor:'pointer',padding:0}}>✏️ editar itens</button>
+                )}
               </div>
+
+              {editItemsMode ? (<>
+                {/* EDITOR */}
+                {editItems.map((it,i)=>{
+                  const p2 = products.find(x=>x.id===it.peptideId);
+                  const unitPrice = it.price || (p2?p2.price:0);
+                  return (
+                    <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:'0.82rem'}}>
+                      <div style={{flex:1}}>
+                        <div>{p2?p2.name:it.peptideId}</div>
+                        <div style={{color:'var(--muted)',fontSize:'0.68rem',fontFamily:"'Space Mono',monospace"}}>R$ {unitPrice.toLocaleString('pt-BR')} / un</div>
+                      </div>
+                      <div style={{display:'flex',alignItems:'center',gap:4}}>
+                        <button onClick={()=>setEditItems(ei=>ei.map((x,j)=>j===i?{...x,qty:Math.max(1,(x.qty||1)-1)}:x))}
+                          style={{width:24,height:24,borderRadius:6,border:'1px solid var(--border)',background:'rgba(255,255,255,0.05)',color:'var(--text)',cursor:'pointer',fontSize:'0.9rem',display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
+                        <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.82rem',minWidth:20,textAlign:'center'}}>{it.qty||1}</span>
+                        <button onClick={()=>setEditItems(ei=>ei.map((x,j)=>j===i?{...x,qty:(x.qty||1)+1}:x))}
+                          style={{width:24,height:24,borderRadius:6,border:'1px solid var(--border)',background:'rgba(255,255,255,0.05)',color:'var(--text)',cursor:'pointer',fontSize:'0.9rem',display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
+                      </div>
+                      <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.78rem',color:'var(--accent)',minWidth:60,textAlign:'right'}}>R$ {(unitPrice*(it.qty||1)).toLocaleString('pt-BR')}</span>
+                      <button onClick={()=>setEditItems(ei=>ei.filter((_,j)=>j!==i))}
+                        style={{background:'none',border:'none',color:'#ff5050',cursor:'pointer',fontSize:'0.85rem',padding:'0 2px'}}>✕</button>
+                    </div>
+                  );
+                })}
+                {/* Adicionar produto */}
+                <div style={{display:'flex',gap:6,marginTop:10}}>
+                  <select value={addItemProductId} onChange={e=>setAddItemProductId(e.target.value)}
+                    style={{flex:1,background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,padding:'7px 10px',color:'var(--text)',fontSize:'0.78rem'}}>
+                    <option value="">+ Adicionar produto...</option>
+                    {products.filter(p=>!editItems.find(it=>it.peptideId===p.id)).map(p=>(
+                      <option key={p.id} value={p.id}>{p.name} — R$ {p.price.toLocaleString('pt-BR')}</option>
+                    ))}
+                  </select>
+                  <button onClick={()=>{ if(!addItemProductId) return; const p2=products.find(x=>x.id===addItemProductId); if(!p2) return; setEditItems(ei=>[...ei,{peptideId:p2.id,qty:1,price:p2.price}]); setAddItemProductId(''); }}
+                    style={{padding:'7px 14px',background:'rgba(0,229,195,0.1)',border:'1px solid rgba(0,229,195,0.3)',borderRadius:7,color:'var(--accent)',fontWeight:700,fontSize:'0.75rem',cursor:'pointer'}}>OK</button>
+                </div>
+                {/* Total preview */}
+                {(() => {
+                  const newSubtotal = editItems.reduce((s,it)=>{ const p2=products.find(x=>x.id===it.peptideId); return s+(it.price||(p2?p2.price:0))*(it.qty||1); },0);
+                  const isPix = (orderDetail._payment||'').toLowerCase().includes('pix');
+                  const newFreight = isPix ? 0 : (orderDetail._freight ?? 60);
+                  const newTotal = newSubtotal + newFreight;
+                  return (
+                    <div style={{marginTop:10,padding:'8px 10px',background:'rgba(0,229,195,0.05)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:8,fontSize:'0.78rem'}}>
+                      <div style={{display:'flex',justifyContent:'space-between',color:'var(--muted)',marginBottom:3}}><span>Subtotal</span><span style={{fontFamily:"'Space Mono',monospace"}}>R$ {newSubtotal.toLocaleString('pt-BR')}</span></div>
+                      <div style={{display:'flex',justifyContent:'space-between',color:'var(--muted)',marginBottom:6}}><span>Frete</span><span style={{fontFamily:"'Space Mono',monospace"}}>{newFreight===0?'GRÁTIS':'R$ '+newFreight.toLocaleString('pt-BR')}</span></div>
+                      <div style={{display:'flex',justifyContent:'space-between',fontWeight:700}}><span>Novo Total</span><span style={{fontFamily:"'Space Mono',monospace",color:'var(--accent)'}}>R$ {newTotal.toLocaleString('pt-BR')}</span></div>
+                    </div>
+                  );
+                })()}
+                <div style={{display:'flex',gap:8,marginTop:10}}>
+                  <button onClick={()=>setEditItemsMode(false)}
+                    style={{flex:1,padding:'8px',background:'none',border:'1px solid var(--border)',borderRadius:8,color:'var(--muted)',fontSize:'0.75rem',cursor:'pointer'}}>Cancelar</button>
+                  <button onClick={async ()=>{
+                    if(editItems.length===0){ showToast('Pedido precisa de ao menos 1 item','error'); return; }
+                    const newSubtotal = editItems.reduce((s,it)=>{ const p2=products.find(x=>x.id===it.peptideId); return s+(it.price||(p2?p2.price:0))*(it.qty||1); },0);
+                    const isPix = (orderDetail._payment||'').toLowerCase().includes('pix');
+                    const newFreight = isPix ? 0 : (orderDetail._freight ?? 60);
+                    const newTotal = newSubtotal + newFreight;
+                    const updated = {...orderDetail, _items: editItems, _subtotal: newSubtotal, _freight: newFreight, _total: newTotal};
+                    if(sb) await sb.from('orders').update({ items: editItems, subtotal: newSubtotal, freight: newFreight, total: newTotal }).eq('id', orderDetail.id);
+                    persistOrders(orders.map(o=>o.id===orderDetail.id?updated:o));
+                    setOrderDetail(updated);
+                    setEditItemsMode(false);
+                    showToast('Pedido atualizado ✓','success');
+                  }} style={{flex:2,padding:'8px',background:'rgba(0,229,195,0.12)',border:'1px solid rgba(0,229,195,0.35)',borderRadius:8,color:'var(--accent)',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>SALVAR ALTERAÇÕES</button>
+                </div>
+              </>) : (<>
+                {(orderDetail._items||[{peptideId:orderDetail.peptideId,qty:orderDetail.qty}]).map((it,i)=>{
+                  const p2 = products.find(x=>x.id===it.peptideId);
+                  const unitPrice = it.price || (p2 ? p2.price : 0);
+                  return (
+                    <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'6px 0',borderBottom:'1px solid var(--border)',fontSize:'0.82rem'}}>
+                      <div>
+                        <div>{p2?p2.name:it.peptideId}</div>
+                        <div style={{color:'var(--muted)',fontSize:'0.7rem',fontFamily:"'Space Mono',monospace"}}>R$ {unitPrice.toLocaleString('pt-BR')} × {it.qty||1}</div>
+                      </div>
+                      <div style={{fontFamily:"'Space Mono',monospace",fontWeight:700,color:'var(--accent)'}}>R$ {(unitPrice*(it.qty||1)).toLocaleString('pt-BR')}</div>
+                    </div>
+                  );
+                })}
+                <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:3,fontSize:'0.78rem'}}>
+                  {orderDetail._subtotal != null && <div style={{display:'flex',justifyContent:'space-between',color:'var(--muted)'}}><span>Subtotal</span><span style={{fontFamily:"'Space Mono',monospace"}}>R$ {orderDetail._subtotal.toLocaleString('pt-BR')}</span></div>}
+                  {orderDetail._freight != null && <div style={{display:'flex',justifyContent:'space-between',color:'var(--muted)'}}><span>Frete</span><span style={{fontFamily:"'Space Mono',monospace"}}>{orderDetail._freight===0?'GRÁTIS':'R$ '+orderDetail._freight.toLocaleString('pt-BR')}</span></div>}
+                  {orderDetail._total != null && <div style={{display:'flex',justifyContent:'space-between',fontWeight:700,fontSize:'0.85rem',paddingTop:4,borderTop:'1px solid var(--border)'}}><span>Total</span><span style={{fontFamily:"'Space Mono',monospace",color:'var(--accent)'}}>R$ {orderDetail._total.toLocaleString('pt-BR')}</span></div>}
+                </div>
+              </>)}
             </div>
 
             {/* Endereço */}
@@ -7307,7 +7386,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               </div>
             </div>
 
-            <button onClick={()=>setOrderDetail(null)} style={{width:'100%',padding:'11px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem'}}>Fechar</button>
+            <button onClick={()=>{ setOrderDetail(null); setEditItemsMode(false); }} style={{width:'100%',padding:'11px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem'}}>Fechar</button>
           </div>
         </div>
       )}
