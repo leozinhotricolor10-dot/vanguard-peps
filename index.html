@@ -4964,6 +4964,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     if (!firstP) return null;
                     const orderTotal = order._total || items.reduce((s,i) => { const p2 = products.find(x=>x.id===i.peptideId); return s + (p2 ? p2.price*(i.qty||1) : 0); }, 0);
                     const totalQty = items.reduce((s,i) => s + (i.qty||1), 0);
+                    const phone = (order._phone || '').replace(/\D/g,'');
+                    const ddd = phone.startsWith('55') ? phone.slice(2,4) : phone.slice(0,2);
+                    const isMotoboy = ddd === '11';
                     return (
                       <div key={order.id} className="admin-table-row">
                         <div>
@@ -4972,7 +4975,14 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                             ? items.map((it,idx) => { const p2 = products.find(x=>x.id===it.peptideId); return <div key={idx} className="admin-row-name" style={{fontSize:'0.75rem'}}>{p2?p2.name:it.peptideId} ×{it.qty||1}</div>; })
                             : <div className="admin-row-name">{firstP.name}</div>
                           }
-                          <div className="admin-row-buyer">{order.buyerName}</div>
+                          <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
+                            <div className="admin-row-buyer">{order.buyerName}</div>
+                            {ddd && <span style={{fontSize:'0.55rem',fontFamily:"'Space Mono',monospace",fontWeight:700,padding:'1px 6px',borderRadius:20,
+                              background: isMotoboy ? 'rgba(255,180,0,0.12)' : 'rgba(100,160,255,0.1)',
+                              border: isMotoboy ? '1px solid rgba(255,180,0,0.4)' : '1px solid rgba(100,160,255,0.3)',
+                              color: isMotoboy ? '#ffb800' : '#78aaff'
+                            }}>{isMotoboy ? '🛵 MOTOBOY' : '🚚 TRANSP.'}</span>}
+                          </div>
                         </div>
                         <div>
                           <div style={{color:"#a8bfc9",fontSize:"0.82rem",marginBottom:4}}>{order.buyerName}</div>
