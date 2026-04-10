@@ -5853,7 +5853,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               const allMaxRev = allRankList[0]?allRankList[0][1]:1;
 
               // Estoque valorizado (stock × custo/vial)
-              const estoqueValorizado = products.reduce((a,p)=>a+(p._custoVial||0)*(p.stock||0),0);
+              const estoqueValorizado = products.reduce((a,p)=>a+(p._custoVial||0)*(stock[p.id]??0),0);
+              const estoqueVendaTotal = products.reduce((a,p)=>a+(p.price||0)*(stock[p.id]??0),0);
+              const estoqueLucroLatente = estoqueVendaTotal - estoqueValorizado;
 
               // Taxa de conversão pré-orders
               const poTotal = preorders.length;
@@ -6156,9 +6158,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       <div className="fin-card-sub">{totalOrds} pedido{totalOrds!==1?'s':''} no total</div>
                     </div>
                     <div className="fin-card" style={{borderColor:'rgba(0,200,100,0.3)',background:'rgba(0,200,100,0.04)'}}>
-                      <div className="fin-card-label">Estoque Valorizado</div>
-                      <div className="fin-card-value" style={{color:'#00c864'}}>{fmt(Math.round(estoqueValorizado))}</div>
-                      <div className="fin-card-sub">Custo do estoque atual</div>
+                      <div className="fin-card-label">Estoque em Caixa</div>
+                      <div className="fin-card-value" style={{color:'#00c864'}}>{fmt(Math.round(estoqueVendaTotal))}</div>
+                      <div className="fin-card-sub" style={{lineHeight:1.6}}>
+                        <span style={{color:'#ff7070'}}>Custo: {fmt(Math.round(estoqueValorizado))}</span><br/>
+                        <span style={{color:'#4cffb0'}}>Lucro latente: {fmt(Math.round(estoqueLucroLatente))}</span>
+                      </div>
                     </div>
                   </div>}
 
