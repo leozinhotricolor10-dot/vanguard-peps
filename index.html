@@ -2324,6 +2324,7 @@ function App() {
   const [productPromo, setProductPromo] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-promo')||'{}'); } catch { return {}; } });
   const [importForm, setImportForm] = useState({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', desconto:'', outrosBrl:'', invoiceTotal:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:'',precoVenda:''}] });
   const [importHistory, setImportHistory] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-imports')||'[]'); } catch { return []; } });
+  const [stockLots, setStockLots] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-stock-lots')||'{}'); } catch { return {}; } });
   const [editingImportId, setEditingImportId] = useState(null);
   const [despesas, setDespesas] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-expenses')||'[]'); } catch { return []; } });
   const [despesaForm, setDespesaForm] = useState({ desc:'', valor:'', categoria:'outros', data: new Date().toLocaleDateString('pt-BR') });
@@ -5129,6 +5130,17 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                           return <span style={{color:'#6bcb77'}}>{tot} OK</span>;
                         })()}
                       </div>
+                      {/* Lotes de origem */}
+                      {(stockLots[p.id]||[]).length > 0 && (
+                        <div style={{marginTop:6,display:'flex',flexWrap:'wrap',gap:3}}>
+                          {(stockLots[p.id]||[]).map((lot,i)=>(
+                            <span key={i} style={{fontSize:'0.58rem',fontFamily:"'Space Mono',monospace",background:'rgba(120,170,255,0.07)',border:'1px solid rgba(120,170,255,0.2)',borderRadius:4,padding:'1px 6px',color:'#78aaff'}}
+                              title={`Importação de ${lot.date}`}>
+                              📦 {lot.date} +{lot.qty}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -6389,7 +6401,47 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 const hist = importHistory.map(h => h.id === id ? { ...h, status: newStatus } : h);
                 setImportHistory(hist);
                 localStorage.setItem('vg-imports', JSON.stringify(hist));
-                showToast(`Status: ${IMPORT_STATUS[newStatus]?.label || newStatus}`);
+
+                if (newStatus === 'entregue') {
+                  const lote = importHistory.find(h => h.id === id);
+                  if (lote) {
+                    // Adicionar vials ao estoque
+                    const newStock = { ...stock };
+                    const addedItems = [];
+                    (lote.items || []).forEach(it => {
+                      const sku = (it.sku || '').toUpperCase();
+                      const vials = parseInt(it.vials) || (parseInt(it.boxes) || 0) * 10;
+                      if (!vials) return;
+                      const prod = products.find(p => (p.sku || '').toUpperCase() === sku);
+                      if (!prod) return;
+                      newStock[prod.id] = (newStock[prod.id] || 0) + vials;
+                      addedItems.push({ name: prod.name, vials });
+                    });
+                    persistStock(newStock);
+
+                    // Registrar rastreabilidade do lote
+                    let lots; try { lots = JSON.parse(localStorage.getItem('vg-stock-lots') || '{}'); } catch { lots = {}; }
+                    (lote.items || []).forEach(it => {
+                      const sku = (it.sku || '').toUpperCase();
+                      const vials = parseInt(it.vials) || (parseInt(it.boxes) || 0) * 10;
+                      if (!vials) return;
+                      const prod = products.find(p => (p.sku || '').toUpperCase() === sku);
+                      if (!prod) return;
+                      if (!lots[prod.id]) lots[prod.id] = [];
+                      lots[prod.id].push({ lotId: id, date: lote.date, qty: vials });
+                    });
+                    localStorage.setItem('vg-stock-lots', JSON.stringify(lots));
+                    setStockLots(lots);
+
+                    if (addedItems.length) {
+                      showToast(`✅ Estoque atualizado: ${addedItems.map(x=>`${x.name} +${x.vials}`).join(', ')}`, 'success');
+                    } else {
+                      showToast('Status: Entregue — nenhum SKU encontrado no catálogo para dar entrada automática', 'info');
+                    }
+                  }
+                } else {
+                  showToast(`Status: ${IMPORT_STATUS[newStatus]?.label || newStatus}`);
+                }
               }
               function saveImport() {
                 if (calcs.length === 0) { showToast('Preencha SKU, caixas e preço USD de pelo menos um produto','error'); return; }
