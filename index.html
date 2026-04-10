@@ -2311,6 +2311,7 @@ function App() {
   const [editItemsMode, setEditItemsMode] = useState(false);
   const [editItems, setEditItems] = useState([]);
   const [addItemProductId, setAddItemProductId] = useState('');
+  const [discountInput, setDiscountInput] = useState(null); // null = fechado, string = editando
   const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms'
   const [preorderModal, setPreorderModal] = useState(null); // {peptide}
   const [preorderLocked, setPreorderLocked] = useState(()=> localStorage.getItem('vg-preorder-locked') === 'true');
@@ -7205,7 +7206,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
       {/* ORDER DETAIL MODAL */}
       {orderDetail && (
-        <div className="modal-overlay" onClick={()=>{ setOrderDetail(null); setEditItemsMode(false); }}>
+        <div className="modal-overlay" onClick={()=>{ setOrderDetail(null); setEditItemsMode(false); setDiscountInput(null); }}>
           <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:480,maxHeight:'85vh',overflowY:'auto'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
               <div>
@@ -7343,6 +7344,53 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               </div>
             )}
 
+            {/* Desconto manual */}
+            <div style={{background:'var(--bg2)',borderRadius:10,padding:'12px 14px',marginBottom:10}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:discountInput!==null||orderDetail._discount?8:0}}>
+                <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'#ffaa00',letterSpacing:'1px'}}>🏷️ DESCONTO MANUAL</div>
+                {discountInput===null && <button onClick={()=>setDiscountInput(String(orderDetail._discount||''))}
+                  style={{background:'none',border:'none',color:'#ffaa00',fontSize:'0.62rem',cursor:'pointer',padding:0}}>
+                  {orderDetail._discount ? '✏️ editar' : '+ aplicar desconto'}
+                </button>}
+              </div>
+              {discountInput!==null ? (
+                <div>
+                  <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:6}}>Valor do desconto (R$)</div>
+                  <div style={{display:'flex',gap:6,marginBottom:6}}>
+                    <input autoFocus type="number" min="0" value={discountInput} onChange={e=>setDiscountInput(e.target.value)}
+                      placeholder="ex: 30"
+                      style={{flex:1,padding:'8px 10px',background:'var(--surface)',border:'1px solid rgba(255,170,0,0.4)',borderRadius:7,color:'var(--text)',fontSize:'0.85rem'}}
+                      onKeyDown={e=>{ if(e.key==='Escape') setDiscountInput(null); }} />
+                    <button onClick={async ()=>{
+                      const disc = parseFloat(discountInput)||0;
+                      const base = (orderDetail._subtotal ?? orderDetail._total ?? 0);
+                      const freight = orderDetail._freight ?? 0;
+                      const newTotal = Math.max(0, base + freight - disc);
+                      const updated = {...orderDetail, _discount: disc||undefined, _total: newTotal};
+                      if(sb) await sb.from('orders').update({ discount: disc||null, total: newTotal }).eq('id', orderDetail.id);
+                      persistOrders(orders.map(o=>o.id===orderDetail.id?updated:o));
+                      setOrderDetail(updated);
+                      setDiscountInput(null);
+                      showToast(disc>0?`Desconto de R$ ${disc.toLocaleString('pt-BR')} aplicado ✓`:'Desconto removido','success');
+                    }} style={{padding:'8px 14px',background:'rgba(255,170,0,0.15)',border:'1px solid rgba(255,170,0,0.4)',borderRadius:7,color:'#ffaa00',fontWeight:700,fontSize:'0.75rem',cursor:'pointer'}}>✓</button>
+                    <button onClick={()=>setDiscountInput(null)} style={{padding:'8px 10px',background:'none',border:'1px solid var(--border)',borderRadius:7,color:'var(--muted)',fontSize:'0.75rem',cursor:'pointer'}}>✕</button>
+                  </div>
+                  {(() => {
+                    const disc = parseFloat(discountInput)||0;
+                    const base = orderDetail._subtotal ?? orderDetail._total ?? 0;
+                    const freight = orderDetail._freight ?? 0;
+                    const newTotal = Math.max(0, base + freight - disc);
+                    return disc > 0 && <div style={{fontSize:'0.72rem',color:'#ffaa00'}}>Novo total: <strong>R$ {newTotal.toLocaleString('pt-BR')}</strong></div>;
+                  })()}
+                </div>
+              ) : orderDetail._discount > 0 ? (
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:'0.82rem'}}>
+                  <span style={{color:'var(--muted)'}}>Desconto aplicado</span>
+                  <span style={{fontFamily:"'Space Mono',monospace",fontWeight:700,color:'#ffaa00'}}>− R$ {orderDetail._discount.toLocaleString('pt-BR')}</span>
+                </div>
+              ) : null}
+            </div>
+
             {/* Pagamento + Obs */}
             <div style={{display:'grid',gridTemplateColumns: orderDetail._notes ? '1fr 1fr' : '1fr',gap:10,marginBottom:16}}>
               {orderDetail._payment && (
@@ -7386,7 +7434,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               </div>
             </div>
 
-            <button onClick={()=>{ setOrderDetail(null); setEditItemsMode(false); }} style={{width:'100%',padding:'11px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem'}}>Fechar</button>
+            <button onClick={()=>{ setOrderDetail(null); setEditItemsMode(false); setDiscountInput(null); }} style={{width:'100%',padding:'11px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem'}}>Fechar</button>
           </div>
         </div>
       )}
