@@ -5885,7 +5885,16 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               };
               const totalTaxasMP = confirmedOrds.reduce((s,o)=>s+calcMpFee(o), 0);
 
-              // 3) Despesas manuais
+              // 3) Frete absorvido em pedidos PIX (loja paga o frete)
+              const FRETE_FIXO = 60;
+              const pixOrdsConfirmed = confirmedOrds.filter(o => JSON.stringify(o._payment||'').toLowerCase().includes('pix'));
+              const totalFretePixAbsorvido = pixOrdsConfirmed.reduce((s,o) => {
+                // Se já tem custo real de envio (ME label), não duplicar
+                if (shippingCosts[o.id]) return s;
+                return s + FRETE_FIXO;
+              }, 0);
+
+              // 4) Despesas manuais
               const totalDespManuais = despesas.reduce((s,d)=>s+(parseFloat(d.valor)||0), 0);
 
               // 4) Custo de importações
@@ -5896,7 +5905,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               }, 0);
 
               // 5) P&L
-              const totalDespesas = (hasCost ? cogs : totalImportCost) + totalFreteEnvio + totalTaxasMP + totalDespManuais;
+              const totalDespesas = (hasCost ? cogs : totalImportCost) + totalFreteEnvio + totalFretePixAbsorvido + totalTaxasMP + totalDespManuais;
               const lucroOperacional = confirmed - totalDespesas;
               const margemOperacional = confirmed > 0 ? (lucroOperacional / confirmed) * 100 : 0;
 
@@ -5931,6 +5940,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                         ? { label:'(-) CMV — custo das mercadorias vendidas', val: cogs, color:'#ff5050', sign:'-', sub: totalImportCost>0?'✓ Custo/vial reflete importações — veja breakdown abaixo':null }
                         : { label:'(-) Custo de importações (total lotes)', val: totalImportCost, color:'#ff5050', sign:'-', sub: totalImportCost===0?'Nenhuma importação registrada ainda':null },
                       { label:'(-) Frete de envio (ME)', val: totalFreteEnvio, color:'#ffa040', sign:'-', sub: totalFreteEnvio===0?'Será registrado ao gerar etiquetas':null },
+                      { label:'(-) Frete absorvido — PIX', val: totalFretePixAbsorvido, color:'#ffa040', sign:'-', sub: pixOrdsConfirmed.length > 0 ? `${pixOrdsConfirmed.length} pedido${pixOrdsConfirmed.length>1?'s':''} PIX × R$ ${FRETE_FIXO} (sem etiqueta ME gerada)` : 'Nenhum pedido PIX confirmado ainda' },
                       { label:'(-) Taxas Mercado Pago', val: totalTaxasMP, color:'#ffa040', sign:'-', sub:'Estimado por tipo de pagamento' },
                       { label:'(-) Despesas manuais', val: totalDespManuais, color:'#ffa040', sign:'-', sub: despesas.length===0?'Nenhuma lançada ainda':null },
                     ].map((row,i)=>(
