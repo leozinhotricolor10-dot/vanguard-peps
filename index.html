@@ -17,10 +17,10 @@
 <meta property="og:image:height" content="630"/>
 <meta property="og:locale" content="pt_BR"/>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" integrity="sha384-tMH8h3BGESGckSAVGZ82T9n90ztNXxvdwvdM6UoR56cYcf+0iGXBliJ29D+wZ/x8" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" integrity="sha384-bm7MnzvK++ykSwVJ2tynSE5TRdN+xL418osEVF2DE/L/gfWHj91J2Sphe582B1Bh" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js" integrity="sha384-aGlMNK3U/x0wl4lEH5jD1PGhJlX9hApuPmIiA5gtiYCOQ1J8ejIdC0btaU/TMoBD" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2.103.0/dist/umd/supabase.js" integrity="sha384-DhQwexdHDgflJSHTCNnDpLG79LeSY9N4y9HgGsHNuFcyhMVuYFT1Sn2OPSZr58aD" crossorigin="anonymous"></script>
 <style>
 :root {
   --bg: #050a0e;
@@ -1080,16 +1080,8 @@ const ADINA_CATALOG = {
   'AA10':{name:'Acetic Acid Water',spec:'10mL',priceUsd:15},'AA03':{name:'Acetic Acid Water',spec:'3mL',priceUsd:10},
 };
 
-const DEFAULT_ME_POOL = [
-  { name:'Fernanda Oliveira Costa',  document:'35128476928', phone:'11945672318', email:'fernanda.costa91@gmail.com',    address:'Rua Siqueira Campos',     number:'247', complement:'Apto 32',   district:'Rudge Ramos',    city:'São Bernardo do Campo', state:'SP', postal_code:'09610150' },
-  { name:'Ricardo Santos Pereira',   document:'47291385628', phone:'11967834521', email:'r.santos.pereira@gmail.com',    address:'Rua das Orquídeas',       number:'83',  complement:'',          district:'Nova Petrópolis', city:'São Bernardo do Campo', state:'SP', postal_code:'09681510' },
-  { name:'Camila Rodrigues Lima',    document:'61835924719', phone:'11934562187', email:'camilinha.lima@gmail.com',       address:'Rua Líbero Badaró',       number:'415', complement:'Bloco B',   district:'Baeta Neves',    city:'São Bernardo do Campo', state:'SP', postal_code:'09771290' },
-  { name:'Marcos Souza Ferreira',    document:'84617259309', phone:'11978123456', email:'marcos.ferreira91@gmail.com',   address:'Rua Marechal Deodoro',    number:'132', complement:'',          district:'Centro',         city:'São Bernardo do Campo', state:'SP', postal_code:'09710080' },
-  { name:'Patricia Alves Mendes',    document:'29574816346', phone:'11923456789', email:'pati.mendes@gmail.com',          address:'Rua Américo Brasiliense', number:'58',  complement:'Casa 2',    district:'Paulicéia',      city:'São Bernardo do Campo', state:'SP', postal_code:'09695460' },
-  { name:'Eduardo Ribeiro Nunes',    document:'53926471891', phone:'11956781234', email:'eduardo.nunes@gmail.com',        address:'Rua Sete de Setembro',    number:'309', complement:'Apto 11',   district:'Ferrazópolis',   city:'São Bernardo do Campo', state:'SP', postal_code:'09762050' },
-  { name:'Juliana Castro Moreira',   document:'76483192509', phone:'11912345678', email:'ju.castro.moreira@gmail.com',   address:'Rua das Magnólias',       number:'172', complement:'',          district:'Assunção',       city:'São Bernardo do Campo', state:'SP', postal_code:'09821070' },
-  { name:'André Gomes Teixeira',     document:'18749536273', phone:'11989012345', email:'andre.teixeira88@gmail.com',    address:'Avenida Kennedy',         number:'521', complement:'Sala 3',    district:'Vila Euclides',  city:'São Bernardo do Campo', state:'SP', postal_code:'09713180' },
-];
+// Pool de remetentes padrão — preencha com dados reais pelo painel Admin → Etiquetas → Remetentes
+const DEFAULT_ME_POOL = [];
 
 const CATEGORIES = [
   { id: "all",          name: "Todos",               icon: "🧬", color: "rgba(0,229,195,0.15)" },
@@ -1150,6 +1142,7 @@ function saveProducts(p) {
     compounds: prod.compounds || null,
     cost_per_vial: prod._custoVial || null,
     packs: prod.packs || [],
+    promo: parseFloat(prod.promo) || 0,
     image_url: prod.image_url || null,
     sort_order: i, updated_at: new Date().toISOString()
   }));
@@ -2277,6 +2270,7 @@ function App() {
   const [formQty, setFormQty] = useState(1);
   const [formName, setFormName] = useState("");
   const [adminUnlocked, setAdminUnlocked] = useState(false);
+  const adminLockRef = React.useRef({ attempts: 0, until: 0 }); // session-only, cannot be cleared via localStorage
   const [adminTab, setAdminTab] = useState("pedidos");
   const [prodForm, setProdForm] = useState(null); // null = fechado, {} = novo, {id} = editando
   const [packForm, setPackForm] = useState(null); // null = fechado, {} = novo pack em edição
@@ -2699,21 +2693,21 @@ function App() {
 
   // ── Rastreamento de pedidos ───────────────────────────────────────────────
   async function searchOrders(overrideQuery) {
-    const q = (overrideQuery || trackQuery).trim().toUpperCase();
-    if (!q) return;
+    const raw = (overrideQuery || trackQuery).trim().toUpperCase();
+    if (!raw) return;
     if (!sb) { showToast('Indisponível no momento', 'error'); return; }
+    // Aceitar somente código VG- para evitar enumeração de CPF
+    const q = raw.startsWith('VG') ? (raw.startsWith('VG-') ? raw : 'VG-' + raw.replace(/^VG-?/,'')) : raw;
+    if (!q.startsWith('VG-') || q.length < 8) {
+      showToast('Informe o código do pedido (VG-XXXXXX)', 'error');
+      setTrackLoading(false);
+      return;
+    }
     setTrackLoading(true);
     setTrackResults(null);
-    const clean = q.replace(/\D/g, '');
-    // Busca por código VG-, CPF ou telefone
-    const isCode = q.startsWith('VG-') || q.startsWith('VG');
     let query = sb.from('orders').select('id,code,buyer_name,status,created_at,items,total,payment,tracking_code');
-    if (isCode) {
-      query = query.or(`code.eq.${q},code.eq.VG-${q.replace(/^VG-?/,'')}}`);
-    } else {
-      query = query.or(`cpf.eq.${q},cpf.eq.${clean},phone.ilike.%${clean.slice(-8)}%`);
-    }
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(20);
+    query = query.eq('code', q);
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(1);
     setTrackLoading(false);
     if (error || !data) { setTrackResults([]); return; }
     setTrackResults(data.map(o => ({
@@ -3120,40 +3114,40 @@ Subtotal: R$ ${myTotal.toLocaleString('pt-BR')}
 Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${couponDiscount > 0 ? '\n🏷️ Cupom '+appliedCoupon.code+': -R$ '+couponDiscount.toLocaleString('pt-BR') : ''}${pointsDiscount > 0 ? '\n⭐ Pontos VG ('+appliedPoints+' pts): -R$ '+pointsDiscount.toLocaleString('pt-BR') : ''}
 *Total: R$ ${totalFinal.toLocaleString('pt-BR')}*${checkout.observacoes ? '\n\n📝 *Obs:* ' + checkout.observacoes : ''}`;
 
-      // Salvar pedido no Supabase
+      // Salvar pedido via Edge Function (preços validados server-side)
       let orderCode = null;
       if (myOrders.length > 0) {
-        orderCode = generateOrderCode();
-        const _now2 = new Date();
-        const _pad2 = n=>String(n).padStart(2,'0');
-        const orderId = `${_now2.getFullYear()}${_pad2(_now2.getMonth()+1)}${_pad2(_now2.getDate())}${_pad2(_now2.getHours())}${_pad2(_now2.getMinutes())}${_pad2(_now2.getSeconds())}`;
-        const orderItems = myOrders.map(o => {
-          const p = products.find(x => x.id === o.peptideId);
-          return { peptideId: o.peptideId, name: p ? p.name : o.peptideId, qty: o.qty, price: p ? p.price : 0 };
-        });
-        if (sb) {
-          const { error } = await sb.from('orders').insert({
-            id: orderId,
-            code: orderCode,
-            buyer_name: checkout.nomeCompleto,
-            phone: checkout.telefone,
-            email: checkout.email,
-            cpf: checkout.cpf,
-            address: { rua: checkout.rua, numero: checkout.numero, complemento: checkout.complemento,
-                        bairro: checkout.bairro, cidade: checkout.cidade, estado: checkout.estado, cep: checkout.cep },
-            items: orderItems,
-            subtotal: myTotal,
-            freight: freight.value,
-            total: totalFinal,
-            payment: checkout.pagamento,
-            notes: checkout.observacoes,
-            status: 'pendente'
+        const orderItems = myOrders.map(o => ({
+          peptideId: o.peptideId, name: (products.find(x=>x.id===o.peptideId)||{}).name||o.peptideId,
+          qty: o.qty, _packId: o._packId||null,
+        }));
+        try {
+          const createRes = await fetch('https://aumubzvdhzvtnqfzqeqd.supabase.co/functions/v1/create-order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+            body: JSON.stringify({
+              buyer_name: checkout.nomeCompleto,
+              phone: checkout.telefone,
+              email: checkout.email,
+              cpf: checkout.cpf,
+              address: { rua: checkout.rua, numero: checkout.numero, complemento: checkout.complemento,
+                          bairro: checkout.bairro, cidade: checkout.cidade, estado: checkout.estado, cep: checkout.cep },
+              items: orderItems,
+              payment: checkout.pagamento,
+              coupon_code: appliedCoupon ? appliedCoupon.code : null,
+              notes: checkout.observacoes,
+            }),
           });
-          if (error) {
-            showToast("Erro ao salvar pedido. Verifique sua conexão e tente novamente.", "error");
+          const createData = await createRes.json();
+          if (!createData.ok) {
+            showToast("Erro ao salvar pedido: " + (createData.error || 'tente novamente'), "error");
             return;
           }
+          orderCode = createData.code;
           if (appliedPoints > 0) await redeemPoints(checkout.cpf, appliedPoints);
+        } catch {
+          showToast("Erro de conexão ao salvar pedido. Tente novamente.", "error");
+          return;
         }
       }
 
@@ -3666,10 +3660,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
   }
 
   function handleAdminUnlock() {
-    const lockKey = 'vg-admin-lock';
-    let lockData; try { lockData = JSON.parse(localStorage.getItem(lockKey) || '{"attempts":0,"until":0}'); } catch { lockData = { attempts: 0, until: 0 }; }
-    if (Date.now() < lockData.until) {
-      const mins = Math.ceil((lockData.until - Date.now()) / 60000);
+    const lock = adminLockRef.current;
+    if (Date.now() < lock.until) {
+      const mins = Math.ceil((lock.until - Date.now()) / 60000);
       showToast(`Bloqueado. Tente em ${mins} min.`, "error"); return;
     }
     setAdminPwInput('');
@@ -3679,26 +3672,29 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
   async function submitAdminPassword() {
     const pw = adminPwInput.trim();
     if (!pw) return;
-    const lockKey = 'vg-admin-lock';
-    let lockData; try { lockData = JSON.parse(localStorage.getItem(lockKey) || '{"attempts":0,"until":0}'); } catch { lockData = { attempts: 0, until: 0 }; }
+    const lock = adminLockRef.current;
+    if (Date.now() < lock.until) {
+      const mins = Math.ceil((lock.until - Date.now()) / 60000);
+      showToast(`Bloqueado. Tente em ${mins} min.`, "error"); return;
+    }
     try {
       const res = await fetch('https://aumubzvdhzvtnqfzqeqd.supabase.co/functions/v1/verify-admin', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': 'sb_publishable_crfA-iUkVR2mnibsWQ2ZDA_wpwOBBY_' },
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
         body: JSON.stringify({ password: pw }),
       });
-      const { ok } = await res.json();
-      if (ok) {
-        localStorage.removeItem(lockKey);
+      const data = await res.json();
+      if (data.ok) {
+        adminLockRef.current = { attempts: 0, until: 0 };
         setAdminPwModal(false); setAdminPwInput('');
         setAdminUnlocked(true); showToast("Admin desbloqueado ✓"); setView("admin");
       } else {
-        const attempts = (lockData.attempts || 0) + 1;
-        const until = attempts >= 3 ? Date.now() + 5 * 60 * 1000 : 0;
-        localStorage.setItem(lockKey, JSON.stringify({ attempts, until }));
+        const attempts = (lock.attempts || 0) + 1;
+        const until = attempts >= 5 ? Date.now() + 15 * 60 * 1000 : 0;
+        adminLockRef.current = { attempts, until };
         setAdminPwInput('');
-        if (attempts >= 3) { setAdminPwModal(false); showToast("3 tentativas — bloqueado por 5 min!", "error"); }
-        else showToast(`Código incorreto! (${attempts}/3)`, "error");
+        if (data.locked || attempts >= 5) { setAdminPwModal(false); showToast("Muitas tentativas — bloqueado por 15 min!", "error"); }
+        else showToast(`Código incorreto! (${attempts}/5)`, "error");
       }
     } catch {
       showToast("Erro de conexão. Tente novamente.", "error");
@@ -7466,11 +7462,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px'}}>📦 RASTREAR PEDIDO</div>
               <button onClick={()=>setTrackModal(false)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'1.1rem'}}>✕</button>
             </div>
-            <p style={{fontSize:'0.82rem',color:'var(--muted)',marginBottom:16}}>Busque pelo seu <strong style={{color:'var(--text)'}}>CPF</strong> para ver o histórico completo, ou use o código <span style={{fontFamily:"'Space Mono',monospace",color:'var(--accent)'}}>VG-XXXXXX</span> de um pedido específico.</p>
+            <p style={{fontSize:'0.82rem',color:'var(--muted)',marginBottom:16}}>Digite o código <span style={{fontFamily:"'Space Mono',monospace",color:'var(--accent)'}}>VG-XXXXXX</span> que você recebeu no WhatsApp ao finalizar o pedido.</p>
             <div style={{display:'flex',gap:8,marginBottom:20}}>
               <input
                 style={{flex:1,background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 14px',color:'var(--text)',fontSize:'0.88rem',fontFamily:"'DM Sans',sans-serif"}}
-                placeholder="CPF ou código VG-XXXXXX"
+                placeholder="Código VG-XXXXXX"
                 value={trackQuery}
                 onChange={e=>setTrackQuery(e.target.value)}
                 onKeyDown={e=>e.key==='Enter'&&searchOrders()}
