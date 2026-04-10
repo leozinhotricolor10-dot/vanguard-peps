@@ -4348,6 +4348,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
             {/* CATEGORY PILLS - below carousel, above products */}
             {!searchQuery && (
               <div className="cat-pills" style={{overflowX:'auto',paddingBottom:4}}>
+                <button className={`cat-pill ${filterInStock?'active':''}`} onClick={()=>setFilterInStock(v=>!v)}
+                  style={filterInStock ? {borderColor:'rgba(0,229,195,0.6)',background:'rgba(0,229,195,0.12)',color:'var(--accent)'} : {}}>
+                  <span>✅</span> Em estoque <span className="cat-pill-count">{products.filter(p=>availableStock(p.id)>0).length}</span>
+                </button>
                 <button className={`cat-pill ${activeCat==='all'?'active':''}`} onClick={()=>setActiveCat('all')}>
                   <span>⚡</span> Todos <span className="cat-pill-count">{products.length}</span>
                 </button>
@@ -4359,10 +4363,6 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     </button>
                   );
                 })}
-                <button className={`cat-pill ${filterInStock?'active':''}`} onClick={()=>setFilterInStock(v=>!v)}
-                  style={filterInStock ? {borderColor:'rgba(0,229,195,0.6)',background:'rgba(0,229,195,0.12)',color:'var(--accent)'} : {}}>
-                  <span>✅</span> Em estoque <span className="cat-pill-count">{products.filter(p=>availableStock(p.id)>0).length}</span>
-                </button>
               </div>
             )}
 
