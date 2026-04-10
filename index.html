@@ -5948,29 +5948,56 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   {/* ── BREAKDOWN IMPORTAÇÕES ── */}
                   {importHistory.length > 0 && (
                     <div style={{marginBottom:20}}>
-                      <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--muted)',letterSpacing:'1.5px',marginBottom:10}}>📦 IMPORTAÇÕES — CUSTO POR LOTE</div>
-                      {hasCost && <div style={{fontSize:'0.72rem',color:'#ffc107',background:'rgba(255,193,7,0.08)',border:'1px solid rgba(255,193,7,0.25)',borderRadius:8,padding:'8px 12px',marginBottom:10}}>⚠️ CMV está configurado com custo/vial — o custo das importações já está refletido no P&L via CMV. Este breakdown é apenas referência de caixa.</div>}
+                      <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--muted)',letterSpacing:'1.5px',marginBottom:10}}>📦 IMPORTAÇÕES — CUSTO vs RECEITA RECUPERADA</div>
                       {importHistory.map(h => {
                         const prodCost = (parseFloat(h.totalOrderUsd)||0) * (parseFloat(h.cambio)||0);
                         const overhead = parseFloat(h.overheadBrl)||0;
-                        const total = prodCost + overhead;
+                        const totalCusto = prodCost + overhead;
                         const st = h.status || 'aguardando';
                         const stColor = st==='entregue'?'#4ade80':st==='alfandega'?'#ff9f43':st==='em_transito'?'#78aaff':'#ffaa00';
+
+                        // SKUs deste lote
+                        const lotSkus = (h.items||[]).map(it=>(it.sku||'').toUpperCase()).filter(Boolean);
+                        // Produtos do catálogo que batem com os SKUs deste lote
+                        const lotProds = products.filter(p => lotSkus.includes((p.sku||'').toUpperCase()));
+                        const lotProdIds = new Set(lotProds.map(p=>p.id));
+                        // Receita das ordens confirmadas deste lote
+                        const receitaLote = confirmedOrds.reduce((s,o) => {
+                          const items = o._items && o._items.length ? o._items : [{peptideId:o.peptideId, qty:o.qty||1}];
+                          return s + items.reduce((s2,it) => {
+                            if (!lotProdIds.has(it.peptideId)) return s2;
+                            const p = products.find(x=>x.id===it.peptideId);
+                            return s2 + (p ? p.price*(it.qty||1) : 0);
+                          }, 0);
+                        }, 0);
+                        const saldo = receitaLote - totalCusto;
+                        const pct = totalCusto > 0 ? Math.round((receitaLote/totalCusto)*100) : 0;
+                        const barW = Math.min(100, pct);
+
                         return (
-                          <div key={h.id} style={{background:'rgba(255,255,255,0.02)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 14px',marginBottom:6}}>
-                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                          <div key={h.id} style={{background:'rgba(255,255,255,0.02)',border:'1px solid var(--border)',borderRadius:10,padding:'12px 16px',marginBottom:8}}>
+                            {/* Header */}
+                            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                               <div style={{display:'flex',alignItems:'center',gap:8}}>
                                 <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.65rem',color:'var(--accent)'}}>{h.date}</span>
                                 <span style={{fontSize:'0.58rem',fontWeight:700,padding:'1px 7px',borderRadius:20,color:stColor,border:`1px solid ${stColor}`,background:`${stColor}18`,fontFamily:"'Space Mono',monospace"}}>{st}</span>
                               </div>
-                              <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.8rem',fontWeight:700,color:'#ff5050'}}>− R$ {total.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                              <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',fontWeight:700,color: saldo>=0?'#4cffb0':'#ff5050'}}>
+                                {saldo>=0?'+':''}{saldo.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+                              </span>
                             </div>
-                            <div style={{display:'flex',gap:16,fontSize:'0.65rem',color:'var(--muted)',fontFamily:"'Space Mono',monospace"}}>
-                              <span>Produtos: R$ {prodCost.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
-                              <span>Overhead: R$ {overhead.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
-                              <span>Câmbio: {h.cambio}</span>
+                            {/* Barra de recuperação */}
+                            <div style={{marginBottom:8}}>
+                              <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.6rem',fontFamily:"'Space Mono',monospace",marginBottom:3}}>
+                                <span style={{color:'var(--muted)'}}>Recuperado: <strong style={{color: pct>=100?'#4cffb0':'#ffaa00'}}>R$ {receitaLote.toLocaleString('pt-BR',{minimumFractionDigits:2})} ({pct}%)</strong></span>
+                                <span style={{color:'#ff5050'}}>Custo: R$ {totalCusto.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                              </div>
+                              <div style={{height:6,borderRadius:4,background:'rgba(255,255,255,0.06)',overflow:'hidden'}}>
+                                <div style={{height:'100%',width:`${barW}%`,borderRadius:4,background: pct>=100?'#4cffb0':'linear-gradient(90deg,#ffaa00,#ff8800)',transition:'width 0.4s'}} />
+                              </div>
                             </div>
-                            <div style={{display:'flex',flexWrap:'wrap',gap:4,marginTop:6}}>
+                            {/* SKUs */}
+                            <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
                               {(h.items||[]).map((it,i)=>(
                                 <span key={i} style={{fontSize:'0.62rem',fontFamily:"'Space Mono',monospace",background:'rgba(0,229,195,0.06)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:4,padding:'2px 7px',color:'var(--muted)'}}>
                                   {it.sku} ×{it.vials||((it.boxes||0)*10)} vials
@@ -5980,8 +6007,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                           </div>
                         );
                       })}
-                      <div style={{display:'flex',justifyContent:'flex-end',paddingTop:6,borderTop:'1px solid var(--border)'}}>
-                        <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.75rem',color:'#ff5050',fontWeight:700}}>Total investido: R$ {totalImportCost.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                      <div style={{display:'flex',justifyContent:'space-between',paddingTop:8,borderTop:'1px solid var(--border)'}}>
+                        <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',color:'#ff5050',fontWeight:700}}>Total investido: R$ {totalImportCost.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                        <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',color: confirmed>=totalImportCost?'#4cffb0':'#ffaa00',fontWeight:700}}>
+                          Recuperado: {totalImportCost>0?Math.round((confirmed/totalImportCost)*100):0}%
+                        </span>
                       </div>
                     </div>
                   )}
