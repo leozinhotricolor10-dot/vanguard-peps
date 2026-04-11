@@ -4884,9 +4884,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   const linhas = disponíveis.map(p => {
                     const av = availableStock(p.id);
                     const estoqueLabel = av === null ? '' : ` (${av} disp.)`;
-                    return `🧬 *${p.name}*${estoqueLabel}\n💰 R$ ${effectivePrice(p).toLocaleString('pt-BR')} /ampola\n🔗 vanguardpep.com/#/produto/${p.id}`;
+                    return `✅ *${p.name}*${estoqueLabel}\n💲 R$ ${effectivePrice(p).toLocaleString('pt-BR')} /ampola\n🌐 vanguardpep.com/#/produto/${p.id}`;
                   }).join('\n\n');
-                  const msg = `🔬 *VANGUARD PEPTIDES — EM ESTOQUE*\n\n${linhas}\n\n📲 Acesse o catálogo completo em *vanguardpep.com*\nDúvidas? É só chamar! 🙏`;
+                  const msg = `⭐ *VANGUARD PEPTIDES — EM ESTOQUE*\n\n${linhas}\n\n📱 Acesse o catálogo completo em *vanguardpep.com*\nDúvidas? É só chamar! 🙏`;
                   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
                 }}>📦 Catálogo WA</button>
                 <button className="admin-action-btn danger" onClick={clearAllOrders}>🗑️ Limpar tudo</button>
