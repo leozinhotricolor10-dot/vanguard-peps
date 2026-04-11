@@ -2946,6 +2946,7 @@ function App() {
     try {
     sb.from('orders').select('*').order('created_at', { ascending: false }).then(({ data, error }) => {
       if (error) { console.warn('[Supabase] Orders fetch error:', error.message); return; }
+      console.log(`[Supabase] Orders carregados: ${data ? data.length : 0}`, data ? data.map(o=>({code:o.code,status:o.status,buyer:o.buyer_name,created:o.created_at?.slice(0,10)})) : []);
       if (data && data.length > 0) {
         // Converter formato Supabase → formato do site
         const converted = data.map(o => ({
@@ -4927,7 +4928,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       me_order_id: o.me_order_id, tracking_code: o.tracking_code, label_url: o.label_url,
                     }));
                     setOrders(prev => [...prev.filter(o=>!o._supabase), ...converted]);
-                    showToast('Pedidos atualizados ✓', 'success');
+                    showToast(`Pedidos atualizados ✓ — ${data.length} pedido${data.length!==1?'s':''} no Supabase`, 'success');
+                    console.log('[Admin] Pedidos Supabase:', data.map(o=>({id:o.id,code:o.code,status:o.status,buyer:o.buyer_name,created:o.created_at})));
                   }
                 }}>🔄 Atualizar</button>
                 <button className="admin-action-btn" onClick={copyWhatsApp}>📋 Copiar lista WhatsApp</button>
