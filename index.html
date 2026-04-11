@@ -2976,7 +2976,10 @@ function App() {
         setOrders(prev => {
           // Merge: manter itens locais do carrinho + adicionar pedidos do Supabase
           const localCart = prev.filter(o => !o._supabase);
-          return [...localCart, ...converted];
+          const merged = [...localCart, ...converted];
+          // Persistir pedidos Supabase no localStorage para carregamento imediato próxima vez
+          saveOrders(merged);
+          return merged;
         });
       }
     });
@@ -4927,7 +4930,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       _address: o.address, _payment: o.payment, _notes: o.notes, _code: o.code,
                       me_order_id: o.me_order_id, tracking_code: o.tracking_code, label_url: o.label_url,
                     }));
-                    setOrders(prev => [...prev.filter(o=>!o._supabase), ...converted]);
+                    const mergedRefresh = [...orders.filter(o=>!o._supabase), ...converted];
+                    setOrders(mergedRefresh);
+                    saveOrders(mergedRefresh);
                     showToast(`Pedidos atualizados ✓ — ${data.length} pedido${data.length!==1?'s':''} no Supabase`, 'success');
                     console.log('[Admin] Pedidos Supabase:', data.map(o=>({id:o.id,code:o.code,status:o.status,buyer:o.buyer_name,created:o.created_at})));
                   }
