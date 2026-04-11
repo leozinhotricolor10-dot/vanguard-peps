@@ -2340,6 +2340,7 @@ function App() {
     if (!poForm.productId || !poForm.qty || parseInt(poForm.qty) <= 0) { showToast('Selecione o produto e a quantidade', 'error'); return; }
     const newPo = { id: Date.now().toString(), productId: poForm.productId, qty: parseInt(poForm.qty), note: poForm.note, status: 'pending', date: new Date().toLocaleDateString('pt-BR') };
     persistPurchaseOrders([...purchaseOrders, newPo]);
+    if (sb) sb.from('purchase_order_caps').insert({ id: newPo.id, product_id: newPo.productId, qty: newPo.qty, note: newPo.note||null, status: newPo.status, date_str: newPo.date }).then(({error})=>{ if(error) console.warn('[Supabase] PO insert:', error.message); });
     setPoForm({ productId:'', qty:'', note:'' });
     showToast('Pedido de reposição registrado ✓');
   }
@@ -2347,11 +2348,13 @@ function App() {
     const po = purchaseOrders.find(p => p.id === id);
     if (!po) return;
     persistPurchaseOrders(purchaseOrders.map(p => p.id === id ? { ...p, status: 'received' } : p));
+    if (sb) sb.from('purchase_order_caps').update({ status: 'received' }).eq('id', id).then(({error})=>{ if(error) console.warn('[Supabase] PO update:', error.message); });
     const pName = products.find(p => p.id === po.productId)?.name || po.productId;
     showToast(`Pedido de "${pName}" marcado como recebido ✓`);
   }
   function removePurchaseOrder(id) {
     persistPurchaseOrders(purchaseOrders.filter(p => p.id !== id));
+    if (sb) sb.from('purchase_order_caps').delete().eq('id', id).then(({error})=>{ if(error) console.warn('[Supabase] PO delete:', error.message); });
   }
   const [cambioInfo, setCambioInfo] = useState({ loading: false, hora: null, error: null });
   const [meSettings, setMeSettings] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-me-settings')||'null'); } catch { return null; } });
@@ -2870,6 +2873,40 @@ function App() {
               if (d2) setDespesas(d2.map(r => ({ id: r.id, desc: r.description, valor: r.value, categoria: r.category, data: r.expense_date })));
             });
           });
+        }
+      }
+    });
+  }, []);
+
+  // ── Supabase: carregar histórico de importação e caps de reserva ──────────
+  React.useEffect(() => {
+    if (!sb) return;
+    // Import history
+    sb.from('import_history').select('*').order('created_at', { ascending: false }).then(({ data, error }) => {
+      if (error) { console.warn('[Supabase] Import history fetch error:', error.message); return; }
+      if (data && data.length > 0) {
+        const hist = data.map(r => r.data);
+        setImportHistory(hist);
+        localStorage.setItem('vg-imports', JSON.stringify(hist));
+      } else {
+        // Migrar localStorage → Supabase na primeira vez
+        const local = (() => { try { return JSON.parse(localStorage.getItem('vg-imports')||'[]'); } catch { return []; } })();
+        if (local.length > 0) {
+          Promise.all(local.map(h => sb.from('import_history').upsert({ id: String(h.id), data: h, status: h.status||'aguardando' }, { onConflict: 'id' })));
+        }
+      }
+    });
+    // Purchase order caps
+    sb.from('purchase_order_caps').select('*').order('created_at', { ascending: false }).then(({ data, error }) => {
+      if (error) { console.warn('[Supabase] PO caps fetch error:', error.message); return; }
+      if (data && data.length > 0) {
+        const caps = data.map(r => ({ id: r.id, productId: r.product_id, qty: r.qty, note: r.note||'', status: r.status, date: r.date_str }));
+        setPurchaseOrders(caps);
+        localStorage.setItem('vg-purchase-orders', JSON.stringify(caps));
+      } else {
+        const local = (() => { try { return JSON.parse(localStorage.getItem('vg-purchase-orders')||'[]'); } catch { return []; } })();
+        if (local.length > 0) {
+          Promise.all(local.map(p => sb.from('purchase_order_caps').upsert({ id: String(p.id), product_id: p.productId, qty: p.qty, note: p.note||null, status: p.status||'pending', date_str: p.date||'' }, { onConflict: 'id' })));
         }
       }
     });
@@ -3986,12 +4023,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                         transition:'background 0.18s', position:'relative', overflow:'hidden'
                       }}>
                         <div style={{position:'absolute',top:6,left:8,background:'linear-gradient(135deg,#ff3b3b,#ff6a00)',color:'#fff',fontSize:'0.5rem',fontWeight:700,fontFamily:"'Space Mono',monospace",padding:'2px 7px',borderRadius:20,letterSpacing:'0.5px',boxShadow:'0 2px 8px rgba(255,60,0,0.45)'}}>★ RECOMENDADO</div>
-                        <div style={{position:'absolute',top:6,right:8,background:'var(--accent)',color:'#000',fontSize:'0.55rem',fontWeight:700,fontFamily:"'Space Mono',monospace",padding:'2px 6px',borderRadius:20}}>10% OFF</div>
+                        <div style={{position:'absolute',top:6,right:8,background:'var(--accent)',color:'#000',fontSize:'0.55rem',fontWeight:700,fontFamily:"'Space Mono',monospace",padding:'2px 6px',borderRadius:20}}>FRETE GRÁTIS</div>
                         <div style={{fontSize:'1.5rem', marginBottom:4, marginTop:10}}>⚡</div>
                         <div style={{fontFamily:"'Syne',sans-serif", fontWeight:800, fontSize:'0.9rem', color:'var(--accent)'}}>PIX</div>
                         <div style={{fontSize:'0.65rem', color:'var(--accent)', marginTop:2, fontWeight:700}}>À vista</div>
                         <div style={{fontSize:'0.62rem',color:'var(--accent)',marginTop:6,fontFamily:"'Space Mono',monospace",opacity:0.85}}>
-                          economize R$ {Math.round(myTotal*0.1).toLocaleString('pt-BR')}
+                          🚚 frete grátis no PIX
                         </div>
                       </div>
                       {(() => {
@@ -4329,7 +4366,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                               <div className="carousel-card-name">{p.name}</div>
                               <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:8}}>{(p.desc||'').substring(0,60)}{(p.desc||'').length>60?'...':''}</div>
                               <div className="carousel-card-price" style={{marginBottom:2}}>R$ {effectivePrice(p).toLocaleString('pt-BR')}</div>
-                              <div style={{fontSize:'0.63rem',color:'#00e5c3',fontFamily:"'Space Mono',monospace",opacity:0.85}}>💚 R$ {Math.round(effectivePrice(p)*0.9).toLocaleString('pt-BR')} no PIX</div>
+                              <div style={{fontSize:'0.63rem',color:'#00e5c3',fontFamily:"'Space Mono',monospace",opacity:0.85}}>🚚 Frete grátis no PIX</div>
                             </div>
                           </div>
                         ))}
@@ -4396,7 +4433,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       : <div className="product-card-price" style={{marginBottom:4}}>R$ {peptide.price.toLocaleString("pt-BR")} <span>/ampola</span></div>
                     }
                     <div style={{fontSize:'0.68rem',color:'#00e5c3',fontFamily:"'Space Mono',monospace",marginBottom:10,opacity:0.85}}>
-                      💚 R$ {Math.round(effectivePrice(peptide)*0.9).toLocaleString('pt-BR')} no PIX
+                      🚚 Frete grátis no PIX
                     </div>
 
                     {(() => { const avail = availableStock(peptide.id); return avail > 0 && avail <= 5 ? (
@@ -6460,6 +6497,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 const hist = importHistory.map(h => h.id === id ? { ...h, status: newStatus } : h);
                 setImportHistory(hist);
                 localStorage.setItem('vg-imports', JSON.stringify(hist));
+                const updated = hist.find(h => h.id === id);
+                if (sb && updated) sb.from('import_history').update({ status: newStatus, data: updated }).eq('id', String(id)).then(({error})=>{ if(error) console.warn('[Supabase] Import status:', error.message); });
 
                 if (newStatus === 'entregue') {
                   const lote = importHistory.find(h => h.id === id);
@@ -6521,6 +6560,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 }
                 setImportHistory(hist);
                 localStorage.setItem('vg-imports', JSON.stringify(hist));
+                if (sb) sb.from('import_history').upsert({ id: String(entry.id), data: entry, status: entry.status||'aguardando' }, { onConflict: 'id' }).then(({error})=>{ if(error) console.warn('[Supabase] Import save:', error.message); });
                 setEditingImportId(null);
                 if (!isEditing) {
                   setImportForm({ date: new Date().toLocaleDateString('pt-BR'), cambio: importForm.cambio, freteUsd:'', fedexBrl:'', desconto:'', outrosBrl:'', invoiceTotal:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:'',precoVenda:''}] });
