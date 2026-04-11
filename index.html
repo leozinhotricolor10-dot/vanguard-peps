@@ -5040,7 +5040,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     return (
                       <div key={order.id} className="admin-table-row">
                         <div>
-                          {order.id && <div className="order-id-badge">#{order.id}</div>}
+                          <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3,flexWrap:'wrap'}}>
+                            {order._code && <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.62rem',fontWeight:700,color:'var(--accent)',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.25)',borderRadius:6,padding:'2px 7px',letterSpacing:'0.5px'}}>{order._code}</span>}
+                            {order.id && <div className="order-id-badge" style={{margin:0}}>#{order.id}</div>}
+                          </div>
                           {items.length > 1
                             ? items.map((it,idx) => { const p2 = products.find(x=>x.id===it.peptideId); return <div key={idx} className="admin-row-name" style={{fontSize:'0.75rem'}}>{p2?p2.name:(it.name||it.peptideId)} ×{it.qty||1}</div>; })
                             : <div className="admin-row-name">{firstPName}</div>
