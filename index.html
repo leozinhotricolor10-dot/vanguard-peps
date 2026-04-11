@@ -2983,7 +2983,8 @@ function App() {
             _supabase: true, _items: o.items, _total: o.total,
             _subtotal: o.subtotal, _freight: o.freight, _cpf: o.cpf,
             _phone: o.phone, _email: o.email, _address: o.address,
-            _payment: o.payment, _notes: o.notes,
+            _payment: o.payment, _notes: o.notes, _code: o.code,
+            me_order_id: o.me_order_id, tracking_code: o.tracking_code, label_url: o.label_url,
           };
           setOrders(prev => [converted, ...prev.filter(x => x.id !== o.id)]);
           showToast('Novo pedido recebido! 🛒', 'success');
@@ -4874,6 +4875,24 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
             {/* TAB: PEDIDOS */}
             {adminTab==="pedidos" && <>
               <div className="admin-actions">
+                <button className="admin-action-btn" onClick={async ()=>{
+                  if (!sb) return;
+                  const { data, error } = await sb.from('orders').select('*').order('created_at', { ascending: false });
+                  if (error) { showToast('Erro ao atualizar pedidos', 'error'); return; }
+                  if (data) {
+                    const converted = data.map(o => ({
+                      id: o.id, peptideId: o.items && o.items[0] ? (o.items[0].peptideId||'') : '',
+                      buyerName: o.buyer_name||'', qty: o.items ? o.items.reduce((s,i)=>s+(i.qty||0),0) : 1,
+                      createdAt: o.created_at, status: o.status||'pendente',
+                      _supabase: true, _items: o.items, _total: o.total, _subtotal: o.subtotal,
+                      _freight: o.freight, _cpf: o.cpf, _phone: o.phone, _email: o.email,
+                      _address: o.address, _payment: o.payment, _notes: o.notes, _code: o.code,
+                      me_order_id: o.me_order_id, tracking_code: o.tracking_code, label_url: o.label_url,
+                    }));
+                    setOrders(prev => [...prev.filter(o=>!o._supabase), ...converted]);
+                    showToast('Pedidos atualizados ✓', 'success');
+                  }
+                }}>🔄 Atualizar</button>
                 <button className="admin-action-btn" onClick={copyWhatsApp}>📋 Copiar lista WhatsApp</button>
                 <button className="admin-action-btn" onClick={()=>{
                   const disponíveis = products.filter(p => {
