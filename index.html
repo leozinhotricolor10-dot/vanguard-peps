@@ -5031,7 +5031,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   {pagedOrders.map(order => {
                     const items = order._items && order._items.length > 0 ? order._items : [{peptideId: order.peptideId, qty: order.qty || 1}];
                     const firstP = products.find(x => x.id === items[0].peptideId);
-                    if (!firstP) return null;
+                    const firstPName = firstP ? firstP.name : (items[0].name || items[0].peptideId || '—');
                     const orderTotal = order._total || items.reduce((s,i) => { const p2 = products.find(x=>x.id===i.peptideId); return s + (p2 ? p2.price*(i.qty||1) : 0); }, 0);
                     const totalQty = items.reduce((s,i) => s + (i.qty||1), 0);
                     const phone = (order._phone || '').replace(/\D/g,'');
@@ -5042,8 +5042,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                         <div>
                           {order.id && <div className="order-id-badge">#{order.id}</div>}
                           {items.length > 1
-                            ? items.map((it,idx) => { const p2 = products.find(x=>x.id===it.peptideId); return <div key={idx} className="admin-row-name" style={{fontSize:'0.75rem'}}>{p2?p2.name:it.peptideId} ×{it.qty||1}</div>; })
-                            : <div className="admin-row-name">{firstP.name}</div>
+                            ? items.map((it,idx) => { const p2 = products.find(x=>x.id===it.peptideId); return <div key={idx} className="admin-row-name" style={{fontSize:'0.75rem'}}>{p2?p2.name:(it.name||it.peptideId)} ×{it.qty||1}</div>; })
+                            : <div className="admin-row-name">{firstPName}</div>
                           }
                           <div style={{display:'flex',alignItems:'center',gap:6,marginTop:2}}>
                             <div className="admin-row-buyer">{order.buyerName}</div>
