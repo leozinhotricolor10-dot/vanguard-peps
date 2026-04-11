@@ -2941,14 +2941,12 @@ function App() {
   }, [adminUnlocked]);
 
   // ── Supabase: carregar pedidos e pré-orders + realtime ────────────────────
-  React.useEffect(() => {
+  function fetchOrdersFromSupabase() {
     if (!sb) return;
-    try {
     sb.from('orders').select('*').order('created_at', { ascending: false }).then(({ data, error }) => {
       if (error) { console.warn('[Supabase] Orders fetch error:', error.message); return; }
       console.log(`[Supabase] Orders carregados: ${data ? data.length : 0}`, data ? data.map(o=>({code:o.code,status:o.status,buyer:o.buyer_name,created:o.created_at?.slice(0,10)})) : []);
       if (data && data.length > 0) {
-        // Converter formato Supabase → formato do site
         const converted = data.map(o => ({
           id: o.id,
           peptideId: o.items && o.items[0] ? (o.items[0].peptideId || '') : '',
@@ -2956,7 +2954,6 @@ function App() {
           qty: o.items ? o.items.reduce((s, i) => s + (i.qty || 0), 0) : 1,
           createdAt: o.created_at,
           status: o.status || 'pendente',
-          // Campos extras para exibição
           _supabase: true,
           _items: o.items,
           _total: o.total,
@@ -2974,15 +2971,24 @@ function App() {
           label_url: o.label_url,
         }));
         setOrders(prev => {
-          // Merge: manter itens locais do carrinho + adicionar pedidos do Supabase
           const localCart = prev.filter(o => !o._supabase);
           const merged = [...localCart, ...converted];
-          // Persistir pedidos Supabase no localStorage para carregamento imediato próxima vez
           saveOrders(merged);
           return merged;
         });
       }
     });
+  }
+
+  // Re-fetch sempre que admin é desbloqueado para garantir pedidos atualizados
+  React.useEffect(() => {
+    if (adminUnlocked) fetchOrdersFromSupabase();
+  }, [adminUnlocked]);
+
+  React.useEffect(() => {
+    if (!sb) return;
+    try {
+    fetchOrdersFromSupabase();
 
     // Carregar pré-orders do Supabase
     sb.from('preorders').select('*').order('created_at', { ascending: false }).then(({ data, error }) => {
