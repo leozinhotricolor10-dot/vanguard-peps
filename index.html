@@ -4572,7 +4572,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                           💊 Abrir Calculadora
                         </button>
                       </div>
-                      {!preorderLocked && <button className="preorder-btn" style={{marginTop:8}} onClick={()=>{ setPreorderForm({name: myName||'', whatsapp:'', qty:1}); setPreorderModal({peptide: p}); }}>
+                      {!preorderLocked && availableStock(p.id) === 0 && <button className="preorder-btn" style={{marginTop:8}} onClick={()=>{ setPreorderForm({name: myName||'', whatsapp:'', qty:1}); setPreorderModal({peptide: p}); }}>
                         🔔 RESERVAR QUANDO DISPONÍVEL
                       </button>}
                     </div>
