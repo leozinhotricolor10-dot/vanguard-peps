@@ -2422,6 +2422,7 @@ function App() {
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
   const [adminSearch, setAdminSearch] = useState('');
   const [adminPage, setAdminPage] = useState(1);
+  const [groupByClient, setGroupByClient] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterInStock, setFilterInStock] = useState(false);
   const [carouselIdx, setCarouselIdx] = useState(0);
@@ -5166,6 +5167,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   }
                 }}>🔄 Atualizar</button>
                 <button className="admin-action-btn" onClick={copyWhatsApp}>📋 Copiar lista WhatsApp</button>
+                <button className={`admin-action-btn${groupByClient?' active':''}`} onClick={()=>setGroupByClient(g=>!g)} style={groupByClient?{borderColor:'rgba(0,229,195,0.5)',color:'var(--accent)',background:'rgba(0,229,195,0.08)'}:{}}>👥 Agrupar por cliente</button>
                 <button className="admin-action-btn" onClick={()=>{
                   const disponíveis = products.filter(p => {
                     const av = availableStock(p.id);
@@ -5250,6 +5252,122 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 )}
                 {(() => {
                   const ADMIN_PAGE_SIZE = 20;
+
+                  // ── GROUPED VIEW ──────────────────────────────────────────
+                  if (groupByClient) {
+                    // Only group pendente + pago; others fall through as singles
+                    const groupable = filteredOrders.filter(o => ['pendente','pago'].includes(o.status||'pendente'));
+                    const nonGroupable = filteredOrders.filter(o => !['pendente','pago'].includes(o.status||'pendente'));
+                    const grouped = {};
+                    groupable.forEach(o => {
+                      const key = (o.buyerName||'').trim().toLowerCase();
+                      if (!grouped[key]) grouped[key] = [];
+                      grouped[key].push(o);
+                    });
+                    // Sort: multi-order clients first
+                    const groupEntries = Object.values(grouped).sort((a,b) => b.length - a.length);
+                    if (filteredOrders.length === 0) return (
+                      <div style={{textAlign:'center',color:'var(--muted)',padding:'32px 20px',fontSize:'0.82rem'}}>
+                        {adminSearch ? `Nenhum pedido encontrado para "${adminSearch}"` : 'Nenhum pedido nesta categoria'}
+                      </div>
+                    );
+                    return (
+                      <div>
+                        {groupEntries.map(group => {
+                          const rep = group[0];
+                          const firstName = (rep.buyerName||'Cliente').split(' ')[0];
+                          const phone = (rep._phone||'').replace(/\D/g,'');
+                          const ddd = phone.startsWith('55') ? phone.slice(2,4) : phone.slice(0,2);
+                          const isMotoboy = ddd === '11';
+                          const intl = phone.startsWith('55') ? phone : '55'+phone;
+                          const groupTotal = group.reduce((s,o) => s + (parseFloat(o._total)||0), 0);
+                          const allItems = group.flatMap(o => o._items && o._items.length > 0 ? o._items : [{peptideId:o.peptideId,qty:o.qty||1}]);
+                          // Merge same peptide items
+                          const mergedItems = [];
+                          allItems.forEach(it => {
+                            const ex = mergedItems.find(x=>x.peptideId===it.peptideId);
+                            if (ex) ex.qty += (it.qty||1);
+                            else mergedItems.push({...it, qty:it.qty||1});
+                          });
+                          const isMulti = group.length > 1;
+                          const waMsg = `📦 *Olá, ${firstName}! Aqui está o resumo dos seus pedidos Vanguard Peptides.*\n\n🧬 *Itens:*\n${mergedItems.map(it=>{const p2=products.find(x=>x.id===it.peptideId);return `• ${p2?p2.name:(it.name||it.peptideId)} ×${it.qty}`;}).join('\n')}\n\n💰 *Total combinado: R$ ${groupTotal.toLocaleString('pt-BR')}*\n\n📋 *Pedidos:* ${group.map(o=>o._code||('#'+o.id)).join(', ')}\n\nVamos enviar tudo junto! Qualquer dúvida é só chamar 🙏\n\n_Vanguard Peptides_ 🧬`;
+                          return (
+                            <div key={rep.buyerName} style={{marginBottom:12,border:`1px solid ${isMulti?'rgba(0,229,195,0.3)':'rgba(0,229,195,0.1)'}`,borderRadius:12,overflow:'hidden',background:isMulti?'rgba(0,229,195,0.03)':'transparent'}}>
+                              {/* Group header */}
+                              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',borderBottom:'1px solid rgba(0,229,195,0.1)',background:isMulti?'rgba(0,229,195,0.06)':'rgba(255,255,255,0.02)',flexWrap:'wrap',gap:8}}>
+                                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                                  {isMulti && <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',fontWeight:700,background:'rgba(0,229,195,0.15)',color:'var(--accent)',border:'1px solid rgba(0,229,195,0.4)',borderRadius:20,padding:'2px 10px'}}>{group.length} PEDIDOS</span>}
+                                  <span style={{fontWeight:700,fontSize:'0.9rem',color:'var(--text)'}}>{rep.buyerName}</span>
+                                  {ddd && <span style={{fontSize:'0.55rem',fontFamily:"'Space Mono',monospace",fontWeight:700,padding:'1px 6px',borderRadius:20,
+                                    background: isMotoboy ? 'rgba(255,180,0,0.12)' : 'rgba(100,160,255,0.1)',
+                                    border: isMotoboy ? '1px solid rgba(255,180,0,0.4)' : '1px solid rgba(100,160,255,0.3)',
+                                    color: isMotoboy ? '#ffb800' : '#78aaff'
+                                  }}>{isMotoboy ? '🛵 MOTOBOY' : '🚚 TRANSP.'}</span>}
+                                </div>
+                                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                                  <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.82rem',fontWeight:700,color:'var(--accent)'}}>R$ {groupTotal.toLocaleString('pt-BR')}</span>
+                                  {phone && isMulti && <button onClick={()=>window.open(`https://wa.me/${intl}?text=${encodeURIComponent(waMsg)}`,'_blank')} style={{padding:'4px 12px',borderRadius:8,border:'1px solid rgba(37,211,102,0.4)',background:'rgba(37,211,102,0.1)',color:'#25d366',fontSize:'0.68rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>💬 WA agrupado</button>}
+                                  {phone && <button onClick={()=>window.open(`https://wa.me/${intl}`,'_blank')} style={{padding:'4px 12px',borderRadius:8,border:'1px solid rgba(37,211,102,0.25)',background:'rgba(37,211,102,0.06)',color:'#25d366',fontSize:'0.68rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>💬 WA</button>}
+                                </div>
+                              </div>
+                              {/* Merged items */}
+                              <div style={{padding:'8px 16px',borderBottom:'1px solid rgba(0,229,195,0.07)',display:'flex',flexWrap:'wrap',gap:'6px 16px'}}>
+                                {mergedItems.map((it,idx)=>{ const p2=products.find(x=>x.id===it.peptideId); return <span key={idx} style={{fontSize:'0.8rem',color:'var(--text)'}}>{p2?p2.name:(it.name||it.peptideId)} <span style={{color:'var(--accent)',fontFamily:"'Space Mono',monospace"}}>×{it.qty}</span></span>; })}
+                              </div>
+                              {/* Individual orders */}
+                              {group.map(order => {
+                                const items = order._items && order._items.length > 0 ? order._items : [{peptideId:order.peptideId,qty:order.qty||1}];
+                                const orderTotal = order._total || 0;
+                                return (
+                                  <div key={order.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'8px 16px',borderBottom:'1px solid rgba(0,229,195,0.05)',flexWrap:'wrap',gap:8}}>
+                                    <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+                                      {order._code && <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.62rem',fontWeight:700,color:'var(--accent)',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:6,padding:'2px 7px'}}>{order._code}</span>}
+                                      <span className={`order-status ${order.status||'pendente'}`} onClick={()=>cycleStatus(order.id)} title="Clique para avançar status" style={{fontSize:'0.65rem',padding:'3px 8px'}}>
+                                        {(order.status||'pendente')==='pendente'?'🟡 PENDENTE':(order.status||'pendente')==='pago'?'✅ PAGO':(order.status||'pendente')==='enviado'?'📦 ENVIADO':'🎉 ENTREGUE'}
+                                        <span className="status-cycle">▶</span>
+                                      </span>
+                                      <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',color:'var(--muted)'}}>R$ {parseFloat(orderTotal).toLocaleString('pt-BR')}</span>
+                                    </div>
+                                    <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+                                      <button className="admin-remove-btn" style={{background:'rgba(0,229,195,0.08)',color:'var(--accent)',borderColor:'rgba(0,229,195,0.3)'}} onClick={()=>setOrderDetail(order)}>detalhes</button>
+                                      {(order.status||'pendente')==='pendente' && <button className="admin-remove-btn" style={{background:'rgba(139,0,0,0.15)',color:'#e05555',borderColor:'rgba(139,0,0,0.3)',fontSize:'0.6rem'}} onClick={()=>{ setPixCode(''); setPixModal(order); }}>💳 PIX</button>}
+                                      {(order.status||'pendente')==='pago' && <button className="admin-remove-btn" style={{background:'rgba(0,180,255,0.1)',color:'#5bc8ff',borderColor:'rgba(0,180,255,0.3)',fontSize:'0.6rem'}} onClick={()=>gerarEtiqueta(order)}>{order.label_url ? '🏷️ Reimpr.' : '🏷️ Etiqueta'}</button>}
+                                      <button className="admin-remove-btn" onClick={()=>adminRemove(order.id)}>remover</button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                        {nonGroupable.map(order => {
+                          const items = order._items && order._items.length > 0 ? order._items : [{peptideId:order.peptideId,qty:order.qty||1}];
+                          const orderTotal = order._total || 0;
+                          const totalQty = items.reduce((s,i)=>s+(i.qty||1),0);
+                          return (
+                            <div key={order.id} className="admin-table-row">
+                              <div>
+                                <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:3,flexWrap:'wrap'}}>
+                                  {order._code && <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.62rem',fontWeight:700,color:'var(--accent)',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.25)',borderRadius:6,padding:'2px 7px',letterSpacing:'0.5px'}}>{order._code}</span>}
+                                </div>
+                                {items.map((it,idx)=>{const p2=products.find(x=>x.id===it.peptideId);return <div key={idx} className="admin-row-name" style={{fontSize:'0.75rem'}}>{p2?p2.name:(it.name||it.peptideId)} ×{it.qty||1}</div>;})}
+                                <div className="admin-row-buyer">{order.buyerName}</div>
+                              </div>
+                              <div><span className={`order-status ${order.status||'pendente'}`} onClick={()=>cycleStatus(order.id)} title="Clique para avançar status">{(order.status||'pendente')==='pendente'?'🟡 PENDENTE':(order.status||'pendente')==='pago'?'✅ PAGO':(order.status||'pendente')==='enviado'?'📦 ENVIADO':'🎉 ENTREGUE'}<span className="status-cycle">▶</span></span></div>
+                              <div className="admin-row-qty">×{totalQty}</div>
+                              <div className="admin-row-total">R$ {parseFloat(orderTotal).toLocaleString('pt-BR')}</div>
+                              <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                                <button className="admin-remove-btn" style={{background:'rgba(0,229,195,0.08)',color:'var(--accent)',borderColor:'rgba(0,229,195,0.3)'}} onClick={()=>setOrderDetail(order)}>detalhes</button>
+                                <button className="admin-remove-btn" onClick={()=>adminRemove(order.id)}>remover</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  }
+
+                  // ── NORMAL PAGINATED VIEW ─────────────────────────────────
                   const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ADMIN_PAGE_SIZE));
                   const safePage = Math.min(adminPage, totalPages);
                   const pagedOrders = filteredOrders.slice((safePage-1)*ADMIN_PAGE_SIZE, safePage*ADMIN_PAGE_SIZE);
