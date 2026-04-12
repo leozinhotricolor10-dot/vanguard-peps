@@ -3445,7 +3445,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
         + preorders
           .filter(po => po.productId === productId && ['pending','notified'].includes(po.status || 'pending'))
           .reduce((sum, po) => sum + (po.qty || 1), 0);
-      return Math.min(baseAvail, Math.max(0, poCapQty - liveReservations));
+      // Estoque além do cap vem de importações já entregues — disponível livremente
+      const capAvail = Math.max(0, poCapQty - liveReservations);
+      const uncappedStock = Math.max(0, baseAvail - poCapQty);
+      return Math.min(baseAvail, capAvail + uncappedStock);
     }
     return baseAvail;
   }
