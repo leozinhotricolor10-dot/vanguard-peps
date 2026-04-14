@@ -3447,11 +3447,16 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       const liveReservations =
         orders
           .filter(o => {
-            if (o.peptideId !== productId) return false;
-            if (!o._supabase) return true; // cart item (stock already decremented)
+            if (!o._supabase) return o.peptideId === productId; // cart items: single-product entries
             return ['pendente','pago','enviado'].includes(o.status || 'pendente');
           })
-          .reduce((sum, o) => sum + (o.qty || 0), 0)
+          .reduce((sum, o) => {
+            if (!o._supabase) return sum + (o.qty || 0); // cart item: qty is for this product only
+            // Supabase order: look through _items for this specific product
+            const items = o._items && o._items.length > 0 ? o._items : [{peptideId: o.peptideId, qty: o.qty || 1}];
+            const match = items.find(it => it.peptideId === productId);
+            return sum + (match ? (match.qty || 1) : 0);
+          }, 0)
         + preorders
           .filter(po => po.productId === productId && ['pending','notified'].includes(po.status || 'pending'))
           .reduce((sum, po) => sum + (po.qty || 1), 0);
