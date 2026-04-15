@@ -2807,13 +2807,12 @@ function App() {
     if (!sb) return;
     try { sb.from('stock').select('product_id, quantity').then(({ data, error }) => {
       if (error) { console.warn('[Supabase] Fetch error:', error.message); showToast('Problema de conexão — usando dados locais', 'error'); return; }
-      if (data && data.length > 0) {
-        const remote = {};
-        data.forEach(row => { remote[row.product_id] = row.quantity; });
-        const merged = { ...DEFAULT_STOCK, ...remote };
-        setStock(merged);
-        localStorage.setItem('vg-stock', JSON.stringify(merged));
-      }
+      // Always merge even if empty — remote = {} means no rows, fall back to DEFAULT_STOCK only
+      const remote = {};
+      (data || []).forEach(row => { remote[row.product_id] = row.quantity; });
+      const merged = { ...DEFAULT_STOCK, ...remote };
+      setStock(merged);
+      localStorage.setItem('vg-stock', JSON.stringify(merged));
     });
 
     // 2) Subscribe to real-time changes (quando admin atualiza estoque, todos veem)
@@ -3424,8 +3423,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
   }
 
   function availableStock(productId) {
-    // Stock is decremented when items are added to cart (regular purchases)
-    // Preorders do NOT decrement stock until "Concluir Compra" - so we discount them here
+    // If product has no stock control (key absent), it's always available (null = unlimited)
+    if (!(productId in stock)) return null;
     const total = stock[productId] ?? 0;
     const reservedByPreorders = preorders
       .filter(po => po.productId === productId && ['pending','notified'].includes(po.status || 'pending'))
@@ -3444,26 +3443,28 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       }, 0) : 0;
     const poCapQty = standaloneCap + importCap;
     if (poCapQty > 0) {
-      const liveReservations =
-        orders
-          .filter(o => {
-            if (!o._supabase) return o.peptideId === productId; // cart items: single-product entries
-            return ['pendente','pago','enviado'].includes(o.status || 'pendente');
-          })
-          .reduce((sum, o) => {
-            if (!o._supabase) return sum + (o.qty || 0); // cart item: qty is for this product only
-            // Supabase order: look through _items for this specific product
-            const items = o._items && o._items.length > 0 ? o._items : [{peptideId: o.peptideId, qty: o.qty || 1}];
-            const match = items.find(it => it.peptideId === productId);
-            return sum + (match ? (match.qty || 1) : 0);
-          }, 0)
+      // For cap logic: count confirmed Supabase orders per-product + client's own cart
+      const confirmedReservations = orders
+        .filter(o => {
+          if (!o._supabase) return o.peptideId === productId;
+          return ['pendente','pago','enviado'].includes(o.status || 'pendente');
+        })
+        .reduce((sum, o) => {
+          if (!o._supabase) return sum + (o.qty || 0);
+          const items = o._items && o._items.length > 0 ? o._items : [{peptideId: o.peptideId, qty: o.qty || 1}];
+          const match = items.find(it => it.peptideId === productId);
+          return sum + (match ? (match.qty || 1) : 0);
+        }, 0);
+      const liveReservations = confirmedReservations
         + preorders
           .filter(po => po.productId === productId && ['pending','notified'].includes(po.status || 'pending'))
           .reduce((sum, po) => sum + (po.qty || 1), 0);
-      // Estoque além do cap vem de importações já entregues — disponível livremente
       const capAvail = Math.max(0, poCapQty - liveReservations);
+      // Stock beyond the cap is from already-delivered imports — freely available
       const uncappedStock = Math.max(0, baseAvail - poCapQty);
-      return Math.min(baseAvail, capAvail + uncappedStock);
+      // Never return MORE than what's physically in stock
+      // But if stock > 0 and cap is still open, show at least capAvail
+      return baseAvail > 0 ? Math.min(baseAvail, capAvail + uncappedStock) : 0;
     }
     return baseAvail;
   }
