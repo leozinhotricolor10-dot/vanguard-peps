@@ -5507,6 +5507,86 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
             {/* TAB: ESTOQUE */}
             {adminTab==="estoque" && <>
+              {/* ── DIAGNÓSTICO DE ESTOQUE ── */}
+              {(() => {
+                const rows = products.map(p => {
+                  const rawStock = stock[p.id] ?? null;
+                  const preorderRes = preorders
+                    .filter(po => po.productId === p.id && ['pending','notified'].includes(po.status||'pending'))
+                    .reduce((s,po)=>s+(po.qty||1),0);
+                  const baseAvail = rawStock === null ? null : Math.max(0, rawStock - preorderRes);
+                  const standaloneCap = purchaseOrders.filter(po=>po.productId===p.id&&po.status==='pending').reduce((s,po)=>s+(po.qty||0),0);
+                  const importCap = p.sku ? importHistory.filter(h=>h.status&&h.status!=='entregue').reduce((sum,h)=>{ const it=(h.items||[]).find(i=>i.sku===p.sku); return sum+(it?parseInt(it.vials)||parseInt(it.boxes)*10||0:0); },0) : 0;
+                  const poCapQty = standaloneCap + importCap;
+                  const liveRes = poCapQty > 0 ? orders
+                    .filter(o => {
+                      if (!o._supabase) return o.peptideId === p.id;
+                      return ['pendente','pago','enviado'].includes(o.status||'pendente');
+                    })
+                    .reduce((sum,o)=>{ if(!o._supabase) return sum+(o.qty||0); const items=o._items&&o._items.length>0?o._items:[{peptideId:o.peptideId,qty:o.qty||1}]; const match=items.find(it=>it.peptideId===p.id); return sum+(match?(match.qty||1):0); },0) + preorderRes : 0;
+                  const capAvail = poCapQty > 0 ? Math.max(0, poCapQty - liveRes) : null;
+                  const uncapped = poCapQty > 0 && baseAvail !== null ? Math.max(0, baseAvail - poCapQty) : null;
+                  const finalAvail = availableStock(p.id);
+                  const isProblematic = finalAvail === 0 && (rawStock === null || rawStock > 0);
+                  return { p, rawStock, preorderRes, baseAvail, standaloneCap, importCap, poCapQty, liveRes, capAvail, uncapped, finalAvail, isProblematic };
+                });
+                const problems = rows.filter(r => r.isProblematic);
+                return (
+                  <div style={{marginBottom:20,border:`1px solid ${problems.length>0?'rgba(255,100,50,0.4)':'rgba(0,229,195,0.15)'}`,borderRadius:12,overflow:'hidden'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'10px 16px',background:problems.length>0?'rgba(255,100,50,0.06)':'rgba(0,229,195,0.04)',borderBottom:'1px solid rgba(0,229,195,0.1)'}}>
+                      <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.62rem',color:problems.length>0?'#ff6b35':'var(--accent)',letterSpacing:'1px'}}>
+                        🔬 DIAGNÓSTICO{problems.length>0?` — ${problems.length} produto${problems.length>1?'s':''} com problema`:'  — tudo OK'}
+                      </div>
+                      <button onClick={async ()=>{
+                        if(!sb){showToast('Supabase não conectado','error');return;}
+                        const {data,error}=await sb.from('stock').select('product_id,quantity');
+                        if(error){showToast('Erro ao buscar estoque: '+error.message,'error');return;}
+                        const remote={};(data||[]).forEach(r=>{remote[r.product_id]=r.quantity;});
+                        const merged={...DEFAULT_STOCK,...remote};
+                        setStock(merged);localStorage.setItem('vg-stock',JSON.stringify(merged));
+                        showToast('Estoque re-sincronizado do Supabase ✓','success');
+                      }} style={{padding:'4px 12px',background:'rgba(0,229,195,0.1)',border:'1px solid rgba(0,229,195,0.3)',borderRadius:8,color:'var(--accent)',fontSize:'0.65rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>🔄 Re-sync Supabase</button>
+                    </div>
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',fontSize:'0.72rem',fontFamily:"'Space Mono',monospace"}}>
+                        <thead>
+                          <tr style={{borderBottom:'1px solid rgba(0,229,195,0.1)'}}>
+                            {['Produto','Supabase','Pré-orders','Base','Cap','Vivas','Final','Status'].map(h=>(
+                              <th key={h} style={{padding:'6px 10px',textAlign:'left',color:'var(--muted)',fontWeight:400,whiteSpace:'nowrap'}}>{h}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {rows.map(({p,rawStock,preorderRes,baseAvail,poCapQty,liveRes,finalAvail,isProblematic})=>(
+                            <tr key={p.id} style={{borderBottom:'1px solid rgba(0,229,195,0.05)',background:isProblematic?'rgba(255,100,50,0.04)':'transparent'}}>
+                              <td style={{padding:'6px 10px',color:isProblematic?'#ff6b35':'var(--text)',fontWeight:isProblematic?700:400}}>{p.name.split(' ')[0]}</td>
+                              <td style={{padding:'6px 10px',color:rawStock===0?'#ff5050':rawStock===null?'var(--muted)':'#4ade80'}}>{rawStock===null?'∞':rawStock}</td>
+                              <td style={{padding:'6px 10px',color:preorderRes>0?'#ffaa00':'var(--muted)'}}>{preorderRes>0?`-${preorderRes}`:'0'}</td>
+                              <td style={{padding:'6px 10px',color:baseAvail===0?'#ff5050':baseAvail===null?'var(--muted)':'var(--text)'}}>{baseAvail===null?'∞':baseAvail}</td>
+                              <td style={{padding:'6px 10px',color:poCapQty>0?'#78aaff':'var(--muted)'}}>{poCapQty>0?poCapQty:'—'}</td>
+                              <td style={{padding:'6px 10px',color:liveRes>0?'#ffaa00':'var(--muted)'}}>{poCapQty>0?liveRes:'—'}</td>
+                              <td style={{padding:'6px 10px',fontWeight:700,color:finalAvail===0?'#ff5050':finalAvail<=3?'#ffaa00':'#4ade80'}}>{finalAvail===null?'∞':finalAvail}</td>
+                              <td style={{padding:'6px 10px'}}>{isProblematic?<span style={{color:'#ff6b35'}}>⚠️ ESGOTADO</span>:finalAvail===0?<span style={{color:'#ff5050'}}>ESGOTADO</span>:<span style={{color:'#4ade80'}}>OK</span>}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {problems.length > 0 && (
+                      <div style={{padding:'10px 16px',background:'rgba(255,100,50,0.04)',borderTop:'1px solid rgba(255,100,50,0.15)'}}>
+                        {problems.map(({p,rawStock,preorderRes,poCapQty,liveRes})=>(
+                          <div key={p.id} style={{fontSize:'0.72rem',color:'#ff9060',marginBottom:6}}>
+                            <strong>{p.name}:</strong>{' '}
+                            {rawStock===0?'Estoque Supabase = 0 — ajuste o número acima e salve.':''}
+                            {rawStock>0&&preorderRes>=rawStock?`${preorderRes} pré-orders bloqueando ${rawStock} unidades — cancele pré-orders antigas na aba PRÉ-ORDERS.`:''}
+                            {rawStock>0&&preorderRes<rawStock&&poCapQty>0&&liveRes>=poCapQty?`Cap de importação (${poCapQty}) totalmente consumido por ${liveRes} reservas.`:''}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
               <div className="stock-table">
                 {products.map(p => {
                   const qty = stock[p.id] ?? null;
