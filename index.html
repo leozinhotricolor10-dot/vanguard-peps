@@ -454,6 +454,16 @@ footer.site-footer { background: rgba(0,0,0,0.3); border-top: 1px solid var(--bo
 .faq-answer { max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s; font-size: 0.84rem; color: #a8bfc9; line-height: 1.75; padding: 0 18px; }
 .faq-item.open .faq-answer { max-height: 200px; padding: 0 18px 16px; }
 
+/* Product guide accordion — reaproveita faq-item com mais altura e texto pré-formatado */
+.guide-item { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin-bottom: 8px; transition: border-color 0.2s; }
+.guide-item.open { border-color: rgba(0,229,195,0.25); }
+.guide-question { display: flex; justify-content: space-between; align-items: center; padding: 15px 18px; cursor: pointer; font-size: 0.9rem; font-weight: 600; color: var(--text); transition: background 0.15s; gap: 12px; }
+.guide-question:hover { background: rgba(255,255,255,0.02); }
+.guide-chevron { font-size: 0.7rem; color: var(--muted); transition: transform 0.25s; flex-shrink: 0; }
+.guide-item.open .guide-chevron { transform: rotate(180deg); color: var(--accent); }
+.guide-answer { max-height: 0; overflow: hidden; transition: max-height 0.35s ease, padding 0.3s; font-size: 0.84rem; color: #a8bfc9; line-height: 1.7; padding: 0 18px; white-space: pre-wrap; }
+.guide-item.open .guide-answer { max-height: 1200px; padding: 0 18px 16px; }
+
 /* PRODUCT DETAIL */
 .detail-back { display: inline-flex; align-items: center; gap: 8px; font-family: 'Space Mono', monospace; font-size: 0.65rem; color: var(--muted); cursor: pointer; margin-bottom: 24px; transition: color 0.2s; letter-spacing: 0.5px; background: none; border: none; padding: 0; }
 .detail-back:hover { color: var(--accent); }
@@ -1365,6 +1375,74 @@ const PROTOCOLS = {
     inicio: 'Carga: 0,25–0,5 mg/dia até atingir bronzeado desejado',
     nota: 'Agonista de melanocortina. Injeção subcutânea. Requer exposição solar para ativar pigmentação. Pode causar náusea e ereção espontânea no início do uso.'
   },
+};
+
+// Guia educativo por produto — exibido em accordion na página do produto
+const PRODUCT_GUIDES = {
+  ghkcu: [
+    {
+      title: '💧 Reconstituição (como preparar)',
+      body: `Para vial de 50 mg:
+• 5 ml de água bacteriostática → 10 mg/ml → 1 mg a cada 10 u na seringa de insulina
+• 10 ml → 5 mg/ml → 500 mcg a cada 10 u
+• 20 ml → 2,5 mg/ml → 250 mcg a cada 10 u
+• 25 ml → 2 mg/ml → 100 mcg a cada 5 u
+
+Para vial de 100 mg:
+• 10 ml → 10 mg/ml → 1 mg a cada 10 u
+• 20 ml → 5 mg/ml → 500 mcg a cada 10 u
+• 25 ml → 4 mg/ml → 200 mcg a cada 5 u
+
+Use seringa de insulina U-100. Gire suavemente o vial — não agite. Armazene refrigerado (2–8 °C) após reconstituído.`
+    },
+    {
+      title: '📋 Protocolos de Uso',
+      body: `Dose baixa diária (100–500 mcg SC)
+Indicações: rejuvenescimento da pele, crescimento capilar leve, cicatrização de feridas, manutenção anti-idade.
+• Iniciantes: 100–200 mcg/dia
+• Intermediário: 300 mcg/dia
+• Avançado: até 500 mcg/dia
+Aplicar subcutâneo próximo à área alvo (face, couro cabeludo, cicatrizes).
+
+Dose intermitente (1–2 mg SC, 2–3x/semana)
+Indicações: anti-idade sistêmica, crescimento capilar mais agressivo, reparo de lesões, pós-cirúrgico.
+• 1 mg por aplicação, 2–3x/semana, OU
+• 2 mg por aplicação, 2x/semana (teto por injeção)
+
+Uso tópico em paralelo potencializa resultados na pele e no cabelo.`
+    },
+    {
+      title: '🔄 Ciclo Recomendado',
+      body: `Protocolo padrão: 8 semanas ON / 8 semanas OFF
+• Ciclos mais longos que 8 semanas podem reduzir a resposta
+• Janela OFF permite reset dos receptores e evita acúmulo
+• Reavaliar resultados ao final de cada ciclo antes de repetir
+
+Combinações comuns:
+• GHK-Cu + BPC-157 → reparo tecidual + regeneração
+• GHK-Cu + Tesamorelin → anti-idade sistêmica
+• GHK-Cu tópico + injetável → máximo efeito na pele/cabelo`
+    },
+    {
+      title: '⚠️ Segurança e Doses Máximas',
+      body: `Limites importantes:
+• Teto diário: ≤ 1 mg/dia (dose baixa contínua)
+• Teto por injeção: ≤ 2 mg (nunca injetar mais de 2 mg de uma vez)
+• Não combinar dose diária alta + intermitente no mesmo dia
+
+Efeitos colaterais possíveis:
+• Irritação, vermelhidão ou coceira no local da injeção
+• Gosto metálico na boca logo após aplicar (passageiro)
+• Queda transitória de pressão em doses altas
+
+Contraindicações:
+• Alergia a cobre
+• Doença de Wilson (acúmulo de cobre)
+• Gravidez e amamentação
+
+⚠️ Conteúdo educativo. Não substitui orientação médica. Research use only.`
+    }
+  ]
 };
 
 const ALERTS = {
@@ -2306,6 +2384,7 @@ function App() {
   const [manualSubmitting, setManualSubmitting] = useState(false);
   const [manualSuccess, setManualSuccess] = useState(null); // {code, total}
   const [openFaq, setOpenFaq] = useState(null);
+  const [openGuide, setOpenGuide] = useState(null);
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [artForm, setArtForm] = useState(null);
   const [adminPoForm, setAdminPoForm] = useState(null);
@@ -4869,6 +4948,24 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       <div className="calc-prot-note" style={{marginTop:12}}>💡 {proto.nota}</div>
                       <div className="calc-disclaimer" style={{marginTop:10}}>⚠️ Informações de caráter exclusivamente educativo. Não constituem prescrição médica. Consulte sempre um profissional de saúde.</div>
                     </>
+                  )}
+
+                  {PRODUCT_GUIDES[p.id] && (
+                    <div style={{marginTop:28}}>
+                      <div className="detail-section-title">Guia de Uso</div>
+                      {PRODUCT_GUIDES[p.id].map((sec, i) => {
+                        const key = `${p.id}-${i}`;
+                        return (
+                          <div key={key} className={`guide-item ${openGuide===key?'open':''}`}>
+                            <div className="guide-question" onClick={()=>setOpenGuide(openGuide===key?null:key)}>
+                              <span>{sec.title}</span>
+                              <span className="guide-chevron">▼</span>
+                            </div>
+                            <div className="guide-answer">{sec.body}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </>
               );
