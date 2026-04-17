@@ -3744,27 +3744,44 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       const mins = Math.ceil((lock.until - Date.now()) / 60000);
       showToast(`Bloqueado. Tente em ${mins} min.`, "error"); return;
     }
+    let res;
     try {
-      const res = await fetch('https://aumubzvdhzvtnqfzqeqd.supabase.co/functions/v1/verify-admin', {
+      res = await fetch('https://aumubzvdhzvtnqfzqeqd.supabase.co/functions/v1/verify-admin', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_KEY,
+        },
         body: JSON.stringify({ password: pw }),
       });
-      const data = await res.json();
-      if (data.ok) {
-        adminLockRef.current = { attempts: 0, until: 0 };
-        setAdminPwModal(false); setAdminPwInput('');
-        setAdminUnlocked(true); showToast("Admin desbloqueado ✓"); setView("admin");
-      } else {
-        const attempts = (lock.attempts || 0) + 1;
-        const until = attempts >= 5 ? Date.now() + 15 * 60 * 1000 : 0;
-        adminLockRef.current = { attempts, until };
-        setAdminPwInput('');
-        if (data.locked || attempts >= 5) { setAdminPwModal(false); showToast("Muitas tentativas — bloqueado por 15 min!", "error"); }
-        else showToast(`Código incorreto! (${attempts}/5)`, "error");
-      }
-    } catch {
-      showToast("Erro de conexão. Tente novamente.", "error");
+    } catch (err) {
+      console.error('[verify-admin] network error:', err);
+      showToast("Sem conexão com o servidor. Verifique sua internet.", "error");
+      return;
+    }
+    let data;
+    try {
+      data = await res.json();
+    } catch (err) {
+      const status = res.status;
+      console.error('[verify-admin] parse error, status:', status, err);
+      if (status === 401 || status === 403) showToast(`Função não autorizada (${status}). Redeploy com --no-verify-jwt.`, "error");
+      else if (status >= 500) showToast(`Erro no servidor (${status}). Verifique ADMIN_PASSWORD.`, "error");
+      else showToast(`Resposta inválida do servidor (${status}).`, "error");
+      return;
+    }
+    if (data.ok) {
+      adminLockRef.current = { attempts: 0, until: 0 };
+      setAdminPwModal(false); setAdminPwInput('');
+      setAdminUnlocked(true); showToast("Admin desbloqueado ✓"); setView("admin");
+    } else {
+      const attempts = (lock.attempts || 0) + 1;
+      const until = attempts >= 5 ? Date.now() + 15 * 60 * 1000 : 0;
+      adminLockRef.current = { attempts, until };
+      setAdminPwInput('');
+      if (data.locked || attempts >= 5) { setAdminPwModal(false); showToast("Muitas tentativas — bloqueado por 15 min!", "error"); }
+      else showToast(`Código incorreto! (${attempts}/5)`, "error");
     }
   }
 
