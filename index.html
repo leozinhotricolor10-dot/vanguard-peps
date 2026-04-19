@@ -4658,8 +4658,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               <span><strong style={{color:'var(--text)'}}>Frete fixo R$&nbsp;60</strong> para todo o Brasil &nbsp;·&nbsp; <strong style={{color:'var(--text)'}}>Grátis</strong> para RMSP acima de R$&nbsp;300</span>
             </div>
 
-            {/* BOTÃO CATÁLOGO COMPLETO NO WHATSAPP */}
-            <button onClick={()=>{
+            {/* BOTÃO CATÁLOGO COMPLETO NO WHATSAPP — somente admin */}
+            {adminUnlocked && <button onClick={()=>{
               const lines = ['🧪 *CATÁLOGO COMPLETO — VANGUARD PEPTIDES*', ''];
               const cats = CATEGORIES.filter(c => c.id !== 'all');
               cats.forEach(cat => {
@@ -4695,7 +4695,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               onMouseLeave={e=>e.currentTarget.style.background='rgba(37,211,102,0.08)'}>
               <span style={{fontSize:'1rem'}}>📋</span>
               <span>CATÁLOGO COMPLETO NO WHATSAPP</span>
-            </button>
+            </button>}
 
             {/* SEARCH BAR */}
             <div className="search-bar-wrap">
