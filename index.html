@@ -4653,10 +4653,49 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
             </div>
 
             {/* BANNER FRETE */}
-            <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',marginBottom:18,background:'rgba(0,229,195,0.04)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:10,fontSize:'0.75rem',color:'var(--muted)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 16px',marginBottom:10,background:'rgba(0,229,195,0.04)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:10,fontSize:'0.75rem',color:'var(--muted)'}}>
               <span style={{fontSize:'1rem'}}>🚚</span>
               <span><strong style={{color:'var(--text)'}}>Frete fixo R$&nbsp;60</strong> para todo o Brasil &nbsp;·&nbsp; <strong style={{color:'var(--text)'}}>Grátis</strong> para RMSP acima de R$&nbsp;300</span>
             </div>
+
+            {/* BOTÃO CATÁLOGO COMPLETO NO WHATSAPP */}
+            <button onClick={()=>{
+              const lines = ['🧪 *CATÁLOGO COMPLETO — VANGUARD PEPTIDES*', ''];
+              const cats = CATEGORIES.filter(c => c.id !== 'all');
+              cats.forEach(cat => {
+                const items = products.filter(p => p.category === cat.id);
+                if (!items.length) return;
+                lines.push(`${cat.icon} *${cat.name.toUpperCase()}*`);
+                items.forEach(p => {
+                  const price = effectivePrice(p);
+                  const stockLabel = availableStock(p.id) > 0 ? '' : ' _(sob encomenda)_';
+                  lines.push(`• ${p.name} — R$ ${price.toLocaleString('pt-BR')}${stockLabel}`);
+                });
+                lines.push('');
+              });
+              const semCat = products.filter(p => !cats.some(c => c.id === p.category));
+              if (semCat.length) {
+                lines.push('📦 *OUTROS*');
+                semCat.forEach(p => {
+                  const price = effectivePrice(p);
+                  const stockLabel = availableStock(p.id) > 0 ? '' : ' _(sob encomenda)_';
+                  lines.push(`• ${p.name} — R$ ${price.toLocaleString('pt-BR')}${stockLabel}`);
+                });
+                lines.push('');
+              }
+              lines.push('💧 Água bacteriostática inclusa');
+              lines.push('🚚 Frete R$ 60 Brasil · grátis RMSP > R$ 300');
+              lines.push('💳 PIX com 10% de desconto');
+              lines.push('');
+              lines.push('Olá! Gostaria de fazer um pedido 👋');
+              const msg = encodeURIComponent(lines.join('\n'));
+              window.open(`https://wa.me/447418333521?text=${msg}`, '_blank');
+            }} style={{width:'100%',display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'12px 16px',marginBottom:18,background:'rgba(37,211,102,0.08)',border:'1px solid rgba(37,211,102,0.35)',borderRadius:10,color:'#25d366',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',fontWeight:700,letterSpacing:'0.5px',cursor:'pointer',transition:'background 0.15s'}}
+              onMouseEnter={e=>e.currentTarget.style.background='rgba(37,211,102,0.14)'}
+              onMouseLeave={e=>e.currentTarget.style.background='rgba(37,211,102,0.08)'}>
+              <span style={{fontSize:'1rem'}}>📋</span>
+              <span>CATÁLOGO COMPLETO NO WHATSAPP</span>
+            </button>
 
             {/* SEARCH BAR */}
             <div className="search-bar-wrap">
