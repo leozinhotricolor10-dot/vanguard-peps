@@ -7007,7 +7007,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     const cat = ADINA_CATALOG[val.toUpperCase()];
                     if (cat) {
                       updated.name = cat.name; updated.spec = cat.spec; updated.priceUsd = String(cat.priceUsd); updated.sku = val.toUpperCase();
-                      const existing = products.find(p => p.sku === val.toUpperCase() || p.name.toLowerCase().includes(cat.name.toLowerCase()) || cat.name.toLowerCase().includes(p.name.toLowerCase()));
+                      // Match por SKU exato — evita colidir variantes que compartilham o mesmo base name (ex: RT15, RT20, RT50 todos "Retatrutide")
+                      const existing = products.find(p => (p.sku || '').toUpperCase() === val.toUpperCase());
                       if (existing && existing.price) updated.precoSugOverride = String(existing.price);
                     }
                   }
@@ -7022,23 +7023,24 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               function applyPrices() {
                 if (calcs.length === 0) { showToast('Nenhum item calculado','error'); return; }
                 let updated = 0; let added = 0;
-                const isMatch = (p, c) => p.name.toLowerCase().includes(c.name.toLowerCase()) || c.name.toLowerCase().includes(p.name.toLowerCase());
+                // Match por SKU exato — cada variante (RT15, RT20, RT50...) tem seu próprio preço
+                const isMatch = (p, c) => !!(p.sku && c.sku && p.sku.toUpperCase() === c.sku.toUpperCase());
                 // Atualiza produtos existentes
                 const newProducts = products.map(p => {
-                  const match = calcs.find(c => c.name && isMatch(p, c));
+                  const match = calcs.find(c => c.sku && isMatch(p, c));
                   if (match) { updated++; return { ...p, price: match.precoSug, _custoVial: match.custoVial }; }
                   return p;
                 });
                 // Adiciona produtos novos que não existem no catálogo
                 calcs.forEach(c => {
-                  if (!c.name || !c.precoSug) return;
+                  if (!c.sku || !c.precoSug) return;
                   const exists = products.find(p => isMatch(p, c));
                   if (!exists) {
                     added++;
                     newProducts.push({
                       id: 'imp-' + Date.now() + '-' + Math.random().toString(36).slice(2,6),
-                      sku: c.sku || '',
-                      name: c.name,
+                      sku: c.sku,
+                      name: `${c.name} ${c.spec || ''}`.trim(),
                       desc: c.spec || '',
                       price: c.precoSug,
                       _custoVial: c.custoVial,
