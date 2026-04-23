@@ -2385,6 +2385,7 @@ function App() {
   const [manualSuccess, setManualSuccess] = useState(null); // {code, total}
   const [openFaq, setOpenFaq] = useState(null);
   const [openGuide, setOpenGuide] = useState(null);
+  const [prodSearch, setProdSearch] = useState('');
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [artForm, setArtForm] = useState(null);
   const [adminPoForm, setAdminPoForm] = useState(null);
@@ -6067,33 +6068,55 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 )}
 
                 {/* LIST */}
-                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+                <div style={{display:"flex",gap:10,alignItems:'center',marginBottom:12}}>
+                  <div style={{flex:1,position:'relative'}}>
+                    <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',fontSize:'0.85rem',color:'var(--muted)',pointerEvents:'none'}}>🔍</span>
+                    <input
+                      placeholder="Buscar por SKU, nome ou categoria..."
+                      value={prodSearch}
+                      onChange={e=>setProdSearch(e.target.value)}
+                      style={{width:'100%',padding:'9px 34px 9px 34px',background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.82rem',fontFamily:"'DM Sans',sans-serif"}}
+                    />
+                    {prodSearch && <button onClick={()=>setProdSearch('')} style={{position:'absolute',right:8,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.9rem',padding:4}}>✕</button>}
+                  </div>
                   <button className="admin-action-btn" onClick={()=>setProdForm({sku:'',name:'',desc:'',category:'emagrecedores',price:''})}>＋ Novo Produto</button>
                 </div>
                 <div className="prod-list">
-                  {products.map(p=>(
-                    <div key={p.id} className="prod-list-row">
-                      <div className="prod-list-sku">{p.sku||'—'}</div>
-                      <div>
-                        <div className="prod-list-name">{p.name}</div>
-                        <div className="prod-list-cat">{CATEGORIES.find(c=>c.id===p.category)?.icon} {CATEGORIES.find(c=>c.id===p.category)?.name}</div>
+                  {(()=>{
+                    const q = prodSearch.trim().toLowerCase();
+                    const filtered = q
+                      ? products.filter(p =>
+                          (p.sku||'').toLowerCase().includes(q) ||
+                          (p.name||'').toLowerCase().includes(q) ||
+                          (p.category||'').toLowerCase().includes(q)
+                        )
+                      : products;
+                    const sorted = [...filtered].sort((a,b) => (a.sku||'zzz').localeCompare(b.sku||'zzz', 'pt-BR', { numeric: true, sensitivity: 'base' }));
+                    if (sorted.length === 0) return <div style={{padding:'20px',textAlign:'center',color:'var(--muted)',fontSize:'0.82rem'}}>Nenhum produto encontrado.</div>;
+                    return sorted.map(p=>(
+                      <div key={p.id} className="prod-list-row">
+                        <div className="prod-list-sku">{p.sku||'—'}</div>
+                        <div>
+                          <div className="prod-list-name">{p.name}</div>
+                          <div className="prod-list-cat">{CATEGORIES.find(c=>c.id===p.category)?.icon} {CATEGORIES.find(c=>c.id===p.category)?.name}</div>
+                        </div>
+                        <div className="prod-list-price">R$ {p.price.toLocaleString("pt-BR")}</div>
+                        <div style={{display:'flex',gap:4,alignItems:'center'}}>
+                          {p.hot && <span style={{fontSize:'0.65rem',background:'rgba(255,69,0,0.15)',border:'1px solid rgba(255,69,0,0.3)',color:'#ff6030',padding:'2px 7px',borderRadius:20,fontFamily:"'Space Mono',monospace"}}>🔥 HOT</span>}
+                          {p.badge && !p.hot && <span style={{fontSize:'0.62rem',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.2)',color:'var(--accent)',padding:'2px 7px',borderRadius:20,fontFamily:"'Space Mono',monospace"}}>{p.badge}</span>}
+                        </div>
+                        <button className="prod-edit-btn" onClick={()=>setProdForm({...p, price: p.price.toString()})}>editar</button>
+                        <button className="prod-del-btn" onClick={()=>{
+                          if(!window.confirm(`Remover "${p.name}"?`)) return;
+                          const pendingOrders = orders.filter(o => o.peptideId === p.id || (o._items||[]).some(i=>i.peptideId===p.id));
+                          if(pendingOrders.length > 0 && !window.confirm(`⚠️ Este produto tem ${pendingOrders.length} pedido(s) pendente(s). Deseja remover mesmo assim?`)) return;
+                          if(sb) sb.from('products').delete().eq('id', p.id).then(({error})=>{ if(error) console.warn('[Supabase] Delete product error:', error.message); });
+                          persistProducts(products.filter(x=>x.id!==p.id));
+                          showToast("Produto removido", "info");
+                        }}>excluir</button>
                       </div>
-                      <div className="prod-list-price">R$ {p.price.toLocaleString("pt-BR")}</div>
-                      <div style={{display:'flex',gap:4,alignItems:'center'}}>
-                        {p.hot && <span style={{fontSize:'0.65rem',background:'rgba(255,69,0,0.15)',border:'1px solid rgba(255,69,0,0.3)',color:'#ff6030',padding:'2px 7px',borderRadius:20,fontFamily:"'Space Mono',monospace"}}>🔥 HOT</span>}
-                        {p.badge && !p.hot && <span style={{fontSize:'0.62rem',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.2)',color:'var(--accent)',padding:'2px 7px',borderRadius:20,fontFamily:"'Space Mono',monospace"}}>{p.badge}</span>}
-                      </div>
-                      <button className="prod-edit-btn" onClick={()=>setProdForm({...p, price: p.price.toString()})}>editar</button>
-                      <button className="prod-del-btn" onClick={()=>{
-                        if(!window.confirm(`Remover "${p.name}"?`)) return;
-                        const pendingOrders = orders.filter(o => o.peptideId === p.id || (o._items||[]).some(i=>i.peptideId===p.id));
-                        if(pendingOrders.length > 0 && !window.confirm(`⚠️ Este produto tem ${pendingOrders.length} pedido(s) pendente(s). Deseja remover mesmo assim?`)) return;
-                        if(sb) sb.from('products').delete().eq('id', p.id).then(({error})=>{ if(error) console.warn('[Supabase] Delete product error:', error.message); });
-                        persistProducts(products.filter(x=>x.id!==p.id));
-                        showToast("Produto removido", "info");
-                      }}>excluir</button>
-                    </div>
-                  ))}
+                    ));
+                  })()}
                 </div>
                 <div style={{marginTop:10,textAlign:"right"}}>
                   <button style={{background:"none",border:"none",color:"var(--muted)",fontSize:"0.72rem",cursor:"pointer",fontFamily:"'Space Mono',monospace"}}
