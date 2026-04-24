@@ -154,6 +154,16 @@ esbuild.transform(jsxCode, {
   if (!fs.existsSync(DIST_DIR)) fs.mkdirSync(DIST_DIR);
   fs.writeFileSync(DIST, dist);
 
+  // Copiar páginas estáticas adicionais (landing de atacado, unlisted)
+  const extraStatic = ['atacado.html'];
+  extraStatic.forEach(f => {
+    const src = path.join(__dirname, f);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(DIST_DIR, f));
+      console.log(`📄 Copiado: ${f}`);
+    }
+  });
+
   const distSize = (dist.length / 1024).toFixed(1);
   console.log(`\n📦 dist/index.html gerado!`);
   console.log(`   index.html:      ${origSize}KB (fonte, com JSX+Babel)`);
