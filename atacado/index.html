@@ -142,6 +142,9 @@ tbody td:not(:first-child){text-align:right}
 .td-code-badge{display:inline-block;font-size:8px;letter-spacing:1px;padding:2px 7px;border-radius:2px;margin-left:6px;vertical-align:middle}
 .hot{background:rgba(255,100,50,.1);color:#ff6432;border:1px solid rgba(255,100,50,.25)}
 .new{background:var(--green-dim);color:var(--green);border:1px solid var(--green-border)}
+.destaque{background:rgba(120,170,255,.1);color:#78aaff;border:1px solid rgba(120,170,255,.25)}
+.premium{background:rgba(180,120,255,.1);color:#b478ff;border:1px solid rgba(180,120,255,.25)}
+.limitado{background:rgba(255,193,7,.1);color:#ffc107;border:1px solid rgba(255,193,7,.25)}
 .td-price{font-family:'Orbitron',sans-serif;font-size:13px;color:var(--green);font-weight:700}
 .cat-row td{background:rgba(212,170,0,.04);padding:10px 20px}
 .cat-row td span{font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--gold)}
@@ -331,18 +334,23 @@ footer p{font-size:10px;color:var(--dim);line-height:1.7}
           <label style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--dim);font-family:'Orbitron',sans-serif">Produto</label>
           <select id="calc-product" onchange="calcUpdate()" style="background:var(--surface2);border:1px solid var(--border);color:#fff;font-family:'Exo 2',sans-serif;font-size:13px;padding:12px 16px;border-radius:6px;outline:none;cursor:pointer;width:100%">
             <option value="900">GHK-Cu 50mg — R$ 900/cx</option>
-            <option value="1755">GHK-Cu 100mg — R$ 1.755/cx</option>
-            <option value="4500">GLOW Blend 70mg — R$ 4.500/cx</option>
-            <option value="5400">KLOW Blend 80mg — R$ 5.400/cx</option>
-            <option value="9900">Retatrutide 50mg — R$ 9.900/cx</option>
-            <option value="7200">Retatrutide 20mg — R$ 7.200/cx</option>
-            <option value="2610">CJC-1295 + Ipamorelin — R$ 2.610/cx</option>
-            <option value="4590">BPC-157 + TB-500 — R$ 4.590/cx</option>
-            <option value="2430">Tesamorelin 5mg — R$ 2.430/cx</option>
-            <option value="9000">SS-31 50mg — R$ 9.000/cx</option>
-            <option value="4860">MOTS-c 40mg — R$ 4.860/cx</option>
-            <option value="1980">DSIP 10mg — R$ 1.980/cx</option>
-            <option value="1530">PT-141 10mg — R$ 1.530/cx</option>
+            <option value="4893">GLOW Blend 70mg — R$ 4.893/cx</option>
+            <option value="5250">KLOW Blend 80mg — R$ 5.250/cx</option>
+            <option value="2030">SNAP-8 10mg — R$ 2.030/cx</option>
+            <option value="2093">Tirzepatide 15mg — R$ 2.093/cx</option>
+            <option value="2793">Retatrutide 15mg — R$ 2.793/cx</option>
+            <option value="3325">Retatrutide 20mg — R$ 3.325/cx</option>
+            <option value="5600">Retatrutide 50mg — R$ 5.600/cx</option>
+            <option value="3346">SS-31 50mg — R$ 3.346/cx</option>
+            <option value="3010">BPC-157 + TB-500 20mg — R$ 3.010/cx</option>
+            <option value="2793">CJC-1295 + Ipamorelin — R$ 2.793/cx</option>
+            <option value="2093">Tesamorelin 5mg — R$ 2.093/cx</option>
+            <option value="3640">MOTS-c 40mg — R$ 3.640/cx</option>
+            <option value="1540">DSIP 10mg — R$ 1.540/cx</option>
+            <option value="1393">Selank 5mg — R$ 1.393/cx</option>
+            <option value="1743">Epithalon 10mg — R$ 1.743/cx</option>
+            <option value="1960">PT-141 10mg — R$ 1.960/cx</option>
+            <option value="1050">Bac Water — R$ 1.050/cx</option>
           </select>
         </div>
 
@@ -413,7 +421,7 @@ footer p{font-size:10px;color:var(--dim);line-height:1.7}
           </tr>
         </thead>
         <tbody>
-          <!-- BELEZA -->
+          <!-- BELEZA & PELE -->
           <tr class="cat-row"><td colspan="4"><span>✨ Beleza &amp; Pele</span></td></tr>
           <tr>
             <td><div class="td-name">GHK-Cu 50mg <span class="td-code-badge hot">HOT</span></div><div class="td-code">CU50</div></td>
@@ -422,87 +430,123 @@ footer p{font-size:10px;color:var(--dim);line-height:1.7}
             <td>10 vials</td>
           </tr>
           <tr>
-            <td><div class="td-name">GHK-Cu 100mg</div><div class="td-code">CU100</div></td>
-            <td>3 caixas</td>
-            <td class="td-price">R$ 1.755</td>
-            <td>10 vials</td>
-          </tr>
-          <tr>
             <td><div class="td-name">GLOW Blend 70mg <span class="td-code-badge hot">HOT</span></div><div class="td-code">BBG70</div></td>
             <td>3 caixas</td>
-            <td class="td-price">R$ 4.500</td>
+            <td class="td-price">R$ 4.893</td>
             <td>10 vials</td>
           </tr>
           <tr>
             <td><div class="td-name">KLOW Blend 80mg</div><div class="td-code">KL80</div></td>
             <td>3 caixas</td>
-            <td class="td-price">R$ 5.400</td>
+            <td class="td-price">R$ 5.250</td>
+            <td>10 vials</td>
+          </tr>
+          <tr>
+            <td><div class="td-name">SNAP-8 10mg</div><div class="td-code">SNAP10</div></td>
+            <td>3 caixas</td>
+            <td class="td-price">R$ 2.030</td>
             <td>10 vials</td>
           </tr>
 
           <!-- EMAGRECEDORES -->
-          <tr class="cat-row"><td colspan="4"><span>🔥 Emagrecedores</span></td></tr>
+          <tr class="cat-row"><td colspan="4"><span>💉 Emagrecedores</span></td></tr>
           <tr>
-            <td><div class="td-name">Retatrutide 50mg <span class="td-code-badge new">NOVO</span></div><div class="td-code">RT50</div></td>
+            <td><div class="td-name">Tirzepatide 15mg <span class="td-code-badge destaque">DESTAQUE</span></div><div class="td-code">TZ15</div></td>
             <td>3 caixas</td>
-            <td class="td-price">R$ 9.900</td>
+            <td class="td-price">R$ 2.093</td>
             <td>10 vials</td>
           </tr>
           <tr>
-            <td><div class="td-name">Retatrutide 20mg</div><div class="td-code">RT20</div></td>
+            <td><div class="td-name">Retatrutide 15mg <span class="td-code-badge new">NOVO</span></div><div class="td-code">RT15</div></td>
             <td>3 caixas</td>
-            <td class="td-price">R$ 7.200</td>
+            <td class="td-price">R$ 2.793</td>
+            <td>10 vials</td>
+          </tr>
+          <tr>
+            <td><div class="td-name">Retatrutide 20mg <span class="td-code-badge destaque">DESTAQUE</span></div><div class="td-code">RT20</div></td>
+            <td>3 caixas</td>
+            <td class="td-price">R$ 3.325</td>
+            <td>10 vials</td>
+          </tr>
+          <tr>
+            <td><div class="td-name">Retatrutide 50mg <span class="td-code-badge hot">HOT</span></div><div class="td-code">RT50</div></td>
+            <td>3 caixas</td>
+            <td class="td-price">R$ 5.600</td>
+            <td>10 vials</td>
+          </tr>
+          <tr>
+            <td><div class="td-name">SS-31 50mg</div><div class="td-code">2S50</div></td>
+            <td>3 caixas</td>
+            <td class="td-price">R$ 3.346</td>
             <td>10 vials</td>
           </tr>
 
-          <!-- CORPO -->
-          <tr class="cat-row"><td colspan="4"><span>💪 Corpo &amp; Metabolismo</span></td></tr>
+          <!-- CORPO & METABOLISMO -->
+          <tr class="cat-row"><td colspan="4"><span>🔥 Corpo &amp; Metabolismo</span></td></tr>
           <tr>
-            <td><div class="td-name">CJC-1295 + Ipamorelin</div><div class="td-code">CP10</div></td>
+            <td><div class="td-name">BPC-157 + TB-500 20mg <span class="td-code-badge premium">PREMIUM</span></div><div class="td-code">BB20</div></td>
             <td>3 caixas</td>
-            <td class="td-price">R$ 2.610</td>
+            <td class="td-price">R$ 3.010</td>
             <td>10 vials</td>
           </tr>
           <tr>
-            <td><div class="td-name">BPC-157 + TB-500 20mg</div><div class="td-code">BB20</div></td>
+            <td><div class="td-name">CJC-1295 no DAC + Ipa <span class="td-code-badge premium">PREMIUM</span></div><div class="td-code">CP10</div></td>
             <td>3 caixas</td>
-            <td class="td-price">R$ 4.590</td>
+            <td class="td-price">R$ 2.793</td>
             <td>10 vials</td>
           </tr>
           <tr>
-            <td><div class="td-name">Tesamorelin 5mg</div><div class="td-code">TSM5</div></td>
+            <td><div class="td-name">Tesamorelin 5mg <span class="td-code-badge premium">PREMIUM</span></div><div class="td-code">TSM5</div></td>
             <td>3 caixas</td>
-            <td class="td-price">R$ 2.430</td>
+            <td class="td-price">R$ 2.093</td>
+            <td>10 vials</td>
+          </tr>
+
+          <!-- NEURO & FOCO -->
+          <tr class="cat-row"><td colspan="4"><span>🧠 Neuro &amp; Foco</span></td></tr>
+          <tr>
+            <td><div class="td-name">MOTS-c 40mg <span class="td-code-badge new">NOVO</span></div><div class="td-code">MS40</div></td>
+            <td>3 caixas</td>
+            <td class="td-price">R$ 3.640</td>
+            <td>10 vials</td>
+          </tr>
+          <tr>
+            <td><div class="td-name">DSIP 10mg</div><div class="td-code">DS10</div></td>
+            <td>3 caixas</td>
+            <td class="td-price">R$ 1.540</td>
+            <td>10 vials</td>
+          </tr>
+          <tr>
+            <td><div class="td-name">Selank 5mg <span class="td-code-badge new">NOVO</span></div><div class="td-code">SLK5</div></td>
+            <td>3 caixas</td>
+            <td class="td-price">R$ 1.393</td>
             <td>10 vials</td>
           </tr>
 
           <!-- LONGEVIDADE -->
           <tr class="cat-row"><td colspan="4"><span>⚡ Longevidade</span></td></tr>
           <tr>
-            <td><div class="td-name">SS-31 50mg</div><div class="td-code">2S50</div></td>
+            <td><div class="td-name">Epithalon 10mg</div><div class="td-code">EPT10</div></td>
             <td>3 caixas</td>
-            <td class="td-price">R$ 9.000</td>
-            <td>10 vials</td>
-          </tr>
-          <tr>
-            <td><div class="td-name">MOTS-c 40mg</div><div class="td-code">MS40</div></td>
-            <td>3 caixas</td>
-            <td class="td-price">R$ 4.860</td>
-            <td>10 vials</td>
-          </tr>
-          <tr>
-            <td><div class="td-name">DSIP 10mg</div><div class="td-code">DS10</div></td>
-            <td>3 caixas</td>
-            <td class="td-price">R$ 1.980</td>
+            <td class="td-price">R$ 1.743</td>
             <td>10 vials</td>
           </tr>
 
           <!-- LIBIDO -->
-          <tr class="cat-row"><td colspan="4"><span>💋 Libido</span></td></tr>
+          <tr class="cat-row"><td colspan="4"><span>💆 Libido</span></td></tr>
           <tr>
-            <td><div class="td-name">PT-141 10mg</div><div class="td-code">P41</div></td>
+            <td><div class="td-name">PT-141 10mg <span class="td-code-badge limitado">LIMITADO</span></div><div class="td-code">P41</div></td>
             <td>3 caixas</td>
-            <td class="td-price">R$ 1.530</td>
+            <td class="td-price">R$ 1.960</td>
+            <td>10 vials</td>
+          </tr>
+
+          <!-- INSUMOS -->
+          <tr class="cat-row"><td colspan="4"><span>🧪 Insumos &amp; Acessórios</span></td></tr>
+          <tr>
+            <td><div class="td-name">Bac Water</div><div class="td-code">BA03</div></td>
+            <td>3 caixas</td>
+            <td class="td-price">R$ 1.050</td>
             <td>10 vials</td>
           </tr>
         </tbody>

@@ -154,12 +154,14 @@ esbuild.transform(jsxCode, {
   if (!fs.existsSync(DIST_DIR)) fs.mkdirSync(DIST_DIR);
   fs.writeFileSync(DIST, dist);
 
-  // Copiar páginas estáticas adicionais (landing de atacado, unlisted)
-  const extraStatic = ['atacado.html'];
+  // Copiar páginas estáticas adicionais (landing de atacado servida em /atacado)
+  const extraStatic = ['atacado/index.html'];
   extraStatic.forEach(f => {
     const src = path.join(__dirname, f);
     if (fs.existsSync(src)) {
-      fs.copyFileSync(src, path.join(DIST_DIR, f));
+      const dst = path.join(DIST_DIR, f);
+      fs.mkdirSync(path.dirname(dst), { recursive: true });
+      fs.copyFileSync(src, dst);
       console.log(`📄 Copiado: ${f}`);
     }
   });
