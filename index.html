@@ -4712,7 +4712,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
             {/* FEATURED CAROUSEL - only on all tab with no search */}
             {activeCat==='all' && !searchQuery && (() => {
-              const hotProducts = products.filter(p=>p.hot);
+              const hotProducts = products.filter(p => p.hot || (productPromo[p.id]||0) > 0);
               if (!hotProducts.length) return null;
               const maxIdx = hotProducts.length - 1;
               return (
@@ -4730,21 +4730,30 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                         setCarouselTouchX(null);
                       }}>
                       <div className="carousel-track" style={{transform:`translateX(calc(-${carouselIdx * 274}px))`}}>
-                        {hotProducts.map((p,i)=>(
+                        {hotProducts.map((p,i)=>{
+                          const promo = productPromo[p.id]||0;
+                          return (
                           <div key={p.id} className="carousel-card" onClick={()=>{ setSelectedProduct(p); setView('detail', p); }}>
                             {(PRODUCT_IMAGES[p.id] || p.image_url)
                               ? <img src={PRODUCT_IMAGES[p.id] || p.image_url} className="carousel-card-img" alt={p.name} />
                               : <div style={{height:160,background:'rgba(0,229,195,0.05)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'2.5rem'}}>⚗️</div>
                             }
-                            <div className="product-hot-badge" style={{top:10,left:10,right:'auto'}}>🔥 HOT</div>
+                            {promo > 0
+                              ? <div className="promo-badge" style={{position:'absolute',top:10,left:10,zIndex:3}}>🔥 -{promo}% PROMO</div>
+                              : <div className="product-hot-badge" style={{top:10,left:10,right:'auto'}}>🔥 HOT</div>
+                            }
                             <div className="carousel-card-body">
                               <div className="carousel-card-name">{p.name}</div>
                               <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:8}}>{(p.desc||'').substring(0,60)}{(p.desc||'').length>60?'...':''}</div>
-                              <div className="carousel-card-price" style={{marginBottom:2}}>R$ {effectivePrice(p).toLocaleString('pt-BR')}</div>
+                              {promo > 0
+                                ? <div className="carousel-card-price price-promo" style={{marginBottom:2}}><span className="price-original">R$ {p.price.toLocaleString('pt-BR')}</span>R$ {effectivePrice(p).toLocaleString('pt-BR')}</div>
+                                : <div className="carousel-card-price" style={{marginBottom:2}}>R$ {effectivePrice(p).toLocaleString('pt-BR')}</div>
+                              }
                               <div style={{fontSize:'0.63rem',color:'#00e5c3',fontFamily:"'Space Mono',monospace",opacity:0.85}}>🚚 Frete grátis no PIX</div>
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                     {carouselIdx > 0 && <button className="carousel-btn prev" onClick={()=>setCarouselIdx(i=>Math.max(0,i-1))}>‹</button>}
@@ -4924,7 +4933,14 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                           <div className="detail-title">{p.name}</div>
                         </div>
                         <div style={{textAlign:'right'}}>
-                          <div className="detail-price">R$ {p.price.toLocaleString('pt-BR')} <span>/ampola</span></div>
+                          {(productPromo[p.id]||0) > 0 ? (
+                            <>
+                              <div className="promo-badge" style={{marginBottom:6}}>🔥 -{productPromo[p.id]}% PROMO</div>
+                              <div className="detail-price price-promo"><span className="price-original" style={{fontSize:'0.95rem'}}>R$ {p.price.toLocaleString('pt-BR')}</span>R$ {effectivePrice(p).toLocaleString('pt-BR')} <span>/ampola</span></div>
+                            </>
+                          ) : (
+                            <div className="detail-price">R$ {p.price.toLocaleString('pt-BR')} <span>/ampola</span></div>
+                          )}
                           <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.62rem",color:"var(--accent)",marginTop:4}}>✓ 99% Pureza · BAC Water inclusa</div>
                         </div>
                       </div>
@@ -8542,9 +8558,12 @@ _Vanguard Peptides_ 🧬`;
             <div className="price-preview">
               <div>
                 <div className="price-preview-label">{formQty} ampola{formQty!==1?"s":""}</div>
-                <div style={{fontSize:"0.7rem",color:"var(--muted)",marginTop:2}}>R$ {modal.peptide.price} × {formQty}</div>
+                <div style={{fontSize:"0.7rem",color:"var(--muted)",marginTop:2}}>
+                  {(productPromo[modal.peptide.id]||0) > 0 && <span style={{textDecoration:'line-through',marginRight:6,opacity:0.6}}>R$ {modal.peptide.price}</span>}
+                  R$ {effectivePrice(modal.peptide)} × {formQty}
+                </div>
               </div>
-              <div className="price-preview-value">R$ {(modal.peptide.price * formQty).toLocaleString("pt-BR")}</div>
+              <div className="price-preview-value">R$ {(effectivePrice(modal.peptide) * formQty).toLocaleString("pt-BR")}</div>
             </div>
 
             <button className="modal-confirm-btn" onClick={()=>{
