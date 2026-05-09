@@ -2852,7 +2852,14 @@ function App() {
           _custoVial: p.cost_per_vial ? Number(p.cost_per_vial) : null,
           packs: p.packs || [],
           image_url: p.image_url || null,
+          promo: Number(p.promo) || 0,
         }));
+      }
+      function syncPromosFromData(data) {
+        const promos = {};
+        data.forEach(p => { const v = Number(p.promo) || 0; if (v > 0) promos[p.id] = v; });
+        setProductPromo(promos);
+        localStorage.setItem('vg-promo', JSON.stringify(promos));
       }
       sb.from('products').select('*').order('sort_order', { ascending: true }).then(({ data, error }) => {
         clearTimeout(loadingTimeout);
@@ -2862,6 +2869,7 @@ function App() {
           const converted = convertProducts(data);
           setProducts(converted);
           localStorage.setItem('vg-products', JSON.stringify(converted));
+          syncPromosFromData(data);
         }
       });
       const prodChannel = sb.channel('products-realtime')
@@ -2871,6 +2879,7 @@ function App() {
               const converted = convertProducts(data);
               setProducts(converted);
               localStorage.setItem('vg-products', JSON.stringify(converted));
+              syncPromosFromData(data);
             }
           });
         })
@@ -5933,10 +5942,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 setProductPromo(newPromo);
                 localStorage.setItem('vg-promo', JSON.stringify(newPromo));
                 if (editing) {
-                  persistProducts(products.map(p => p.id===editing.id ? {...p, ...form, price} : p));
+                  persistProducts(products.map(p => p.id===editing.id ? {...p, ...form, price, promo: promoVal} : p));
                   showToast("Produto atualizado ✓");
                 } else {
-                  persistProducts([...products, { id: prodId, sku: form.sku||prodId.toUpperCase(), name: form.name, desc: form.desc||'', category: form.category||'emagrecedores', price }]);
+                  persistProducts([...products, { id: prodId, sku: form.sku||prodId.toUpperCase(), name: form.name, desc: form.desc||'', category: form.category||'emagrecedores', price, promo: promoVal }]);
                   showToast("Produto criado ✓");
                 }
                 setProdForm(null);
