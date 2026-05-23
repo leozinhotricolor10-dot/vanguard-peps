@@ -2409,7 +2409,7 @@ function App() {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponForm, setCouponForm] = useState(null);
   const [productPromo, setProductPromo] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-promo')||'{}'); } catch { return {}; } });
-  const [importForm, setImportForm] = useState({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', desconto:'', outrosBrl:'', invoiceTotal:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:'',precoVenda:''}] });
+  const [importForm, setImportForm] = useState({ label:'', date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', desconto:'', outrosBrl:'', invoiceTotal:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:'',precoVenda:''}] });
   const [importHistory, setImportHistory] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-imports')||'[]'); } catch { return []; } });
   const [stockLots, setStockLots] = useState(()=>{ try { return JSON.parse(localStorage.getItem('vg-stock-lots')||'{}'); } catch { return {}; } });
   const [editingImportId, setEditingImportId] = useState(null);
@@ -7109,6 +7109,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
               function editImport(h) {
                 setImportForm({
+                  label: h.label || '',
                   date: h.date || '',
                   cambio: String(h.cambio || ''),
                   freteUsd: String(h.freteUsd || ''),
@@ -7133,7 +7134,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
               function cancelEdit() {
                 setEditingImportId(null);
-                setImportForm({ date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', desconto:'', outrosBrl:'', invoiceTotal:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:'',precoVenda:''}] });
+                setImportForm({ label:'', date: new Date().toLocaleDateString('pt-BR'), cambio:'', freteUsd:'', fedexBrl:'', desconto:'', outrosBrl:'', invoiceTotal:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:'',precoVenda:''}] });
               }
 
               const IMPORT_STATUS = {
@@ -7196,6 +7197,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 const existingStatus = isEditing ? (importHistory.find(h => h.id === editingImportId)?.status || 'aguardando') : 'aguardando';
                 const entry = {
                   id: editingImportId || Date.now(),
+                  label: (importForm.label || '').trim(),
                   date: importForm.date, cambio, freteUsd, fedexBrl, desconto, outrosBrl, invoiceTotal,
                   overheadBrl, totalOrderUsd,
                   status: existingStatus,
@@ -7212,7 +7214,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 if (sb) sb.from('import_history').upsert({ id: String(entry.id), data: entry, status: entry.status||'aguardando' }, { onConflict: 'id' }).then(({error})=>{ if(error) console.warn('[Supabase] Import save:', error.message); });
                 setEditingImportId(null);
                 if (!isEditing) {
-                  setImportForm({ date: new Date().toLocaleDateString('pt-BR'), cambio: importForm.cambio, freteUsd:'', fedexBrl:'', desconto:'', outrosBrl:'', invoiceTotal:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:'',precoVenda:''}] });
+                  setImportForm({ label:'', date: new Date().toLocaleDateString('pt-BR'), cambio: importForm.cambio, freteUsd:'', fedexBrl:'', desconto:'', outrosBrl:'', invoiceTotal:'', items:[{sku:'',name:'',spec:'',boxes:'',priceUsd:'',precoSugOverride:'',precoVenda:''}] });
                 }
                 showToast(isEditing ? 'Importação atualizada ✓' : 'Importação salva ✓', 'success');
                 setTimeout(()=>{ document.querySelector('.admin-content')?.scrollTo({ top: 99999, behavior: 'smooth' }); }, 100);
@@ -7233,6 +7235,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 {/* PARÂMETROS */}
                 <div style={{background:'rgba(0,229,195,0.04)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:12,padding:'14px 16px',marginBottom:14}}>
                   <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px',marginBottom:12}}>📋 PARÂMETROS DA IMPORTAÇÃO</div>
+                  <div style={{marginBottom:10}}>
+                    <label style={labelStyle}>Nome da importação <span style={{opacity:0.5}}>(opcional)</span></label>
+                    <input style={inputStyle} placeholder="ex: Compra com a Molly" value={importForm.label||''} onChange={e=>setImportForm(f=>({...f,label:e.target.value}))} />
+                  </div>
                   <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr',gap:10}}>
                     <div><label style={labelStyle}>Data</label><input style={inputStyle} value={importForm.date} onChange={e=>setImportForm(f=>({...f,date:e.target.value}))} /></div>
                     <div>
@@ -7435,6 +7441,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       <div key={h.id} style={{padding:'10px 14px',background: editingImportId===h.id ? 'rgba(255,193,7,0.06)' : 'rgba(255,255,255,0.02)',border:`1px solid ${editingImportId===h.id?'rgba(255,193,7,0.4)':'var(--border)'}`,borderRadius:8,marginBottom:6,fontSize:'0.78rem'}}>
                         <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:6}}>
                           <div style={{flex:1}}>
+                            {h.label && <div style={{fontFamily:"'DM Sans',sans-serif",fontSize:'0.82rem',fontWeight:600,color:'var(--text)',marginBottom:4}}>{h.label}</div>}
                             <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:3}}>
                               <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.65rem',color:'var(--accent)'}}>{h.date}</span>
                               {(() => {
