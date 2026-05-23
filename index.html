@@ -423,6 +423,7 @@ main { padding: 36px 44px; max-width: 980px; }
 .order-status.pago      { background: rgba(0,229,195,0.08);  border: 1px solid rgba(0,229,195,0.3);  color: var(--accent); }
 .order-status.enviado   { background: rgba(100,160,255,0.08);border: 1px solid rgba(100,160,255,0.3);color: #78aaff; }
 .order-status.entregue  { background: rgba(80,200,80,0.08);  border: 1px solid rgba(80,200,80,0.3);  color: #66cc66; }
+.order-status.extraviado{ background: rgba(255,48,48,0.1);   border: 1px solid rgba(255,48,48,0.4);  color: #ff5050; }
 .status-cycle { font-size: 0.65rem; opacity: 0.55; }
 
 .notify-btn { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,160,30,0.3); background: rgba(255,160,30,0.05); color: #ffaa1e; font-family: 'Space Mono', monospace; font-size: 0.68rem; letter-spacing: 0.8px; cursor: pointer; transition: all 0.18s; margin-top: 8px; }
@@ -2542,10 +2543,45 @@ function App() {
   const [articles, setArticles] = useState(loadArticles);
   function persistArticles(a) { setArticles(a); localStorage.setItem('vg-articles', JSON.stringify(a)); }
 
+  function statusLabel(s) {
+    const k = s || 'pendente';
+    return k === 'pendente'   ? '🟡 PENDENTE'
+         : k === 'pago'       ? '✅ PAGO'
+         : k === 'enviado'    ? '📦 ENVIADO'
+         : k === 'entregue'   ? '🎉 ENTREGUE'
+         : k === 'extraviado' ? '⚠️ EXTRAVIADO'
+         : k.toUpperCase();
+  }
+
+  async function setOrderStatus(orderId, newStatus) {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
+    persistOrders(updated);
+    addNotif('status', `🔄 ${order.buyerName || 'Pedido'} → ${newStatus}`, `${order._code || orderId} marcado como ${newStatus}`, { orderId });
+    if (sb) {
+      const { error } = await sb.from('orders').update({ status: newStatus }).eq('id', orderId);
+      if (error) {
+        console.warn('[Supabase] Order status error:', error.message);
+        showToast('Erro ao atualizar status. Revertendo...', 'error');
+        persistOrders(orders);
+      }
+    }
+  }
+
+  async function markExtraviado(orderId) {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+    if (!window.confirm(`Marcar pedido ${order._code || orderId} como EXTRAVIADO?\n\nIsso registra os vials como perda total (100% prejuízo) no financeiro.`)) return;
+    await setOrderStatus(orderId, 'extraviado');
+    showToast('Pedido marcado como extraviado', 'error');
+  }
+
   async function cycleStatus(orderId) {
     const cycle = ['pendente','pago','enviado','entregue'];
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
+    if (order.status === 'extraviado') { showToast('Pedido extraviado — use o botão no detalhe para reverter','error'); return; }
     const idx = cycle.indexOf(order.status || 'pendente');
     const newStatus = cycle[(idx+1) % cycle.length];
     const updated = orders.map(o => o.id === orderId ? { ...o, status: newStatus } : o);
@@ -5396,6 +5432,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   pago: adminOrders.filter(o=>o.status==='pago').length,
                   enviado: adminOrders.filter(o=>o.status==='enviado').length,
                   entregue: adminOrders.filter(o=>o.status==='entregue').length,
+                  extraviado: adminOrders.filter(o=>o.status==='extraviado').length,
                 };
                 if (adminOrders.length === 0) return (
                   <div style={{textAlign:"center",color:"var(--muted)",padding:40,fontSize:"0.85rem"}}>Nenhum pedido ainda</div>
@@ -5420,6 +5457,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       {id:'pago',label:'✅ Pago',count:statusCounts.pago},
                       {id:'enviado',label:'📦 Enviado',count:statusCounts.enviado},
                       {id:'entregue',label:'🎉 Entregue',count:statusCounts.entregue},
+                      {id:'extraviado',label:'⚠️ Extraviado',count:statusCounts.extraviado},
                     ].map(f=>(
                       <button key={f.id} onClick={()=>{ setAdminStatusFilter(f.id); setAdminPage(1); }}
                         style={{padding:'5px 12px',borderRadius:20,border:'1px solid',cursor:'pointer',fontSize:'0.72rem',fontFamily:"'Space Mono',monospace",
@@ -5508,8 +5546,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                                     <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
                                       {order._code && <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.62rem',fontWeight:700,color:'var(--accent)',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:6,padding:'2px 7px'}}>{order._code}</span>}
                                       <span className={`order-status ${order.status||'pendente'}`} onClick={()=>cycleStatus(order.id)} title="Clique para avançar status" style={{fontSize:'0.65rem',padding:'3px 8px'}}>
-                                        {(order.status||'pendente')==='pendente'?'🟡 PENDENTE':(order.status||'pendente')==='pago'?'✅ PAGO':(order.status||'pendente')==='enviado'?'📦 ENVIADO':'🎉 ENTREGUE'}
-                                        <span className="status-cycle">▶</span>
+                                        {statusLabel(order.status)}
+                                        {(order.status||'pendente')!=='extraviado' && <span className="status-cycle">▶</span>}
                                       </span>
                                       <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',color:'var(--muted)'}}>R$ {parseFloat(orderTotal).toLocaleString('pt-BR')}</span>
                                     </div>
@@ -5538,7 +5576,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                                 {items.map((it,idx)=>{const p2=products.find(x=>x.id===it.peptideId);return <div key={idx} className="admin-row-name" style={{fontSize:'0.75rem'}}>{p2?p2.name:(it.name||it.peptideId)} ×{it.qty||1}</div>;})}
                                 <div className="admin-row-buyer">{order.buyerName}</div>
                               </div>
-                              <div><span className={`order-status ${order.status||'pendente'}`} onClick={()=>cycleStatus(order.id)} title="Clique para avançar status">{(order.status||'pendente')==='pendente'?'🟡 PENDENTE':(order.status||'pendente')==='pago'?'✅ PAGO':(order.status||'pendente')==='enviado'?'📦 ENVIADO':'🎉 ENTREGUE'}<span className="status-cycle">▶</span></span></div>
+                              <div><span className={`order-status ${order.status||'pendente'}`} onClick={()=>cycleStatus(order.id)} title="Clique para avançar status">{statusLabel(order.status)}{(order.status||'pendente')!=='extraviado' && <span className="status-cycle">▶</span>}</span></div>
                               <div className="admin-row-qty">×{totalQty}</div>
                               <div className="admin-row-total">R$ {parseFloat(orderTotal).toLocaleString('pt-BR')}</div>
                               <div style={{display:'flex',flexDirection:'column',gap:4}}>
@@ -5606,11 +5644,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                             onClick={()=>cycleStatus(order.id)}
                             title="Clique para avançar status"
                           >
-                            {(order.status||'pendente')==='pendente'  ? '🟡 PENDENTE'
-                           : (order.status||'pendente')==='pago'      ? '✅ PAGO'
-                           : (order.status||'pendente')==='enviado'   ? '📦 ENVIADO'
-                           : '🎉 ENTREGUE'}
-                            <span className="status-cycle">▶</span>
+                            {statusLabel(order.status)}
+                            {(order.status||'pendente')!=='extraviado' && <span className="status-cycle">▶</span>}
                           </span>
                         </div>
                         <div className="admin-row-qty">×{totalQty}</div>
@@ -6555,6 +6590,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               const cogs = cogsForOrds(confirmedOrds);
               const hasCost = cogs > 0;
               const lucroLiq = confirmed - cogs;
+
+              // Perdas por extravio — vials de pedidos extraviados são perda total
+              const extraviadoOrds = ordsByStatus('extraviado');
+              const perdaExtravioRevenue = revForOrds(extraviadoOrds);
+              const perdaExtravioCogs = cogsForOrds(extraviadoOrds);
               const margemMedia = confirmed > 0 && hasCost ? Math.round((lucroLiq/confirmed)*100) : null;
 
               // Per-product data for confirmed orders
@@ -6634,8 +6674,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 return s + prodCost + overhead;
               }, 0);
 
-              // 5) P&L
-              const totalDespesas = (hasCost ? cogs : totalImportCost) + totalFreteEnvio + totalFretePixAbsorvido + totalTaxasMP + totalDespManuais;
+              // 5) P&L — extravio: COGS perdido entra como despesa
+              const totalDespesas = (hasCost ? cogs : totalImportCost) + totalFreteEnvio + totalFretePixAbsorvido + totalTaxasMP + totalDespManuais + perdaExtravioCogs;
               const lucroOperacional = confirmed - totalDespesas;
               const margemOperacional = confirmed > 0 ? (lucroOperacional / confirmed) * 100 : 0;
 
@@ -6821,6 +6861,22 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                         </div>
                       </div>
                     )}
+                    {/* Perdas por extravio */}
+                    {extraviadoOrds.length > 0 && (
+                      <div style={{marginTop:10,padding:'10px 14px',background:'rgba(255,80,80,0.06)',border:'1px solid rgba(255,80,80,0.25)',borderRadius:10}}>
+                        <div style={{fontSize:'0.6rem',color:'#ff5050',fontFamily:"'Space Mono',monospace",letterSpacing:'1.5px',marginBottom:6}}>⚠️ PERDAS POR EXTRAVIO — {extraviadoOrds.length} pedido{extraviadoOrds.length!==1?'s':''}</div>
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.72rem',fontFamily:"'Space Mono',monospace"}}>
+                          <span style={{color:'var(--muted)'}}>Faturamento perdido</span>
+                          <span style={{color:'#ff8080'}}>R${perdaExtravioRevenue.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                        </div>
+                        {hasCost && perdaExtravioCogs > 0 && (
+                          <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.72rem',fontFamily:"'Space Mono',monospace",marginTop:3}}>
+                            <span style={{color:'var(--muted)'}}>CMV (vials perdidos)</span>
+                            <span style={{color:'#ff5050',fontWeight:700}}>R${perdaExtravioCogs.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                     {/* Fretes ME registrados */}
                     {Object.keys(shippingCosts).length > 0 && (
                       <div style={{marginTop:10}}>
@@ -6899,14 +6955,18 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   <div className="fin-section">
                     <div className="fin-section-title">Por Status</div>
                     <div className="fin-status-grid">
-                      {[{status:'pendente',emoji:'🟡',label:'Pendente'},{status:'pago',emoji:'✅',label:'Pago'},{status:'enviado',emoji:'📦',label:'Enviado'},{status:'entregue',emoji:'🎉',label:'Entregue'}].map(({status,emoji,label})=>(
-                        <div className="fin-status-card" key={status}>
+                      {[{status:'pendente',emoji:'🟡',label:'Pendente'},{status:'pago',emoji:'✅',label:'Pago'},{status:'enviado',emoji:'📦',label:'Enviado'},{status:'entregue',emoji:'🎉',label:'Entregue'},{status:'extraviado',emoji:'⚠️',label:'Extraviado'}].map(({status,emoji,label})=>{
+                        const isExtravio = status === 'extraviado';
+                        return (
+                        <div className="fin-status-card" key={status} style={isExtravio?{borderColor:'rgba(255,80,80,0.35)',background:'rgba(255,80,80,0.04)'}:{}}>
                           <div className="fin-status-emoji">{emoji}</div>
-                          <div className="fin-status-label">{label}</div>
+                          <div className="fin-status-label" style={isExtravio?{color:'#ff5050'}:{}}>{label}</div>
                           <div className="fin-status-count">{ordsByStatus(status).length}</div>
-                          <div className="fin-status-revenue">{fmt(revByStatus(status))}</div>
+                          <div className="fin-status-revenue" style={isExtravio?{color:'#ff5050'}:{}}>{fmt(revByStatus(status))}</div>
+                          {isExtravio && hasCost && perdaExtravioCogs > 0 && <div style={{fontSize:'0.62rem',color:'#ff8080',marginTop:4,fontFamily:"'Space Mono',monospace"}}>Perda CMV: {fmt(Math.round(perdaExtravioCogs))}</div>}
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -7939,10 +7999,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.75rem",color:'var(--muted)',marginTop:2}}>#{orderDetail.id}</div>
               </div>
               <span className={`order-status ${orderDetail.status||'pendente'}`} style={{cursor:'default'}}>
-                {(orderDetail.status||'pendente')==='pendente' ? '🟡 PENDENTE'
-                : (orderDetail.status||'pendente')==='pago'    ? '✅ PAGO'
-                : (orderDetail.status||'pendente')==='enviado' ? '📦 ENVIADO'
-                : '🎉 ENTREGUE'}
+                {statusLabel(orderDetail.status)}
               </span>
             </div>
 
@@ -8159,6 +8216,18 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               </div>
             </div>
 
+            {/* Marcar como extraviado / reverter */}
+            {(orderDetail.status||'pendente') === 'extraviado' ? (
+              <button onClick={async()=>{ await setOrderStatus(orderDetail.id, 'enviado'); setOrderDetail(o=>({...o,status:'enviado'})); showToast('Status revertido para Enviado','success'); }}
+                style={{width:'100%',padding:'10px',background:'rgba(100,160,255,0.08)',border:'1px solid rgba(100,160,255,0.3)',borderRadius:10,color:'#78aaff',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',marginBottom:8}}>
+                ↩️ REVERTER EXTRAVIO → ENVIADO
+              </button>
+            ) : ['pago','enviado','entregue'].includes(orderDetail.status||'pendente') && (
+              <button onClick={async()=>{ await markExtraviado(orderDetail.id); setOrderDetail(o=>({...o,status:'extraviado'})); }}
+                style={{width:'100%',padding:'10px',background:'rgba(255,48,48,0.08)',border:'1px solid rgba(255,48,48,0.35)',borderRadius:10,color:'#ff5050',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',marginBottom:8}}>
+                ⚠️ MARCAR COMO EXTRAVIADO (100% prejuízo)
+              </button>
+            )}
             <button onClick={()=>{ setOrderDetail(null); setEditItemsMode(false); setDiscountInput(null); }} style={{width:'100%',padding:'11px',background:'none',border:'1px solid var(--border)',borderRadius:10,color:'var(--muted)',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontSize:'0.72rem'}}>Fechar</button>
           </div>
         </div>
