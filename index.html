@@ -7528,9 +7528,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                         <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
                           {(h.items||[]).map((it,i)=>{
                             const hasCot = it.precoVenda && it.margem != null;
+                            const vials = parseInt(it.vials) || (parseInt(it.boxes)||0)*10;
                             return (
                               <span key={i} style={{fontSize:'0.65rem',fontFamily:"'Space Mono',monospace",background:'rgba(0,229,195,0.06)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:4,padding:'2px 8px',color:'var(--muted)'}}>
-                                {it.sku} · R${it.precoSug}
+                                {it.sku} <span style={{color:'var(--accent)'}}>×{vials}</span> · R${it.precoSug}
                                 {hasCot && <span style={{color: it.margem>=80?'#4cffb0':it.margem>=60?'#00e5c3':it.margem>=40?'#ffc107':'#ff5050'}}> · {Math.round(it.margem)}%</span>}
                               </span>
                             );
