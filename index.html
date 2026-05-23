@@ -6595,6 +6595,22 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               const extraviadoOrds = ordsByStatus('extraviado');
               const perdaExtravioRevenue = revForOrds(extraviadoOrds);
               const perdaExtravioCogs = cogsForOrds(extraviadoOrds);
+
+              // Estoque em trânsito — agregado por SKU das importações não-entregues
+              const transitBySku = {};
+              importHistory.filter(h => (h.status||'aguardando') !== 'entregue').forEach(h => {
+                (h.items||[]).forEach(it => {
+                  if (!it.sku) return;
+                  const vials = parseInt(it.vials) || (parseInt(it.boxes)||0)*10;
+                  const preco = parseFloat(it.precoVenda) || parseFloat(it.precoSug) || 0;
+                  if (!transitBySku[it.sku]) transitBySku[it.sku] = { sku: it.sku, name: it.name || it.sku, vials: 0, rev: 0 };
+                  transitBySku[it.sku].vials += vials;
+                  transitBySku[it.sku].rev += vials * preco;
+                });
+              });
+              const transitList = Object.values(transitBySku).sort((a,b)=>b.rev-a.rev);
+              const transitTotalRev = transitList.reduce((s,t)=>s+t.rev, 0);
+              const transitTotalVials = transitList.reduce((s,t)=>s+t.vials, 0);
               const margemMedia = confirmed > 0 && hasCost ? Math.round((lucroLiq/confirmed)*100) : null;
 
               // Per-product data for confirmed orders
@@ -6950,6 +6966,35 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                       </div>
                     </div>
                   </div>}
+
+                  {/* Estoque em Trânsito */}
+                  {transitList.length > 0 && (
+                    <div className="fin-section">
+                      <div className="fin-section-title">📦 Estoque em Trânsito (chegando)</div>
+                      <div style={{padding:'16px 20px',background:'rgba(255,170,0,0.04)',border:'1px solid rgba(255,170,0,0.25)',borderRadius:12}}>
+                        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',marginBottom:14,paddingBottom:12,borderBottom:'1px solid rgba(255,170,0,0.15)'}}>
+                          <div>
+                            <div style={{fontSize:'0.62rem',color:'var(--muted)',fontFamily:"'Space Mono',monospace",letterSpacing:'1.5px',marginBottom:4}}>FATURAMENTO ESTIMADO TOTAL</div>
+                            <div style={{fontFamily:"'Syne',sans-serif",fontSize:'1.6rem',fontWeight:800,color:'#ffc107'}}>{fmt(Math.round(transitTotalRev))}</div>
+                          </div>
+                          <div style={{textAlign:'right'}}>
+                            <div style={{fontSize:'0.62rem',color:'var(--muted)',fontFamily:"'Space Mono',monospace",letterSpacing:'1.5px',marginBottom:4}}>VIALS</div>
+                            <div style={{fontFamily:"'Space Mono',monospace",fontSize:'1.2rem',fontWeight:700,color:'var(--text)'}}>{transitTotalVials.toLocaleString('pt-BR')}</div>
+                          </div>
+                        </div>
+                        <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                          {transitList.map(t => (
+                            <div key={t.sku} style={{display:'grid',gridTemplateColumns:'auto 1fr auto auto',alignItems:'center',gap:12,fontSize:'0.78rem'}}>
+                              <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.65rem',background:'rgba(255,170,0,0.1)',border:'1px solid rgba(255,170,0,0.25)',borderRadius:4,padding:'2px 7px',color:'#ffc107'}}>{t.sku}</span>
+                              <span style={{color:'var(--text)'}}>{t.name}</span>
+                              <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.72rem',color:'var(--accent)'}}>×{t.vials}</span>
+                              <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.78rem',fontWeight:700,color:'#4cffb0',minWidth:90,textAlign:'right'}}>{fmt(Math.round(t.rev))}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Por Status */}
                   <div className="fin-section">
@@ -7537,6 +7582,19 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                             );
                           })}
                         </div>
+                        {(h.status||'aguardando') !== 'entregue' && (() => {
+                          const estRev = (h.items||[]).reduce((s,it)=>{
+                            const vials = parseInt(it.vials) || (parseInt(it.boxes)||0)*10;
+                            const preco = parseFloat(it.precoVenda) || parseFloat(it.precoSug) || 0;
+                            return s + vials*preco;
+                          }, 0);
+                          if (estRev <= 0) return null;
+                          return (
+                            <div style={{marginTop:6,fontSize:'0.68rem',fontFamily:"'Space Mono',monospace",color:'#4cffb0'}}>
+                              💰 Faturamento estimado: R${estRev.toLocaleString('pt-BR')}
+                            </div>
+                          );
+                        })()}
                       </div>
                     ))}
                   </div>
