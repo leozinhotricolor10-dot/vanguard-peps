@@ -3632,7 +3632,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       .reduce((sum, po) => sum + (po.qty || 0), 0);
     const productSku = products.find(p => p.id === productId)?.sku;
     const importCap = productSku ? importHistory
-      .filter(h => h.status && h.status !== 'entregue')
+      .filter(h => h.status && h.status !== 'entregue' && h.status !== 'apreendida')
       .reduce((sum, h) => {
         const item = (h.items || []).find(it => it.sku === productSku);
         return sum + (item ? parseInt(item.vials) || parseInt(item.boxes) * 10 || 0 : 0);
@@ -6670,7 +6670,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
               // Estoque em trânsito — agregado por SKU das importações não-entregues
               const transitBySku = {};
-              importHistory.filter(h => (h.status||'aguardando') !== 'entregue').forEach(h => {
+              importHistory.filter(h => { const st = h.status||'aguardando'; return st !== 'entregue' && st !== 'apreendida'; }).forEach(h => {
                 (h.items||[]).forEach(it => {
                   if (!it.sku) return;
                   const vials = parseInt(it.vials) || (parseInt(it.boxes)||0)*10;
@@ -6756,14 +6756,17 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               const totalDespManuais = despesas.reduce((s,d)=>s+(parseFloat(d.valor)||0), 0);
 
               // 4) Custo de importações
-              const totalImportCost = importHistory.reduce((s,h) => {
-                const prodCost = (parseFloat(h.totalOrderUsd)||0) * (parseFloat(h.cambio)||0);
-                const overhead = parseFloat(h.overheadBrl)||0;
-                return s + prodCost + overhead;
-              }, 0);
+              const importCustoH = h => (parseFloat(h.totalOrderUsd)||0) * (parseFloat(h.cambio)||0) + (parseFloat(h.overheadBrl)||0);
+              const totalImportCost = importHistory.reduce((s,h) => s + importCustoH(h), 0);
+
+              // Perdas por apreensão — importação retida na alfândega = 100% prejuízo
+              const apreendidasList = importHistory.filter(h => h.status === 'apreendida');
+              const perdaApreensao = apreendidasList.reduce((s,h) => s + importCustoH(h), 0);
 
               // 5) P&L — extravio: COGS perdido entra como despesa
-              const totalDespesas = (hasCost ? cogs : totalImportCost) + totalFreteEnvio + totalFretePixAbsorvido + totalTaxasMP + totalDespManuais + perdaExtravioCogs;
+              //         apreensão: custo total da importação entra como despesa (só quando hasCost,
+              //         pois sem hasCost o totalImportCost já inclui apreendidas)
+              const totalDespesas = (hasCost ? cogs : totalImportCost) + totalFreteEnvio + totalFretePixAbsorvido + totalTaxasMP + totalDespManuais + perdaExtravioCogs + (hasCost ? perdaApreensao : 0);
               const lucroOperacional = confirmed - totalDespesas;
               const margemOperacional = confirmed > 0 ? (lucroOperacional / confirmed) * 100 : 0;
 
@@ -6946,6 +6949,25 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                         <div style={{padding:'8px 14px',background:'rgba(255,80,80,0.04)',display:'flex',justifyContent:'space-between',fontSize:'0.72rem',fontFamily:"'Space Mono',monospace"}}>
                           <span style={{color:'var(--muted)'}}>Total despesas manuais</span>
                           <span style={{color:'#ff5050',fontWeight:700}}>R${totalDespManuais.toLocaleString('pt-BR',{minimumFractionDigits:2})}</span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Perdas por apreensão alfandegária */}
+                    {apreendidasList.length > 0 && (
+                      <div style={{marginTop:10,padding:'10px 14px',background:'rgba(255,80,80,0.06)',border:'1px solid rgba(255,80,80,0.25)',borderRadius:10}}>
+                        <div style={{fontSize:'0.6rem',color:'#ff5050',fontFamily:"'Space Mono',monospace",letterSpacing:'1.5px',marginBottom:8}}>🛃 PERDAS POR APREENSÃO — {apreendidasList.length} importaç{apreendidasList.length!==1?'ões':'ão'}</div>
+                        {apreendidasList.map(h => {
+                          const custo = importCustoH(h);
+                          return (
+                            <div key={h.id} style={{display:'flex',justifyContent:'space-between',fontSize:'0.7rem',fontFamily:"'Space Mono',monospace",marginBottom:3}}>
+                              <span style={{color:'var(--muted)'}}>{h.label||h.date} · {h.date}</span>
+                              <span style={{color:'#ff5050',fontWeight:700}}>R${Math.round(custo).toLocaleString('pt-BR')}</span>
+                            </div>
+                          );
+                        })}
+                        <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.75rem',fontFamily:"'Space Mono',monospace",marginTop:6,paddingTop:6,borderTop:'1px solid rgba(255,80,80,0.2)'}}>
+                          <span style={{color:'var(--muted)'}}>Total apreendido (100% prejuízo)</span>
+                          <span style={{color:'#ff5050',fontWeight:700}}>R${Math.round(perdaApreensao).toLocaleString('pt-BR')}</span>
                         </div>
                       </div>
                     )}
@@ -7319,7 +7341,15 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                 em_transito: { label: '✈️ Em Trânsito',  color: '#78aaff', next: 'alfandega' },
                 alfandega:   { label: '🛃 Alfândega',    color: '#ff9f43', next: 'entregue' },
                 entregue:    { label: '✅ Entregue',      color: '#4ade80', next: null },
+                apreendida:  { label: '⚠️ Apreendida',   color: '#ff5050', next: null },
               };
+              function markImportApreendida(id) {
+                const lote = importHistory.find(h => h.id === id);
+                if (!lote) return;
+                const custo = (parseFloat(lote.totalOrderUsd)||0) * (parseFloat(lote.cambio)||0) + (parseFloat(lote.overheadBrl)||0);
+                if (!window.confirm(`Marcar importação "${lote.label||lote.date}" como APREENDIDA?\n\nIsso registra ~R$${Math.round(custo).toLocaleString('pt-BR')} como perda total (100% prejuízo).\nO estoque NÃO será atualizado.`)) return;
+                updateImportStatus(id, 'apreendida');
+              }
               function updateImportStatus(id, newStatus) {
                 const hist = importHistory.map(h => h.id === id ? { ...h, status: newStatus } : h);
                 setImportHistory(hist);
@@ -7638,9 +7668,20 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                               {h.invoiceTotal > 0 && <> · Invoice: R${parseFloat(h.invoiceTotal).toFixed(2)}</>}
                             </span>
                           </div>
-                          <button onClick={()=>editImport(h)} style={{background:'rgba(255,255,255,0.04)',border:'1px solid var(--border)',borderRadius:6,color:'var(--muted)',cursor:'pointer',fontSize:'0.68rem',fontFamily:"'Space Mono',monospace",padding:'3px 10px',flexShrink:0,marginLeft:10}}>
-                            ✏️ Editar
-                          </button>
+                          <div style={{display:'flex',gap:6,flexShrink:0,marginLeft:10}}>
+                            <button onClick={()=>editImport(h)} style={{background:'rgba(255,255,255,0.04)',border:'1px solid var(--border)',borderRadius:6,color:'var(--muted)',cursor:'pointer',fontSize:'0.68rem',fontFamily:"'Space Mono',monospace",padding:'3px 10px'}}>
+                              ✏️ Editar
+                            </button>
+                            {(h.status||'aguardando') === 'apreendida' ? (
+                              <button onClick={()=>{ if(window.confirm('Reverter status para Em Trânsito?')) updateImportStatus(h.id, 'em_transito'); }} style={{background:'rgba(100,160,255,0.08)',border:'1px solid rgba(100,160,255,0.3)',borderRadius:6,color:'#78aaff',cursor:'pointer',fontSize:'0.68rem',fontFamily:"'Space Mono',monospace",padding:'3px 10px'}}>
+                                ↩️ Reverter
+                              </button>
+                            ) : (h.status||'aguardando') !== 'entregue' && (
+                              <button onClick={()=>markImportApreendida(h.id)} style={{background:'rgba(255,80,80,0.07)',border:'1px solid rgba(255,80,80,0.3)',borderRadius:6,color:'#ff5050',cursor:'pointer',fontSize:'0.68rem',fontFamily:"'Space Mono',monospace",padding:'3px 10px'}}>
+                                ⚠️ Apreender
+                              </button>
+                            )}
+                          </div>
                         </div>
                         <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
                           {(h.items||[]).map((it,i)=>{
@@ -7654,7 +7695,13 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                             );
                           })}
                         </div>
-                        {(h.status||'aguardando') !== 'entregue' && (() => {
+                        {(() => {
+                          const st = h.status||'aguardando';
+                          if (st === 'entregue') return null;
+                          if (st === 'apreendida') {
+                            const custo = (parseFloat(h.totalOrderUsd)||0)*(parseFloat(h.cambio)||0) + (parseFloat(h.overheadBrl)||0);
+                            return <div style={{marginTop:6,fontSize:'0.68rem',fontFamily:"'Space Mono',monospace",color:'#ff5050'}}>⚠️ Perda total (apreendida): R${Math.round(custo).toLocaleString('pt-BR')}</div>;
+                          }
                           const estRev = (h.items||[]).reduce((s,it)=>{
                             const vials = parseInt(it.vials) || (parseInt(it.boxes)||0)*10;
                             const preco = parseFloat(it.precoVenda) || parseFloat(it.precoSug) || 0;
