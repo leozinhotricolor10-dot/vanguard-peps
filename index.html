@@ -8429,6 +8429,22 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               <button onClick={()=>setManualOrderModal(false)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'1.1rem'}}>✕</button>
             </div>
 
+            {/* Copiar lista de dados para pedir ao cliente */}
+            <div style={{display:'flex',gap:6,marginBottom:14}}>
+              <button onClick={()=>{
+                const msg = `Olá! Para eu registrar seu pedido, por favor me envie:\n\n👤 *Dados pessoais*\n• Nome completo\n• CPF\n• E-mail\n• Telefone\n\n📦 *Endereço de entrega*\n• CEP\n• Rua e número\n• Complemento (se houver)\n• Bairro\n• Cidade / Estado\n\n🛒 *Pedido*\n• Produto(s) e quantidade\n• Forma de pagamento (PIX ou Cartão 2x)\n\nAssim que receber, te envio o código do pedido. 🙏\n_Vanguard Peptides_ 🧬`;
+                const phone = (manualOrder.phone||'').replace(/\D/g,'');
+                if (phone) {
+                  const intl = phone.startsWith('55') ? phone : '55' + phone;
+                  window.open(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`, '_blank');
+                } else {
+                  navigator.clipboard.writeText(msg).then(()=>showToast('Mensagem copiada — cole no WhatsApp do cliente','success')).catch(()=>{ prompt('Copie a mensagem:', msg); });
+                }
+              }} style={{flex:1,padding:'9px',background:'rgba(37,211,102,0.1)',border:'1px solid rgba(37,211,102,0.35)',borderRadius:8,color:'#25d366',cursor:'pointer',fontSize:'0.72rem',fontFamily:"'Space Mono',monospace",fontWeight:700}}>
+                📋 {manualOrder.phone ? 'Enviar pedido de dados via WhatsApp' : 'Copiar lista de dados para o cliente'}
+              </button>
+            </div>
+
             <div style={{position:'relative',marginBottom:14}}>
               <label style={lSt}>🔁 Reaproveitar cliente (busca por nome, CPF ou telefone)</label>
               <input style={iSt} placeholder="Digite para buscar pedidos anteriores..." value={manualCustomerSearch} onChange={e=>setManualCustomerSearch(e.target.value)} />
