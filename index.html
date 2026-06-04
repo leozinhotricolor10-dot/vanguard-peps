@@ -2701,12 +2701,16 @@ function App() {
       const addr = order._address || order.address || {};
       const fromCep = sender.postal_code.replace(/\D/g,'');
       const toCep = (addr.cep||'').replace(/\D/g,'');
-      const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width: parseFloat(declLarg)||6, height: parseFloat(declAlt)||5, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3, insurance_value: parseFloat(declValor)||order._total||100, quantity: parseInt(declQtd)||1 }], services:'1,2,3,7,8,9', options:{ receipt:false, own_hand:false, collect:false } };
+      const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width: parseFloat(declLarg)||6, height: parseFloat(declAlt)||5, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3, insurance_value: parseFloat(declValor)||order._total||100, quantity: parseInt(declQtd)||1 }], services:'1,2,3,7,8,9,15', options:{ receipt:false, own_hand:false, collect:false } };
       const calcRes = await callME('/me/shipment/calculate', 'POST', calcBody);
-      const available = Array.isArray(calcRes) ? calcRes.filter(s=>!s.error && s.price) : [];
-      if (!available.length) throw new Error('[CALC] Nenhum serviço disponível para esta rota.\n' + JSON.stringify(calcRes));
+      const availableRaw = Array.isArray(calcRes) ? calcRes.filter(s=>!s.error && s.price) : [];
+      if (!availableRaw.length) throw new Error('[CALC] Nenhum serviço disponível para esta rota.\n' + JSON.stringify(calcRes));
+      // Priorizar JET Express (id 15): mostra primeiro e auto-seleciona se disponível
+      const isJet = s => { const id = parseInt(s.id); const name = ((s.company?.name||'')+' '+(s.name||'')).toLowerCase(); return id === 15 || name.includes('jet'); };
+      const available = [...availableRaw].sort((a,b) => (isJet(b)?1:0) - (isJet(a)?1:0));
       setMeServices(available);
-      setSelectedService(null);
+      const jetService = available.find(isJet);
+      setSelectedService(jetService || null);
       setDeclValor(String(order._total || ''));
       setEditingRem(false);
       setEtiquetaStep('select');
@@ -2782,12 +2786,16 @@ function App() {
       const addr = order._address || order.address || {};
       const fromCep = s.postal_code.replace(/\D/g,'');
       const toCep = (addr.cep||'').replace(/\D/g,'');
-      const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width: parseFloat(declLarg)||6, height: parseFloat(declAlt)||5, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3, insurance_value: parseFloat(declValor)||order._total||100, quantity: parseInt(declQtd)||1 }], services:'1,2,3,7,8,9', options:{ receipt:false, own_hand:false, collect:false } };
+      const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width: parseFloat(declLarg)||6, height: parseFloat(declAlt)||5, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3, insurance_value: parseFloat(declValor)||order._total||100, quantity: parseInt(declQtd)||1 }], services:'1,2,3,7,8,9,15', options:{ receipt:false, own_hand:false, collect:false } };
       const calcRes = await callME('/me/shipment/calculate', 'POST', calcBody);
-      const available = Array.isArray(calcRes) ? calcRes.filter(s=>!s.error && s.price) : [];
-      if (!available.length) throw new Error('[CALC] Nenhum serviço disponível para esta rota.\n' + JSON.stringify(calcRes));
+      const availableRaw = Array.isArray(calcRes) ? calcRes.filter(s=>!s.error && s.price) : [];
+      if (!availableRaw.length) throw new Error('[CALC] Nenhum serviço disponível para esta rota.\n' + JSON.stringify(calcRes));
+      // Priorizar JET Express (id 15): mostra primeiro e auto-seleciona se disponível
+      const isJet = s => { const id = parseInt(s.id); const name = ((s.company?.name||'')+' '+(s.name||'')).toLowerCase(); return id === 15 || name.includes('jet'); };
+      const available = [...availableRaw].sort((a,b) => (isJet(b)?1:0) - (isJet(a)?1:0));
       setMeServices(available);
-      setSelectedService(null);
+      const jetService = available.find(isJet);
+      setSelectedService(jetService || null);
       setDeclValor(String(order._total || ''));
       setEtiquetaStep('select');
     } catch(e) {
