@@ -2402,6 +2402,8 @@ function App() {
   const [manualCustomerSearch, setManualCustomerSearch] = useState('');
   const [manualOrderSubmitting, setManualOrderSubmitting] = useState(false);
   const [manualAddItemId, setManualAddItemId] = useState('');
+  const [manualPasteOpen, setManualPasteOpen] = useState(false);
+  const [manualPasteText, setManualPasteText] = useState('');
   const [legalModal, setLegalModal] = useState(null); // 'privacy' | 'terms'
   const [preorderModal, setPreorderModal] = useState(null); // {peptide}
   const [preorderLocked, setPreorderLocked] = useState(()=> localStorage.getItem('vg-preorder-locked') === 'true');
@@ -3444,6 +3446,112 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       showToast('Erro de conexão ao criar pedido','error');
     } finally {
       setManualOrderSubmitting(false);
+    }
+  }
+
+  // Parser de texto colado → preenche campos do pedido manual
+  function parseAndFillManualOrder(raw) {
+    if (!raw || !raw.trim()) { showToast('Cole o texto do cliente primeiro','error'); return; }
+    const text = raw.replace(/\r/g, '');
+    const found = {};
+    let foundCount = 0;
+    const mark = (k,v) => { if (v && !found[k]) { found[k] = v; foundCount++; } };
+
+    // CPF: 11 dígitos com ou sem máscara
+    const cpfMatch = text.match(/(\d{3}[.\s-]?\d{3}[.\s-]?\d{3}[.\s-]?\d{2})/);
+    if (cpfMatch) mark('cpf', cpfMatch[1].replace(/\D/g,''));
+
+    // CEP: 8 dígitos com ou sem hífen
+    const cepMatch = text.match(/(\d{5}-?\d{3})\b/);
+    if (cepMatch) mark('cep', cepMatch[1].replace(/\D/g,''));
+
+    // E-mail
+    const emailMatch = text.match(/[\w._%+-]+@[\w.-]+\.[A-Za-z]{2,}/);
+    if (emailMatch) mark('email', emailMatch[0]);
+
+    // Telefone: 10 ou 11 dígitos, opcionalmente com (DDD), espaços, hífens, +55
+    const phoneMatch = text.match(/(?:\+?55\s?)?\(?\d{2}\)?[\s.-]?9?\d{4}[\s.-]?\d{4}/);
+    if (phoneMatch) {
+      const digits = phoneMatch[0].replace(/\D/g,'');
+      // Remove "55" do início se ficou com 12-13 dígitos
+      const clean = digits.length >= 12 && digits.startsWith('55') ? digits.slice(2) : digits;
+      if (clean.length >= 10) mark('phone', clean);
+    }
+
+    // Parse linha-a-linha pra labels comuns
+    const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const labelMap = [
+      ['name',       /^(?:nome(?:\s+completo)?|cliente)\s*[:=-]\s*(.+)$/i],
+      ['rua',        /^(?:rua|endere[çc]o|logradouro|av(?:enida)?\.?)\s*[:=-]\s*(.+)$/i],
+      ['numero',     /^(?:n[úu]mero|n[ºo°]?|num)\s*[:=-]?\s*(\d+\w*)/i],
+      ['complemento',/^(?:complemento|compl|apto?|apartamento|bloco)\s*[:=-]\s*(.+)$/i],
+      ['bairro',     /^(?:bairro)\s*[:=-]\s*(.+)$/i],
+      ['cidade',     /^(?:cidade|munic[íi]pio)\s*[:=-]\s*(.+)$/i],
+      ['estado',     /^(?:estado|uf)\s*[:=-]\s*([A-Za-z]{2,})/i],
+    ];
+    for (const line of lines) {
+      for (const [field, re] of labelMap) {
+        const m = line.match(re);
+        if (m) {
+          let v = m[1].trim();
+          if (field === 'estado') v = v.toUpperCase().slice(0,2);
+          mark(field, v);
+          break;
+        }
+      }
+    }
+
+    // Padrão "Rua X, 123 - Bairro - Cidade/UF" em uma linha
+    if (!found.rua || !found.numero || !found.cidade) {
+      const fullAddr = text.match(/((?:Rua|R\.|Av\.?|Avenida|Travessa|Tv\.?|Alameda|Al\.?|Estrada|Rod\.?|Rodovia)[^\n,]+),\s*(\d+\w*)([^\n]*)/i);
+      if (fullAddr) {
+        mark('rua', fullAddr[1].trim());
+        mark('numero', fullAddr[2]);
+        const rest = fullAddr[3] || '';
+        const cityUfMatch = rest.match(/([A-Za-zÀ-ú\s]+?)\s*[\/-]\s*([A-Za-z]{2})\b/);
+        if (cityUfMatch) {
+          mark('cidade', cityUfMatch[1].trim());
+          mark('estado', cityUfMatch[2].toUpperCase());
+        }
+      }
+    }
+
+    // Nome: se ainda não achou, primeira linha de 2+ palavras só com letras
+    if (!found.name) {
+      for (const line of lines) {
+        if (/^[A-Za-zÀ-ú\s']{4,}$/.test(line) && line.split(/\s+/).length >= 2) {
+          mark('name', line);
+          break;
+        }
+      }
+    }
+
+    // Pagamento: detecta menção a PIX ou cartão
+    const lower = text.toLowerCase();
+    if (/\bpix\b/.test(lower)) mark('payment', 'pix');
+    else if (/cart[ãa]o|2x|cr[ée]dito/.test(lower)) mark('payment', 'cartao');
+
+    if (foundCount === 0) {
+      showToast('Não encontrei nenhum campo reconhecível','error');
+      return;
+    }
+
+    setManualOrder(m => ({ ...m, ...found }));
+    setManualPasteOpen(false);
+    setManualPasteText('');
+    showToast(`${foundCount} campo${foundCount!==1?'s':''} preenchido${foundCount!==1?'s':''} ✓`,'success');
+
+    // Se achou CEP, busca endereço automaticamente caso rua/cidade não tenham vindo
+    if (found.cep && (!found.rua || !found.cidade)) {
+      fetch(`https://viacep.com.br/ws/${found.cep}/json/`).then(r=>r.json()).then(d=>{
+        if (!d || d.erro) return;
+        setManualOrder(m => ({ ...m,
+          estado: m.estado || d.uf || '',
+          cidade: m.cidade || d.localidade || '',
+          bairro: m.bairro || d.bairro || '',
+          rua: m.rua || d.logradouro || '',
+        }));
+      }).catch(()=>{});
     }
   }
 
@@ -8429,7 +8537,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               <button onClick={()=>setManualOrderModal(false)} style={{background:'none',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'1.1rem'}}>✕</button>
             </div>
 
-            {/* Copiar lista de dados para pedir ao cliente */}
+            {/* Copiar lista / colar resposta */}
             <div style={{display:'flex',gap:6,marginBottom:14}}>
               <button onClick={()=>{
                 const msg = `Olá! Para eu registrar seu pedido, por favor me envie:\n\n👤 *Dados pessoais*\n• Nome completo\n• CPF\n• E-mail\n• Telefone\n\n📦 *Endereço de entrega*\n• CEP\n• Rua e número\n• Complemento (se houver)\n• Bairro\n• Cidade / Estado\n\n🛒 *Pedido*\n• Produto(s) e quantidade\n• Forma de pagamento (PIX ou Cartão 2x)\n\nAssim que receber, te envio o código do pedido. 🙏\n_Vanguard Peptides_ 🧬`;
@@ -8441,9 +8549,22 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                   navigator.clipboard.writeText(msg).then(()=>showToast('Mensagem copiada — cole no WhatsApp do cliente','success')).catch(()=>{ prompt('Copie a mensagem:', msg); });
                 }
               }} style={{flex:1,padding:'9px',background:'rgba(37,211,102,0.1)',border:'1px solid rgba(37,211,102,0.35)',borderRadius:8,color:'#25d366',cursor:'pointer',fontSize:'0.72rem',fontFamily:"'Space Mono',monospace",fontWeight:700}}>
-                📋 {manualOrder.phone ? 'Enviar pedido de dados via WhatsApp' : 'Copiar lista de dados para o cliente'}
+                📋 {manualOrder.phone ? 'Enviar via WhatsApp' : 'Copiar lista p/ cliente'}
+              </button>
+              <button onClick={()=>setManualPasteOpen(o=>!o)} style={{flex:1,padding:'9px',background:'rgba(0,229,195,0.1)',border:'1px solid rgba(0,229,195,0.35)',borderRadius:8,color:'var(--accent)',cursor:'pointer',fontSize:'0.72rem',fontFamily:"'Space Mono',monospace",fontWeight:700}}>
+                📥 {manualPasteOpen ? 'Fechar' : 'Colar resposta do cliente'}
               </button>
             </div>
+            {manualPasteOpen && (
+              <div style={{marginBottom:14,padding:10,background:'rgba(0,229,195,0.04)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:8}}>
+                <label style={lSt}>Cole abaixo a mensagem do cliente — o sistema tenta reconhecer CPF, e-mail, telefone, CEP, endereço, nome, etc.</label>
+                <textarea value={manualPasteText} onChange={e=>setManualPasteText(e.target.value)} placeholder={`Ex.:\nJoão da Silva\nCPF 123.456.789-00\njoao@email.com\n(11) 99999-9999\nCEP 01310-100\nRua Augusta, 100, apto 5\nConsolação - São Paulo/SP\nPIX`} style={{...iSt,minHeight:140,resize:'vertical',fontFamily:"'DM Sans',sans-serif"}} />
+                <div style={{display:'flex',gap:6,marginTop:8}}>
+                  <button onClick={()=>parseAndFillManualOrder(manualPasteText)} style={{flex:1,padding:'9px',background:'var(--accent)',border:'none',borderRadius:7,color:'#000',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>✨ Preencher campos</button>
+                  <button onClick={()=>setManualPasteText('')} style={{padding:'9px 14px',background:'none',border:'1px solid var(--border)',borderRadius:7,color:'var(--muted)',cursor:'pointer',fontSize:'0.72rem'}}>Limpar</button>
+                </div>
+              </div>
+            )}
 
             <div style={{position:'relative',marginBottom:14}}>
               <label style={lSt}>🔁 Reaproveitar cliente (busca por nome, CPF ou telefone)</label>
