@@ -2800,10 +2800,14 @@ function App() {
       const fromCep = sender.postal_code.replace(/\D/g,'');
       const toCep   = (addr.cep||'').replace(/\D/g,'');
 
+      // ME exige e-mail válido no destinatário; pedidos manuais podem não ter — usa o do remetente
+      const isEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+      const custEmail = (order._email||order.email||'').trim();
+      const toEmail = isEmail(custEmail) ? custEmail : (sender.email||'').trim();
       const cartBody = {
         service: service.id,
         from: { name: sender.name, phone: sender.phone.replace(/\D/g,''), email: sender.email, document: sender.document.replace(/\D/g,''), address: sender.address, number: sender.number, complement: sender.complement||'', district: sender.district, city: sender.city, state_abbr: normUF(sender.state), country_id: 'BR', postal_code: fromCep, note: '' },
-        to: { name: order.buyerName||'Cliente', phone: (order._phone||'').replace(/\D/g,''), email: order._email||'', document: (order._cpf||'').replace(/\D/g,''), address: addr.rua||'', number: addr.numero||'', complement: addr.complemento||'', district: addr.bairro||'', city: addr.cidade||'', state_abbr: normUF(addr.estado), country_id: 'BR', postal_code: toCep, note: '' },
+        to: { name: order.buyerName||'Cliente', phone: (order._phone||'').replace(/\D/g,''), email: toEmail, document: (order._cpf||'').replace(/\D/g,''), address: addr.rua||'', number: addr.numero||'', complement: addr.complemento||'', district: addr.bairro||'', city: addr.cidade||'', state_abbr: normUF(addr.estado), country_id: 'BR', postal_code: toCep, note: '' },
         products: [{ name: declNome||'Peptídeo', quantity: parseInt(declQtd)||1, unitary_value: parseFloat(declValor)||order._total||100, weight: parseFloat(declPeso)||0.3 }],
         volumes: [{ height: parseFloat(declAlt)||5, width: parseFloat(declLarg)||6, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3 }],
         options: { insurance_value: parseFloat(declValor)||order._total||100, receipt: false, own_hand: false, reverse: false, non_commercial: true, tags: [{ tag: order._code||order.id, url: null }] },
