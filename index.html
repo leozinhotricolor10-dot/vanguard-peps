@@ -1093,6 +1093,8 @@ const ADINA_CATALOG = {
 
 // Pool de remetentes padrão — preencha com dados reais pelo painel Admin → Etiquetas → Remetentes
 const DEFAULT_ME_POOL = [];
+// CPFs fictícios usados pela antiga pool padrão — nunca recuperar do histórico do ME
+const BLOCKED_SENDER_DOCS = new Set(['35128476928','47291385628','61835924719','84617259309','29574816346','53926471891','76483192509','18749536273']);
 
 const CATEGORIES = [
   { id: "all",          name: "Todos",               icon: "🧬", color: "rgba(0,229,195,0.15)" },
@@ -2350,6 +2352,7 @@ function App() {
   const [formName, setFormName] = useState("");
   const [adminUnlocked, setAdminUnlocked] = useState(false);
   const adminLockRef = React.useRef({ attempts: 0, until: 0 }); // session-only, cannot be cleared via localStorage
+  const adminPwRef = React.useRef(''); // senha só em memória, usada p/ ler/gravar a pool de remetentes no Supabase
   const [adminTab, setAdminTab] = useState("pedidos");
   const [prodForm, setProdForm] = useState(null); // null = fechado, {} = novo, {id} = editando
   const [packForm, setPackForm] = useState(null); // null = fechado, {} = novo pack em edição
@@ -2463,7 +2466,49 @@ function App() {
   const [meServices, setMeServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
   const [mePool, setMePool] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-me-pool')||'null') || DEFAULT_ME_POOL; } catch { return DEFAULT_ME_POOL; } });
-  const persistPool = p => { setMePool(p); localStorage.setItem('vg-me-pool', JSON.stringify(p)); };
+  async function callSendersApi(action, pool) {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/me-senders`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ password: adminPwRef.current, action, pool }),
+    });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    return data;
+  }
+  const persistPool = p => {
+    setMePool(p); localStorage.setItem('vg-me-pool', JSON.stringify(p));
+    if (adminPwRef.current) callSendersApi('set', p).catch(e => { console.warn('[me-senders] save:', e.message); showToast('Pool salva só neste navegador — falha ao sincronizar', 'error'); });
+  };
+  React.useEffect(() => {
+    if (!adminUnlocked || !adminPwRef.current) return;
+    callSendersApi('get').then(({ pool }) => {
+      if (Array.isArray(pool) && pool.length) { setMePool(pool); localStorage.setItem('vg-me-pool', JSON.stringify(pool)); }
+      else if (mePool.length) callSendersApi('set', mePool).catch(() => {}); // primeira sync: sobe a pool local
+    }).catch(e => console.warn('[me-senders] load:', e.message));
+  }, [adminUnlocked]);
+  const [poolRecovering, setPoolRecovering] = useState(false);
+  async function recoverPoolFromME() {
+    setPoolRecovering(true);
+    try {
+      const found = [];
+      for (let page = 1, last = 1; page <= last; page++) {
+        const r = await callME(`/me/orders?per_page=100&page=${page}`);
+        last = r.last_page || 1;
+        for (const o of (r.data || [])) {
+          const f = o.from || {}; const doc = (f.document || '').replace(/\D/g, '');
+          if (!f.name || doc.length !== 11 || !validarCPF(doc) || BLOCKED_SENDER_DOCS.has(doc)) continue;
+          const key = doc + '|' + (f.postal_code || '');
+          if (found.some(x => x.document + '|' + x.postal_code === key)) continue;
+          found.push({ name: f.name, document: doc, phone: f.phone || '', email: f.email || '', address: f.address || '', number: f.number || '', complement: f.complement || '', district: f.district || '', city: f.city || '', state: normUF(f.state_abbr || f.state || ''), postal_code: (f.postal_code || '').replace(/\D/g, '') });
+        }
+      }
+      const fresh = found.filter(x => !mePool.some(m => (m.document || '').replace(/\D/g, '') === x.document && (m.postal_code || '').replace(/\D/g, '') === x.postal_code));
+      if (fresh.length) { persistPool([...mePool, ...fresh]); showToast(`${fresh.length} remetente(s) recuperado(s) do Melhor Envios`); }
+      else showToast('Nenhum remetente novo no histórico do Melhor Envios');
+    } catch (e) { showToast('Erro ao consultar Melhor Envios: ' + e.message, 'error'); }
+    setPoolRecovering(false);
+  }
   const [meBalance, setMeBalance] = useState(null); // null | { value, loading, error }
   async function fetchMeBalance() {
     setMeBalance({ loading: true });
@@ -4085,6 +4130,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
     }
     if (data.ok) {
       adminLockRef.current = { attempts: 0, until: 0 };
+      adminPwRef.current = pw;
       setAdminPwModal(false); setAdminPwInput('');
       setAdminUnlocked(true); showToast("Admin desbloqueado ✓"); setView("admin");
     } else {
@@ -8888,12 +8934,12 @@ _Vanguard Peptides_ 🧬`;
                       <div style={{fontWeight:600,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.name}</div>
                       <div style={{color:'var(--muted)',fontSize:'0.62rem'}}>{r.district} · {r.postal_code}</div>
                     </div>
-                    <button onClick={()=>persistPool(mePool.filter((_,j)=>j!==i))} style={{background:'none',border:'none',color:'#ff5050',cursor:'pointer',fontSize:'0.85rem',padding:'0 4px',flexShrink:0}}>✕</button>
+                    <button onClick={()=>{ if (window.confirm(`Remover ${r.name} da pool de remetentes?`)) persistPool(mePool.filter((_,j)=>j!==i)); }} style={{background:'none',border:'none',color:'#ff5050',cursor:'pointer',fontSize:'0.85rem',padding:'0 4px',flexShrink:0}}>✕</button>
                   </div>
                 ))}
                 {mePool.length===0 && <div style={{fontSize:'0.72rem',color:'var(--muted)',textAlign:'center',padding:'10px 0'}}>Pool vazio — adicione remetentes abaixo ou preencha manualmente.</div>}
               </div>
-              <button onClick={()=>persistPool([...mePool,...DEFAULT_ME_POOL])} style={{width:'100%',padding:'8px',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.25)',borderRadius:8,color:'var(--accent)',fontSize:'0.72rem',cursor:'pointer',marginBottom:12}}>+ Restaurar pool padrão SBC ({DEFAULT_ME_POOL.length} remetentes)</button>
+              <button onClick={recoverPoolFromME} disabled={poolRecovering} style={{width:'100%',padding:'8px',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.25)',borderRadius:8,color:'var(--accent)',fontSize:'0.72rem',cursor:poolRecovering?'wait':'pointer',marginBottom:12}}>{poolRecovering ? 'Buscando no Melhor Envios...' : '↺ Recuperar remetentes do histórico do Melhor Envios'}</button>
               <div style={{fontSize:'0.68rem',color:'var(--muted)',marginBottom:8,letterSpacing:'0.5px',textTransform:'uppercase'}}>Adicionar novo remetente</div>
               {[['name','Nome completo',null,null],['document','CPF','00000000000','11 dígitos sem pontos'],['phone','Telefone','11999999999','DDD + número'],['email','E-mail',null,null],['postal_code','CEP','00000000','8 dígitos'],['address','Rua',null,null],['number','Número',null,null],['complement','Complemento',null,null],['district','Bairro',null,null],['city','Cidade',null,null],['state','UF (sigla)','SP','2 letras: SP, RJ, MG...']].map(([k,lbl,ph,hint])=>(
                 <div key={k} style={{marginBottom:6}}>
