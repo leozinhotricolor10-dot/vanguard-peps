@@ -2748,7 +2748,7 @@ function App() {
     const res = await fetch(ME_PROXY, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': ME_ANON },
-      body: JSON.stringify({ path, method, body, env }),
+      body: JSON.stringify({ path, method, body, env, password: adminPwRef.current }),
     });
     return res.json();
   }
