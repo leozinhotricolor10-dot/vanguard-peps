@@ -2719,6 +2719,27 @@ function App() {
 
   function persistOrders(o) { setOrders(o); saveOrders(o); }
 
+  // Busca no Melhor Envios o código de rastreio de um pedido com etiqueta (o ME costuma liberar o código depois de gerar)
+  const [trackFetching, setTrackFetching] = useState(false);
+  async function fetchTrackingFromME(order, silent = false) {
+    if (!order?.me_order_id || !adminPwRef.current) return;
+    setTrackFetching(true);
+    try {
+      const r = await callME(`/me/orders/${order.me_order_id}`, 'GET');
+      const code = (r?.tracking || r?.self_tracking || '').trim();
+      if (code) {
+        if (sb) await sb.from('orders').update({ tracking_code: code }).eq('id', order.id);
+        setOrders(prev => { const u = prev.map(o => o.id === order.id ? { ...o, tracking_code: code } : o); saveOrders(u); return u; });
+        setOrderDetail(d => d && d.id === order.id ? { ...d, tracking_code: code } : d);
+        showToast('Rastreio vinculado: ' + code, 'success');
+      } else if (!silent) showToast(r?.error ? 'Erro no Melhor Envios: ' + r.error : 'Melhor Envios ainda não liberou o código. Tente mais tarde.', r?.error ? 'error' : 'success');
+    } catch (e) { if (!silent) showToast('Erro ao consultar Melhor Envios: ' + e.message, 'error'); }
+    setTrackFetching(false);
+  }
+  React.useEffect(() => {
+    if (orderDetail?.me_order_id && !orderDetail.tracking_code) fetchTrackingFromME(orderDetail, true);
+  }, [orderDetail?.id]);
+
   async function saveTrackingManual(orderId, code) {
     const trimmed = (code||'').trim();
     if (sb) await sb.from('orders').update({ tracking_code: trimmed }).eq('id', orderId);
@@ -8631,7 +8652,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                     <button onClick={()=>sendTrackingWhatsApp(orderDetail)} style={{width:'100%',padding:'8px',background:'#25d366',border:'none',borderRadius:8,color:'#fff',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>📲 ENVIAR RASTREIO NO WHATSAPP</button>
                   </div>
                 ) : (
-                  <div style={{fontSize:'0.72rem',color:'var(--muted)'}}>Nenhum rastreio cadastrado.</div>
+                  <div style={{fontSize:'0.72rem',color:'var(--muted)'}}>
+                    Nenhum rastreio cadastrado.
+                    {orderDetail.me_order_id && <button onClick={()=>fetchTrackingFromME(orderDetail)} disabled={trackFetching} style={{display:'block',width:'100%',marginTop:8,padding:'7px',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.25)',borderRadius:8,color:'var(--accent)',fontSize:'0.72rem',cursor:trackFetching?'wait':'pointer'}}>{trackFetching ? 'Buscando...' : '🔄 Buscar rastreio no Melhor Envios'}</button>}
+                  </div>
                 )}
                 {orderDetail.label_url && (
                   <a href={orderDetail.label_url} target="_blank" rel="noreferrer" style={{display:'block',padding:'7px 12px',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:8,color:'var(--accent)',fontSize:'0.72rem',textAlign:'center',textDecoration:'none',marginTop:8}}>🖨️ Imprimir etiqueta</a>
