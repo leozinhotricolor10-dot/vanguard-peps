@@ -1094,6 +1094,13 @@ const ADINA_CATALOG = {
 // Pool de remetentes padrão — preencha com dados reais pelo painel Admin → Etiquetas → Remetentes
 const DEFAULT_ME_POOL = [];
 // CPFs fictícios usados pela antiga pool padrão — nunca recuperar do histórico do ME
+// Pool do modo Teste (sandbox do Melhor Envios) — nunca usada em produção
+const TEST_ME_POOL = [
+  { _test:true, name:'[TESTE] Remetente Um',   document:'11144477735', phone:'11900000001', email:'teste1@example.com', address:'Avenida Paulista', number:'1000', complement:'', district:'Bela Vista',   city:'São Paulo', state:'SP', postal_code:'01310100' },
+  { _test:true, name:'[TESTE] Remetente Dois', document:'22255588846', phone:'11900000002', email:'teste2@example.com', address:'Rua Augusta',      number:'200',  complement:'', district:'Consolação',   city:'São Paulo', state:'SP', postal_code:'01305000' },
+  { _test:true, name:'[TESTE] Remetente Três', document:'33366699957', phone:'11900000003', email:'teste3@example.com', address:'Rua Vergueiro',    number:'300',  complement:'', district:'Liberdade',    city:'São Paulo', state:'SP', postal_code:'01504000' },
+];
+const isTestSender = s => !!s && (s._test || BLOCKED_SENDER_DOCS.has((s.document||'').replace(/\D/g,'')) || ['11144477735','22255588846','33366699957'].includes((s.document||'').replace(/\D/g,'')));
 const BLOCKED_SENDER_DOCS = new Set(['35128476928','47291385628','61835924719','84617259309','29574816346','53926471891','76483192509','18749536273']);
 
 const CATEGORIES = [
@@ -2487,6 +2494,19 @@ function App() {
       else if (mePool.length) callSendersApi('set', mePool).catch(() => {}); // primeira sync: sobe a pool local
     }).catch(e => console.warn('[me-senders] load:', e.message));
   }, [adminUnlocked]);
+  const [meEnv, setMeEnvState] = useState(() => { try { return localStorage.getItem('vg-me-env') === 'sandbox' ? 'sandbox' : 'prod'; } catch { return 'prod'; } });
+  const isSandbox = meEnv === 'sandbox';
+  const [meTestPool, setMeTestPool] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-me-pool-test')||'null') || TEST_ME_POOL; } catch { return TEST_ME_POOL; } });
+  const persistTestPool = p => { const t = p.map(x => ({ ...x, _test: true })); setMeTestPool(t); localStorage.setItem('vg-me-pool-test', JSON.stringify(t)); };
+  const activePool = isSandbox ? meTestPool : mePool.filter(x => !isTestSender(x));
+  const persistActivePool = p => isSandbox ? persistTestPool(p) : persistPool(p);
+  function setMeEnv(env) {
+    setMeEnvState(env); localStorage.setItem('vg-me-env', env);
+    // remetente ativo é separado por ambiente: produção usa o salvo, teste começa vazio
+    if (env === 'sandbox') setMeSettings(null);
+    else { try { const s = JSON.parse(localStorage.getItem('vg-me-settings')||'null'); setMeSettings(isTestSender(s) ? null : s); } catch { setMeSettings(null); } }
+    setMeBalance(null);
+  }
   const [poolRecovering, setPoolRecovering] = useState(false);
   async function recoverPoolFromME() {
     setPoolRecovering(true);
@@ -2513,7 +2533,7 @@ function App() {
   async function fetchMeBalance() {
     setMeBalance({ loading: true });
     try {
-      const res = await callME('/me', 'GET');
+      const res = await callME('/me', 'GET', null, meEnv);
       const full = JSON.stringify(res);
       console.log('[ME /me full]', full);
       const val = res?.accounts?.[0]?.balance ?? null;
@@ -2694,11 +2714,11 @@ function App() {
   const BR_STATE_MAP = {'acre':'AC','alagoas':'AL','amapa':'AP','amapá':'AP','amazonas':'AM','bahia':'BA','ceara':'CE','ceará':'CE','distrito federal':'DF','espirito santo':'ES','espírito santo':'ES','goias':'GO','goiás':'GO','maranhao':'MA','maranhão':'MA','mato grosso do sul':'MS','mato grosso':'MT','minas gerais':'MG','para':'PA','pará':'PA','paraiba':'PB','paraíba':'PB','parana':'PR','paraná':'PR','pernambuco':'PE','piaui':'PI','piauí':'PI','rio de janeiro':'RJ','rio grande do norte':'RN','rio grande do sul':'RS','rondonia':'RO','rondônia':'RO','roraima':'RR','santa catarina':'SC','sao paulo':'SP','são paulo':'SP','sergipe':'SE','tocantins':'TO'};
   function normUF(s) { if (!s) return ''; const t = s.trim().toUpperCase(); if (t.length === 2) return t; const k = s.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); return BR_STATE_MAP[k] || t.slice(0,2); }
 
-  async function callME(path, method = 'GET', body = null) {
+  async function callME(path, method = 'GET', body = null, env = 'prod') {
     const res = await fetch(ME_PROXY, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': ME_ANON },
-      body: JSON.stringify({ path, method, body }),
+      body: JSON.stringify({ path, method, body, env }),
     });
     return res.json();
   }
@@ -2734,7 +2754,8 @@ function App() {
 
   async function gerarEtiqueta(order) {
     // Pick random sender from pool; fall back to meSettings if pool empty
-    const pool = mePool && mePool.length ? mePool : (meSettings ? [meSettings] : []);
+    const fallback = meSettings && (isSandbox ? isTestSender(meSettings) : !isTestSender(meSettings)) ? [meSettings] : [];
+    const pool = activePool.length ? activePool : fallback;
     if (!pool.length) { setEtiquetaModal(order); setEtiquetaStep('settings'); setMeForm({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' }); return; }
     const sender = pool[Math.floor(Math.random() * pool.length)];
     setMeSettings(sender); // update active sender so confirm step shows it
@@ -2747,7 +2768,7 @@ function App() {
       const fromCep = sender.postal_code.replace(/\D/g,'');
       const toCep = (addr.cep||'').replace(/\D/g,'');
       const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width: parseFloat(declLarg)||6, height: parseFloat(declAlt)||5, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3, insurance_value: parseFloat(declValor)||order._total||100, quantity: parseInt(declQtd)||1 }], services:'1,2,3,7,8,9,15', options:{ receipt:false, own_hand:false, collect:false } };
-      const calcRes = await callME('/me/shipment/calculate', 'POST', calcBody);
+      const calcRes = await callME('/me/shipment/calculate', 'POST', calcBody, meEnv);
       const availableRaw = Array.isArray(calcRes) ? calcRes.filter(s=>!s.error && s.price) : [];
       if (!availableRaw.length) throw new Error('[CALC] Nenhum serviço disponível para esta rota.\n' + JSON.stringify(calcRes));
       // Priorizar JET Express (id 15): mostra primeiro e auto-seleciona se disponível
@@ -2771,6 +2792,7 @@ function App() {
     const sender = meSettings;
     const service = selectedService;
     if (!service) return;
+    if (!isSandbox && isTestSender(sender)) { setEtiquetaError('Remetente de teste/fictício não pode ser usado em produção. Troque o remetente.'); setEtiquetaStep('error'); return; }
     setEtiquetaStep('loading');
     setEtiquetaError('');
     try {
@@ -2786,20 +2808,24 @@ function App() {
         volumes: [{ height: parseFloat(declAlt)||5, width: parseFloat(declLarg)||6, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3 }],
         options: { insurance_value: parseFloat(declValor)||order._total||100, receipt: false, own_hand: false, reverse: false, non_commercial: true, tags: [{ tag: order._code||order.id, url: null }] },
       };
-      const cartRes = await callME('/me/cart', 'POST', cartBody);
+      const cartRes = await callME('/me/cart', 'POST', cartBody, meEnv);
       if (!cartRes.id) { const errs = cartRes.errors ? Object.entries(cartRes.errors).map(([k,v])=>`${k}: ${Array.isArray(v)?v[0]:v}`).join('\n') : null; throw new Error(errs || cartRes.message || 'Erro ao criar envio'); }
       const meOrderId = cartRes.id;
 
-      const checkoutRes = await callME('/me/shipment/checkout', 'POST', { orders: [meOrderId] });
+      const checkoutRes = await callME('/me/shipment/checkout', 'POST', { orders: [meOrderId] }, meEnv);
       if (!checkoutRes.purchase) throw new Error(checkoutRes.error || checkoutRes.message || 'Falha no checkout');
 
-      const genRes = await callME('/me/shipment/generate', 'POST', { orders: [meOrderId] });
+      const genRes = await callME('/me/shipment/generate', 'POST', { orders: [meOrderId] }, meEnv);
 
-      const printRes = await callME('/me/shipment/print', 'POST', { mode: 'public', orders: [meOrderId] });
+      const printRes = await callME('/me/shipment/print', 'POST', { mode: 'public', orders: [meOrderId] }, meEnv);
       const labelUrl = printRes.url || printRes;
 
       const trackCode = cartRes.tracking || genRes[meOrderId]?.tracking || '';
 
+      if (isSandbox) { // modo teste: não grava nada no pedido real nem no financeiro
+        setEtiquetaResult({ meOrderId, trackCode, labelUrl: typeof labelUrl === 'string' ? labelUrl : '' });
+        setEtiquetaStep('done'); return;
+      }
       const shippingCost = service.price ? parseFloat(service.price) : 0;
       if (sb) await sb.from('orders').update({ me_order_id: meOrderId, tracking_code: trackCode, label_url: typeof labelUrl === 'string' ? labelUrl : '' }).eq('id', order.id);
       const updated = orders.map(o => o.id === order.id ? { ...o, me_order_id: meOrderId, tracking_code: trackCode, label_url: typeof labelUrl === 'string' ? labelUrl : '', shipping_cost: shippingCost } : o);
@@ -2820,8 +2846,9 @@ function App() {
 
   async function saveMeSettings() {
     const s = { ...meForm, state: (meForm.state||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,2) };
-    setMeSettings(s);
-    localStorage.setItem('vg-me-settings', JSON.stringify(s));
+    if (isSandbox) { s._test = true; setMeSettings(s); }
+    else if (isTestSender(s)) { showToast('CPF de teste/fictício não pode ser remetente em produção', 'error'); return; }
+    else { setMeSettings(s); localStorage.setItem('vg-me-settings', JSON.stringify(s)); }
     // After saving settings, fetch available services for this order
     const order = etiquetaModal;
     if (order?._poolOnly) { setEtiquetaModal(null); setEtiquetaStep('idle'); showToast(`Remetente ativo: ${s.name}`); return; }
@@ -2833,7 +2860,7 @@ function App() {
       const fromCep = s.postal_code.replace(/\D/g,'');
       const toCep = (addr.cep||'').replace(/\D/g,'');
       const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width: parseFloat(declLarg)||6, height: parseFloat(declAlt)||5, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3, insurance_value: parseFloat(declValor)||order._total||100, quantity: parseInt(declQtd)||1 }], services:'1,2,3,7,8,9,15', options:{ receipt:false, own_hand:false, collect:false } };
-      const calcRes = await callME('/me/shipment/calculate', 'POST', calcBody);
+      const calcRes = await callME('/me/shipment/calculate', 'POST', calcBody, meEnv);
       const availableRaw = Array.isArray(calcRes) ? calcRes.filter(s=>!s.error && s.price) : [];
       if (!availableRaw.length) throw new Error('[CALC] Nenhum serviço disponível para esta rota.\n' + JSON.stringify(calcRes));
       // Priorizar JET Express (id 15): mostra primeiro e auto-seleciona se disponível
@@ -8924,24 +8951,36 @@ _Vanguard Peptides_ 🧬`;
       {etiquetaModal && (
         <div className="modal-overlay" onClick={()=>{ if(etiquetaStep!=='loading'){ setEtiquetaModal(null); setEtiquetaStep('idle'); setEtiquetaResult(null); }}}>
           <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:480}}>
-            <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--accent)',letterSpacing:'1.5px',marginBottom:16}}>{etiquetaModal._poolOnly ? '📮 REMETENTES' : '🏷️ GERAR ETIQUETA'}</div>
+            <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--accent)',letterSpacing:'1.5px',marginBottom:16,display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}>
+              <span>{etiquetaModal._poolOnly ? '📮 REMETENTES' : '🏷️ GERAR ETIQUETA'}</span>
+              {(etiquetaModal._poolOnly || etiquetaStep==='settings')
+                ? <div style={{display:'flex',border:'1px solid var(--border)',borderRadius:6,overflow:'hidden'}}>
+                    {[['prod','PRODUÇÃO'],['sandbox','TESTE']].map(([v,l])=>(
+                      <button key={v} onClick={()=>setMeEnv(v)} style={{padding:'4px 10px',border:'none',cursor:'pointer',fontSize:'0.58rem',fontFamily:"'Space Mono',monospace",fontWeight:700,background: meEnv===v ? (v==='sandbox'?'#ff9800':'var(--accent)') : 'transparent',color: meEnv===v ? '#000' : 'var(--muted)'}}>{l}</button>
+                    ))}
+                  </div>
+                : isSandbox && <span style={{background:'#ff9800',color:'#000',borderRadius:4,padding:'2px 8px',fontWeight:700}}>MODO TESTE</span>}
+            </div>
+            {isSandbox && <div style={{fontSize:'0.66rem',color:'#ff9800',background:'rgba(255,152,0,0.08)',border:'1px solid rgba(255,152,0,0.25)',borderRadius:8,padding:'8px 10px',marginBottom:12}}>🧪 Modo teste — usa o sandbox do Melhor Envios. Etiquetas são fictícias, sem cobrança, e nada é gravado no pedido.</div>}
 
             {/* STEP: settings / pool manager */}
             {etiquetaStep==='settings' && <>
-              <div style={{fontSize:'0.68rem',color:'var(--muted)',marginBottom:10,letterSpacing:'0.5px',textTransform:'uppercase'}}>🎲 Pool de Remetentes ({mePool.length})</div>
+              <div style={{fontSize:'0.68rem',color:'var(--muted)',marginBottom:10,letterSpacing:'0.5px',textTransform:'uppercase'}}>🎲 Pool de Remetentes{isSandbox ? ' de Teste' : ''} ({activePool.length})</div>
               <div style={{maxHeight:180,overflowY:'auto',display:'flex',flexDirection:'column',gap:6,marginBottom:10}}>
-                {mePool.map((r,i)=>(
+                {activePool.map((r,i)=>(
                   <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'7px 10px',background:'rgba(0,229,195,0.04)',border:'1px solid rgba(0,229,195,0.12)',borderRadius:8,fontSize:'0.72rem'}}>
                     <div style={{flex:1,minWidth:0}}>
                       <div style={{fontWeight:600,color:'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{r.name}</div>
                       <div style={{color:'var(--muted)',fontSize:'0.62rem'}}>{r.district} · {r.postal_code}</div>
                     </div>
-                    <button onClick={()=>{ if (window.confirm(`Remover ${r.name} da pool de remetentes?`)) persistPool(mePool.filter((_,j)=>j!==i)); }} style={{background:'none',border:'none',color:'#ff5050',cursor:'pointer',fontSize:'0.85rem',padding:'0 4px',flexShrink:0}}>✕</button>
+                    <button onClick={()=>{ if (window.confirm(`Remover ${r.name} da pool de remetentes?`)) persistActivePool(activePool.filter((_,j)=>j!==i)); }} style={{background:'none',border:'none',color:'#ff5050',cursor:'pointer',fontSize:'0.85rem',padding:'0 4px',flexShrink:0}}>✕</button>
                   </div>
                 ))}
-                {mePool.length===0 && <div style={{fontSize:'0.72rem',color:'var(--muted)',textAlign:'center',padding:'10px 0'}}>Pool vazio — adicione remetentes abaixo ou preencha manualmente.</div>}
+                {activePool.length===0 && <div style={{fontSize:'0.72rem',color:'var(--muted)',textAlign:'center',padding:'10px 0'}}>Pool vazio — adicione remetentes abaixo ou preencha manualmente.</div>}
               </div>
-              <button onClick={recoverPoolFromME} disabled={poolRecovering} style={{width:'100%',padding:'8px',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.25)',borderRadius:8,color:'var(--accent)',fontSize:'0.72rem',cursor:poolRecovering?'wait':'pointer',marginBottom:12}}>{poolRecovering ? 'Buscando no Melhor Envios...' : '↺ Recuperar remetentes do histórico do Melhor Envios'}</button>
+              {isSandbox
+                ? <button onClick={()=>persistTestPool(TEST_ME_POOL)} style={{width:'100%',padding:'8px',background:'rgba(255,152,0,0.08)',border:'1px solid rgba(255,152,0,0.3)',borderRadius:8,color:'#ff9800',fontSize:'0.72rem',cursor:'pointer',marginBottom:12}}>↺ Restaurar pool de teste ({TEST_ME_POOL.length} remetentes fictícios)</button>
+                : <button onClick={recoverPoolFromME} disabled={poolRecovering} style={{width:'100%',padding:'8px',background:'rgba(0,229,195,0.08)',border:'1px solid rgba(0,229,195,0.25)',borderRadius:8,color:'var(--accent)',fontSize:'0.72rem',cursor:poolRecovering?'wait':'pointer',marginBottom:12}}>{poolRecovering ? 'Buscando no Melhor Envios...' : '↺ Recuperar remetentes do histórico do Melhor Envios'}</button>}
               <div style={{fontSize:'0.68rem',color:'var(--muted)',marginBottom:8,letterSpacing:'0.5px',textTransform:'uppercase'}}>Adicionar novo remetente</div>
               {[['name','Nome completo',null,null],['document','CPF','00000000000','11 dígitos sem pontos'],['phone','Telefone','11999999999','DDD + número'],['email','E-mail',null,null],['postal_code','CEP','00000000','8 dígitos'],['address','Rua',null,null],['number','Número',null,null],['complement','Complemento',null,null],['district','Bairro',null,null],['city','Cidade',null,null],['state','UF (sigla)','SP','2 letras: SP, RJ, MG...']].map(([k,lbl,ph,hint])=>(
                 <div key={k} style={{marginBottom:6}}>
@@ -8953,7 +8992,7 @@ _Vanguard Peptides_ 🧬`;
                 </div>
               ))}
               <div style={{display:'flex',gap:8,marginTop:10}}>
-                <button onClick={()=>{ if(!meForm.name||!meForm.document||!meForm.postal_code) return; persistPool([...mePool,{...meForm,state:(meForm.state||'').toUpperCase().slice(0,2)}]); setMeForm({name:'',phone:'',email:'',document:'',address:'',number:'',complement:'',district:'',city:'',state:'',postal_code:''}); }} style={{flex:1,padding:'9px',background:'rgba(0,229,195,0.12)',border:'1px solid rgba(0,229,195,0.3)',borderRadius:8,color:'var(--accent)',fontWeight:700,fontSize:'0.75rem',cursor:'pointer'}}>+ ADICIONAR AO POOL</button>
+                <button onClick={()=>{ if(!meForm.name||!meForm.document||!meForm.postal_code) return; if(!isSandbox && isTestSender(meForm)) { showToast('CPF de teste/fictício não pode entrar na pool de produção','error'); return; } persistActivePool([...activePool,{...meForm,state:(meForm.state||'').toUpperCase().slice(0,2)}]); setMeForm({name:'',phone:'',email:'',document:'',address:'',number:'',complement:'',district:'',city:'',state:'',postal_code:''}); }} style={{flex:1,padding:'9px',background:'rgba(0,229,195,0.12)',border:'1px solid rgba(0,229,195,0.3)',borderRadius:8,color:'var(--accent)',fontWeight:700,fontSize:'0.75rem',cursor:'pointer'}}>+ ADICIONAR AO POOL</button>
                 <button onClick={saveMeSettings} style={{flex:1,padding:'9px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>{etiquetaModal._poolOnly ? 'DEFINIR COMO ATIVO' : 'USAR ESTE AGORA'}</button>
               </div>
             </>}
@@ -9056,7 +9095,7 @@ _Vanguard Peptides_ 🧬`;
                     <div style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:3}}>UF (2 letras)</div>
                     <input value={meForm.state||''} onChange={e=>setMeForm(f=>({...f,state:e.target.value.toUpperCase().replace(/[^A-Z]/g,'').slice(0,2)}))} maxLength={2} style={{width:'100%',padding:'7px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:7,color:'var(--text)',fontSize:'0.78rem',boxSizing:'border-box'}} />
                   </div>
-                  <button onClick={()=>{ const s={...meForm,state:(meForm.state||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,2)}; setMeSettings(s); localStorage.setItem('vg-me-settings',JSON.stringify(s)); setEditingRem(false); }} style={{padding:'9px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontWeight:700,fontSize:'0.78rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>💾 SALVAR REMETENTE</button>
+                  <button onClick={()=>{ const s={...meForm,state:(meForm.state||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,2)}; if(isSandbox){ setMeSettings({...s,_test:true}); } else { if(isTestSender(s)) { showToast('CPF de teste/fictício não pode ser remetente em produção','error'); return; } setMeSettings(s); localStorage.setItem('vg-me-settings',JSON.stringify(s)); } setEditingRem(false); }} style={{padding:'9px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontWeight:700,fontSize:'0.78rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>💾 SALVAR REMETENTE</button>
                 </div>}
               </div>
               <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:10,textAlign:'right'}}><button onClick={()=>setEtiquetaStep('select')} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontSize:'0.62rem',padding:0}}>← alterar serviço</button></div>
