@@ -2824,6 +2824,7 @@ function App() {
     localStorage.setItem('vg-me-settings', JSON.stringify(s));
     // After saving settings, fetch available services for this order
     const order = etiquetaModal;
+    if (order?._poolOnly) { setEtiquetaModal(null); setEtiquetaStep('idle'); showToast(`Remetente ativo: ${s.name}`); return; }
     if (!order) { setEtiquetaStep('confirm'); return; }
     setEtiquetaStep('loading');
     setEtiquetaError('');
@@ -5593,6 +5594,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
   <button className={`admin-tab ${adminTab==="cupons"?"active":""}`} onClick={()=>setAdminTab("cupons")}>🏷️ CUPONS</button>
               <button className={`admin-tab ${adminTab==="clientes"?"active":""}`} onClick={()=>setAdminTab("clientes")}>👥 CLIENTES</button>
               <button className={`admin-tab ${adminTab==="mapa"?"active":""}`} onClick={()=>setAdminTab("mapa")}>🗺️ MAPA</button>
+              <button className="admin-tab" onClick={()=>{ setEtiquetaModal({ _poolOnly: true }); setEtiquetaStep('settings'); setMeForm({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' }); }}>📮 REMETENTES</button>
               <button className={`admin-tab ${adminTab==="config"?"active":""}`} onClick={()=>setAdminTab("config")}>⚙️ CONFIG</button>
             </div>
 
@@ -8922,7 +8924,7 @@ _Vanguard Peptides_ 🧬`;
       {etiquetaModal && (
         <div className="modal-overlay" onClick={()=>{ if(etiquetaStep!=='loading'){ setEtiquetaModal(null); setEtiquetaStep('idle'); setEtiquetaResult(null); }}}>
           <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:480}}>
-            <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--accent)',letterSpacing:'1.5px',marginBottom:16}}>🏷️ GERAR ETIQUETA</div>
+            <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--accent)',letterSpacing:'1.5px',marginBottom:16}}>{etiquetaModal._poolOnly ? '📮 REMETENTES' : '🏷️ GERAR ETIQUETA'}</div>
 
             {/* STEP: settings / pool manager */}
             {etiquetaStep==='settings' && <>
@@ -8952,7 +8954,7 @@ _Vanguard Peptides_ 🧬`;
               ))}
               <div style={{display:'flex',gap:8,marginTop:10}}>
                 <button onClick={()=>{ if(!meForm.name||!meForm.document||!meForm.postal_code) return; persistPool([...mePool,{...meForm,state:(meForm.state||'').toUpperCase().slice(0,2)}]); setMeForm({name:'',phone:'',email:'',document:'',address:'',number:'',complement:'',district:'',city:'',state:'',postal_code:''}); }} style={{flex:1,padding:'9px',background:'rgba(0,229,195,0.12)',border:'1px solid rgba(0,229,195,0.3)',borderRadius:8,color:'var(--accent)',fontWeight:700,fontSize:'0.75rem',cursor:'pointer'}}>+ ADICIONAR AO POOL</button>
-                <button onClick={saveMeSettings} style={{flex:1,padding:'9px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>USAR ESTE AGORA</button>
+                <button onClick={saveMeSettings} style={{flex:1,padding:'9px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>{etiquetaModal._poolOnly ? 'DEFINIR COMO ATIVO' : 'USAR ESTE AGORA'}</button>
               </div>
             </>}
 
