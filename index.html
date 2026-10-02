@@ -2403,6 +2403,36 @@ function App() {
   const [adminPoEditModal, setAdminPoEditModal] = useState(null);
   const [orderDetail, setOrderDetail] = useState(null);
   const [editItemsMode, setEditItemsMode] = useState(false);
+  const [editCustomer, setEditCustomer] = useState(null); // form de dados do cliente/endereço do pedido (antes da etiqueta)
+  const canEditCustomer = o => !!o && !o.me_order_id && !['enviado','entregue','cancelado'].includes(o.status||'pendente');
+  function openEditCustomer(o) {
+    const a = o._address || o.address || {};
+    setEditCustomer({ buyerName: o.buyerName||'', cpf: o._cpf||'', phone: o._phone||'', email: o._email||'', cep: a.cep||'', rua: a.rua||'', numero: a.numero||'', complemento: a.complemento||'', bairro: a.bairro||'', cidade: a.cidade||'', estado: a.estado||'' });
+  }
+  async function editCustomerCep(v) {
+    setEditCustomer(f => ({ ...f, cep: v }));
+    const clean = v.replace(/\D/g, '');
+    if (clean.length !== 8) return;
+    try {
+      const d = await (await fetch(`https://viacep.com.br/ws/${clean}/json/`)).json();
+      if (!d.erro) setEditCustomer(f => ({ ...f, rua: d.logradouro || f.rua, bairro: d.bairro || f.bairro, cidade: d.localidade || f.cidade, estado: d.uf || f.estado }));
+    } catch {}
+  }
+  async function saveEditCustomer() {
+    const f = editCustomer, o = orderDetail;
+    if (f.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) { showToast('E-mail inválido', 'error'); return; }
+    if (f.cpf && !validarCPF(f.cpf)) { showToast('CPF inválido', 'error'); return; }
+    const address = { ...(o._address || o.address || {}), rua: f.rua.trim(), numero: f.numero.trim(), complemento: f.complemento.trim(), bairro: f.bairro.trim(), cidade: f.cidade.trim(), estado: normUF(f.estado), cep: f.cep.trim() };
+    const patch = { buyer_name: f.buyerName.trim(), cpf: f.cpf.trim(), phone: f.phone.trim(), email: f.email.trim(), address };
+    if (sb && o._supabase) {
+      const { error } = await sb.from('orders').update(patch).eq('id', o.id);
+      if (error) { showToast('Erro ao salvar: ' + error.message, 'error'); return; }
+    }
+    const updated = { ...o, buyerName: patch.buyer_name, _cpf: patch.cpf, _phone: patch.phone, _email: patch.email, _address: address, address };
+    persistOrders(orders.map(x => x.id === o.id ? updated : x));
+    setOrderDetail(updated); setEditCustomer(null);
+    showToast('Dados do pedido atualizados');
+  }
   const [editItems, setEditItems] = useState([]);
   const [addItemProductId, setAddItemProductId] = useState('');
   const [discountInput, setDiscountInput] = useState(null); // null = fechado, string = editando
@@ -8364,7 +8394,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
       {/* ORDER DETAIL MODAL */}
       {orderDetail && (
-        <div className="modal-overlay" onClick={()=>{ setOrderDetail(null); setEditItemsMode(false); setDiscountInput(null); }}>
+        <div className="modal-overlay" onClick={()=>{ setOrderDetail(null); setEditItemsMode(false); setDiscountInput(null); setEditCustomer(null); }}>
           <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:480,maxHeight:'85vh',overflowY:'auto'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
               <div>
@@ -8378,13 +8408,33 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
 
             {/* Cliente */}
             <div style={{background:'var(--bg2)',borderRadius:10,padding:'12px 14px',marginBottom:10}}>
-              <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1px',marginBottom:8}}>👤 CLIENTE</div>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1px'}}>👤 CLIENTE</div>
+                {canEditCustomer(orderDetail) && !editCustomer && <button onClick={()=>openEditCustomer(orderDetail)} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontSize:'0.7rem',padding:0}}>✏️ editar</button>}
+              </div>
+              {editCustomer ? <>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                  {[['buyerName','Nome',2],['cpf','CPF',1],['phone','Telefone',1],['email','E-mail',2],['cep','CEP',1],['estado','UF',1],['rua','Rua',2],['numero','Número',1],['complemento','Complemento',1],['bairro','Bairro',1],['cidade','Cidade',1]].map(([k,lbl,span])=>(
+                    <div key={k} style={{gridColumn:`span ${span}`}}>
+                      <label style={{fontSize:'0.6rem',color:'var(--muted)',display:'block',marginBottom:2}}>{lbl}</label>
+                      <input value={editCustomer[k]} onChange={e=> k==='cep' ? editCustomerCep(e.target.value) : setEditCustomer(f=>({...f,[k]: k==='estado' ? e.target.value.toUpperCase().slice(0,2) : e.target.value}))}
+                        style={{width:'100%',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:6,padding:'6px 10px',color:'var(--text)',fontSize:'0.78rem',boxSizing:'border-box'}} />
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:'flex',gap:8,marginTop:10}}>
+                  <button onClick={()=>setEditCustomer(null)} style={{flex:1,padding:'8px',background:'none',border:'1px solid var(--border)',borderRadius:8,color:'var(--muted)',fontSize:'0.72rem',cursor:'pointer'}}>Cancelar</button>
+                  <button onClick={saveEditCustomer} style={{flex:1,padding:'8px',background:'var(--accent)',border:'none',borderRadius:8,color:'#000',fontWeight:700,fontSize:'0.72rem',cursor:'pointer'}}>💾 Salvar</button>
+                </div>
+              </> : <>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 12px',fontSize:'0.82rem'}}>
                 <div><span style={{color:'var(--muted)',fontSize:'0.7rem'}}>Nome</span><div>{orderDetail.buyerName||'—'}</div></div>
                 <div><span style={{color:'var(--muted)',fontSize:'0.7rem'}}>CPF</span><div style={{fontFamily:"'Space Mono',monospace"}}>{orderDetail._cpf||'—'}</div></div>
                 <div><span style={{color:'var(--muted)',fontSize:'0.7rem'}}>Telefone</span><div style={{fontFamily:"'Space Mono',monospace"}}>{orderDetail._phone||'—'}</div></div>
                 <div><span style={{color:'var(--muted)',fontSize:'0.7rem'}}>E-mail</span><div style={{fontSize:'0.75rem',wordBreak:'break-all'}}>{orderDetail._email||'—'}</div></div>
+                {(()=>{ const a = orderDetail._address || orderDetail.address; return <div style={{gridColumn:'span 2'}}><span style={{color:'var(--muted)',fontSize:'0.7rem'}}>Endereço</span><div style={{fontSize:'0.75rem'}}>{a && a.rua ? `${a.rua}, ${a.numero||'s/n'}${a.complemento?' — '+a.complemento:''} · ${a.bairro||''} · ${a.cidade||''}/${a.estado||''} · CEP ${a.cep||''}` : '—'}</div></div>; })()}
               </div>
+              </>}
             </div>
 
             {/* Itens */}
@@ -9041,8 +9091,12 @@ _Vanguard Peptides_ 🧬`;
             {etiquetaStep==='confirm' && etiquetaModal && <>
               <div style={{marginBottom:14,padding:'10px 14px',background:'rgba(0,229,195,0.05)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:10,fontSize:'0.78rem'}}>
                 <div style={{color:'var(--accent)',fontWeight:700,marginBottom:4}}>{etiquetaModal.buyerName}</div>
-                <div style={{color:'var(--muted)'}}>{etiquetaModal.address?.rua}, {etiquetaModal.address?.numero} — {etiquetaModal.address?.bairro}</div>
-                <div style={{color:'var(--muted)'}}>{etiquetaModal.address?.cidade}/{etiquetaModal.address?.estado} · CEP {etiquetaModal.address?.cep}</div>
+                {(()=>{ const a = etiquetaModal._address || etiquetaModal.address || {}; return <>
+                  <div style={{color:'var(--muted)'}}>{a.rua||'—'}, {a.numero||'s/n'} — {a.bairro||'—'}</div>
+                  <div style={{color:'var(--muted)'}}>{a.cidade||'—'}/{a.estado||'—'} · CEP {a.cep||'—'}</div>
+                  <div style={{color:'var(--muted)'}}>E-mail: {etiquetaModal._email||<span style={{color:'#ff9800'}}>sem e-mail (usa o do remetente)</span>}</div>
+                </>; })()}
+                <button onClick={()=>{ const o = etiquetaModal; setEtiquetaModal(null); setEtiquetaStep('idle'); setOrderDetail(o); openEditCustomer(o); }} style={{background:'none',border:'none',color:'var(--accent)',cursor:'pointer',fontSize:'0.68rem',padding:0,marginTop:4}}>✏️ editar dados do cliente</button>
                 {selectedService && <div style={{color:'var(--muted)',marginTop:4}}>Serviço: <strong style={{color:'var(--text)'}}>{selectedService.company?.name} — {selectedService.name}</strong> · R$ {Number(selectedService.price||0).toLocaleString('pt-BR',{minimumFractionDigits:2})} · {selectedService.custom_delivery_time ?? selectedService.delivery_time ?? '?'}d úteis</div>}
               </div>
               <div style={{fontSize:'0.68rem',color:'var(--muted)',marginBottom:6,letterSpacing:'0.5px',textTransform:'uppercase'}}>📄 Declaração de conteúdo</div>
