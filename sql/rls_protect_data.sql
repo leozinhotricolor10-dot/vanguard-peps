@@ -60,3 +60,6 @@ select c.relname as tabela, c.relrowsecurity as rls,
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public' and c.relkind = 'r'
 order by 1;
+
+-- 5. Aviso do Supabase: search_path fixo no gatilho de updated_at
+alter function public.update_updated_at() set search_path = public;
