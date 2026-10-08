@@ -1184,6 +1184,85 @@ try {
 }
 if (!sb) console.warn('[Supabase] Sem conexao — usando localStorage como fallback');
 
+// ── Acesso a dados protegidos ────────────────────────────────────────────────
+// As tabelas com dados de clientes/negócio ficam fechadas por RLS. O admin (com senha)
+// lê e grava pela Edge Function admin-db; a loja usa só a public-api, que não expõe dados pessoais.
+let ADMIN_PW = ''; // senha do admin só em memória, definida no login
+// tabela → coluna-chave (igual à admin-db)
+const ADMIN_TABLE_KEYS = {
+  orders: 'id', preorders: 'id', customers: 'cpf', coupons: 'id', expenses: 'id', import_history: 'id',
+  purchase_order_caps: 'id', products: 'id', stock: 'product_id', site_config: 'key',
+};
+
+async function callAdminDb(payload) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/admin-db`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ password: ADMIN_PW, ...payload }),
+    });
+    return await res.json();
+  } catch (e) { return { data: null, error: { message: e.message } }; }
+}
+
+// Imita o encadeamento do supabase-js (from().select().eq()...) e traduz para as ações fixas da admin-db
+function adminQuery(table) {
+  const key = ADMIN_TABLE_KEYS[table];
+  const ops = [];
+  const run = async () => {
+    const op = ops.find(o => ['select', 'insert', 'update', 'upsert', 'delete'].includes(o.m));
+    const eqs = ops.filter(o => o.m === 'eq').map(o => o.a);
+    const one = ops.some(o => o.m === 'single' || o.m === 'maybeSingle');
+    const keyEq = eqs.find(([c]) => c === key);
+    const pick = (data) => one ? (Array.isArray(data) ? (data[0] ?? null) : data) : data;
+    if (!op) return { data: null, error: { message: 'Consulta sem operação' } };
+    if (op.m === 'select') {
+      if (keyEq && eqs.length === 1) {
+        const r = await callAdminDb({ action: 'get', table, value: keyEq[1] });
+        return { data: one ? r.data : (r.data ? [r.data] : []), error: r.error };
+      }
+      const r = await callAdminDb({ action: 'list', table });
+      if (r.error) return r;
+      const rows = (r.data || []).filter(row => eqs.every(([c, v]) => row[c] === v));
+      const lim = ops.find(o => o.m === 'limit');
+      return { data: pick(lim ? rows.slice(0, lim.a[0]) : rows), error: null };
+    }
+    if (op.m === 'insert' || op.m === 'upsert') {
+      const r = await callAdminDb({ action: op.m, table, rows: op.a[0] });
+      return { data: pick(r.data), error: r.error };
+    }
+    if (!keyEq) return { data: null, error: { message: `Filtro por ${key} obrigatório em ${table}` } };
+    const r = await callAdminDb(op.m === 'update'
+      ? { action: 'update', table, value: keyEq[1], patch: op.a[0] }
+      : { action: 'delete', table, value: keyEq[1] });
+    return { data: pick(r.data), error: r.error };
+  };
+  const builder = new Proxy({}, {
+    get(_, prop) {
+      if (prop === 'then') return (res, rej) => run().then(res, rej);
+      return (...a) => { ops.push({ m: prop, a }); return builder; };
+    },
+  });
+  return builder;
+}
+
+// Com o admin logado, as tabelas protegidas passam pela admin-db
+if (sb) {
+  const _from = sb.from.bind(sb);
+  sb.from = (table) => (ADMIN_PW && ADMIN_TABLE_KEYS[table]) ? adminQuery(table) : _from(table);
+}
+
+async function publicApi(action, payload = {}) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/public-api`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ action, ...payload }),
+    });
+    return await res.json();
+  } catch (e) { return { error: e.message }; }
+}
+
 const DEFAULT_STOCK = {
   tirzepatida:10, retatrutida:10, ghkcu:10, glow:10, snap8:10,
   tesamorelin:10, epithalon:10, pt141:10, selank:10
@@ -2978,11 +3057,10 @@ function App() {
     }
     setTrackLoading(true);
     setTrackResults(null);
-    let query = sb.from('orders').select('id,code,buyer_name,status,created_at,items,total,payment,tracking_code');
-    query = query.eq('code', q);
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(1);
+    const r = await publicApi('track', { code: q });
+    const data = r.orders;
     setTrackLoading(false);
-    if (error || !data) { setTrackResults([]); return; }
+    if (r.error || !data) { setTrackResults([]); return; }
     setTrackResults(data.map(o => ({
       id: o.id, code: o.code, date: o.created_at, status: o.status || 'pendente',
       items: o.items || [], total: o.total, buyerName: o.buyer_name, payment: o.payment,
@@ -3111,14 +3189,15 @@ function App() {
   // ── Supabase: carregar customers ────────────────────────────────────────
   React.useEffect(() => {
     if (!sb) { setClientList(customers); return; }
+    if (!adminUnlocked) return;
     sb.from('customers').select('*').order('points', { ascending: false }).then(({ data }) => {
       if (data) { setClientList(data); persistCustomers(data); }
     });
-  }, []);
+  }, [adminUnlocked]);
 
   // ── Supabase: carregar cupons ────────────────────────────────────────────
   React.useEffect(() => {
-    if (!sb) return;
+    if (!sb || !adminUnlocked) return;
     sb.from('coupons').select('*').order('created_at', { ascending: false }).then(({ data }) => {
       if (data && data.length > 0) {
         setCoupons(data.map(r => ({ id: r.id, code: r.code, type: r.type, value: r.value, minOrder: r.min_order, expiresAt: r.expires_at, active: r.active })));
@@ -3134,11 +3213,11 @@ function App() {
         }
       }
     });
-  }, []);
+  }, [adminUnlocked]);
 
   // ── Supabase: carregar despesas ──────────────────────────────────────────
   React.useEffect(() => {
-    if (!sb) return;
+    if (!sb || !adminUnlocked) return;
     sb.from('expenses').select('*').order('created_at', { ascending: false }).then(({ data }) => {
       if (data && data.length > 0) {
         setDespesas(data.map(r => ({ id: r.id, desc: r.description, valor: r.value, categoria: r.category, data: r.expense_date })));
@@ -3154,11 +3233,11 @@ function App() {
         }
       }
     });
-  }, []);
+  }, [adminUnlocked]);
 
   // ── Supabase: carregar histórico de importação e caps de reserva ──────────
   React.useEffect(() => {
-    if (!sb) return;
+    if (!sb || !adminUnlocked) return;
     // Import history
     sb.from('import_history').select('*').order('created_at', { ascending: false }).then(({ data, error }) => {
       if (error) { console.warn('[Supabase] Import history fetch error:', error.message); return; }
@@ -3188,7 +3267,7 @@ function App() {
         }
       }
     });
-  }, []);
+  }, [adminUnlocked]);
 
   // ── Tracking polling: check ME tracking events when admin unlocks ──────────
   React.useEffect(() => {
@@ -3223,7 +3302,6 @@ function App() {
     if (!sb) return;
     sb.from('orders').select('*').order('created_at', { ascending: false }).then(({ data, error }) => {
       if (error) { console.warn('[Supabase] Orders fetch error:', error.message); return; }
-      console.log(`[Supabase] Orders carregados: ${data ? data.length : 0}`, data ? data.map(o=>({code:o.code,status:o.status,buyer:o.buyer_name,created:o.created_at?.slice(0,10)})) : []);
       if (data && data.length > 0) {
         const converted = data.map(o => ({
           id: o.id,
@@ -3250,6 +3328,12 @@ function App() {
         }));
         setOrders(prev => {
           const localCart = prev.filter(o => !o._supabase);
+          // Pedidos novos desde a última atualização (substitui o realtime, que o RLS bloqueia)
+          const known = new Set(prev.filter(o => o._supabase && o._code !== undefined).map(o => o.id));
+          if (known.size) converted.filter(o => !known.has(o.id)).forEach(o => {
+            showToast('Novo pedido recebido! 🛒', 'success');
+            addNotif('order', '🛒 Novo pedido recebido!', `${o.buyerName || 'Cliente'}${o._total ? ` • R$ ${parseFloat(o._total).toLocaleString('pt-BR')}` : ''}${o._code ? ` • ${o._code}` : ''}`, { orderId: o.id });
+          });
           const merged = [...localCart, ...converted];
           saveOrders(merged);
           return merged;
@@ -3258,42 +3342,79 @@ function App() {
     });
   }
 
-  // Re-fetch sempre que admin é desbloqueado para garantir pedidos atualizados
+  function fetchPreordersFromSupabase() {
+    if (!sb) return;
+    sb.from('preorders').select('*').order('created_at', { ascending: false }).then(({ data, error }) => {
+      if (error) { console.warn('[Supabase] Preorders fetch error:', error.message); return; }
+      if (!data) return;
+      const converted = data.map(po => ({
+        id: po.id, token: po.token || '', productId: po.product_id || '', productName: po.product_name || '',
+        name: po.name || '', whatsapp: po.whatsapp || '', qty: po.qty || 1, status: po.status || 'pending',
+        date: po.date || '', ts: po.ts || Date.now(),
+        notifiedAt: po.notified_at ? new Date(po.notified_at).getTime() : null,
+        reminderSent: po.reminder_sent || false,
+      }));
+      setPreorders(prev => {
+        const localOnly = prev.filter(p => p._mine && !converted.find(c => c.id === p.id));
+        const merged = [...localOnly, ...converted];
+        localStorage.setItem('vg-preorders', JSON.stringify(merged));
+        return merged;
+      });
+    });
+  }
+
+  // Loja (sem senha): só o necessário para calcular estoque reservado, sem dados pessoais
+  async function loadPublicSnapshot() {
+    const snap = await publicApi('snapshot');
+    if (!snap || snap.error) { console.warn('[public-api] snapshot:', snap && snap.error); return; }
+    const conv = (snap.orders || []).map(o => ({
+      id: o.id, peptideId: o.items && o.items[0] ? (o.items[0].peptideId || '') : '', buyerName: '',
+      qty: (o.items || []).reduce((s, i) => s + (i.qty || 0), 0), status: o.status, _supabase: true, _items: o.items,
+    }));
+    setOrders(prev => { const merged = [...prev.filter(o => !o._supabase), ...conv]; saveOrders(merged); return merged; });
+    setPreorders(prev => {
+      // Mantém os detalhes só das reservas feitas neste aparelho
+      const mine = prev.filter(p => p._mine || (p.token && myName && (p.name || '').toLowerCase() === myName.toLowerCase()));
+      const server = (snap.preorders || []).map(po => {
+        const local = mine.find(m => m.id === po.id);
+        return local ? { ...local, qty: po.qty, status: po.status, _mine: true }
+          : { id: po.id, productId: po.product_id, qty: po.qty || 1, status: po.status, name: '', token: '' };
+      });
+      const merged = [...mine.filter(m => !server.some(x => x.id === m.id)).map(m => ({ ...m, _mine: true })), ...server];
+      localStorage.setItem('vg-preorders', JSON.stringify(merged));
+      return merged;
+    });
+    const hist = (snap.imports || []);
+    setImportHistory(hist);
+    localStorage.setItem('vg-imports', JSON.stringify(hist));
+    const caps = (snap.caps || []).map(r => ({ id: r.id, productId: r.product_id, qty: r.qty, note: '', status: r.status }));
+    setPurchaseOrders(caps);
+    localStorage.setItem('vg-purchase-orders', JSON.stringify(caps));
+  }
+
+  // Re-fetch sempre que admin é desbloqueado, e a cada 30s enquanto o admin estiver aberto
   React.useEffect(() => {
-    if (adminUnlocked) fetchOrdersFromSupabase();
+    if (!adminUnlocked) return;
+    fetchOrdersFromSupabase(); fetchPreordersFromSupabase();
+    const t = setInterval(() => { fetchOrdersFromSupabase(); fetchPreordersFromSupabase(); }, 30000);
+    return () => clearInterval(t);
   }, [adminUnlocked]);
 
   React.useEffect(() => {
     if (!sb) return;
     try {
-    fetchOrdersFromSupabase();
-
-    // Carregar pré-orders do Supabase
-    sb.from('preorders').select('*').order('created_at', { ascending: false }).then(({ data, error }) => {
-      if (error) { console.warn('[Supabase] Preorders fetch error:', error.message); return; }
-      if (data && data.length > 0) {
-        const converted = data.map(po => ({
-          id: po.id,
-          token: po.token || '',
-          productId: po.product_id || '',
-          productName: po.product_name || '',
-          name: po.name || '',
-          whatsapp: po.whatsapp || '',
-          qty: po.qty || 1,
-          status: po.status || 'pending',
-          date: po.date || '',
-          ts: po.ts || Date.now(),
-          notifiedAt: po.notified_at ? new Date(po.notified_at).getTime() : null,
-          reminderSent: po.reminder_sent || false,
-        }));
-        setPreorders(prev => {
-          // Manter pré-orders locais que ainda não chegaram ao Supabase (INSERT pode ter falhado)
-          const localOnly = prev.filter(p => !converted.find(c => c.id === p.id));
-          const merged = [...localOnly, ...converted];
-          localStorage.setItem('vg-preorders', JSON.stringify(merged));
-          return merged;
-        });
-      }
+    // Dados pessoais em cache de versões antigas do site
+    try { localStorage.removeItem('vg-customers'); } catch {}
+    loadPublicSnapshot();
+    if (portalToken) publicApi('preorder_get', { token: portalToken }).then(r => {
+      const po = r && r.preorder;
+      if (!po) return;
+      const conv = {
+        id: po.id, token: po.token, productId: po.product_id, productName: po.product_name, name: po.name,
+        whatsapp: po.whatsapp, qty: po.qty, status: po.status, date: po.date, ts: po.ts,
+        notifiedAt: po.notified_at ? new Date(po.notified_at).getTime() : null, reminderSent: po.reminder_sent || false, _mine: true,
+      };
+      setPreorders(prev => [conv, ...prev.filter(x => x.id !== po.id)]);
     });
 
     // Realtime: novos pedidos e atualizações de status aparecem no admin automaticamente
@@ -3729,9 +3850,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
     const reqId = ++_checkPointsReq.current;
     let data = null;
     if (sb) {
-      const { data: d, error } = await sb.from('customers').select('*').eq('cpf', clean).maybeSingle();
+      // Só o saldo de pontos — o CPF não devolve nome/telefone/e-mail de ninguém
+      const r = await publicApi('points', { cpf: clean });
       if (reqId !== _checkPointsReq.current) return; // resposta stale, ignora
-      if (!error) data = d;
+      if (!r.error && r.points) data = { cpf: clean, points: r.points };
     } else {
       data = customers.find(c=>c.cpf===clean)||null;
     }
@@ -3752,20 +3874,21 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
     const clean = (cpf||'').replace(/\D/g,'');
     if (!clean || pts <= 0) return;
     if (sb) {
-      const { data: ex, error: selErr } = await sb.from('customers').select('points').eq('cpf', clean).maybeSingle();
-      if (selErr) { console.warn('[Points] redeem select error:', selErr.message); return; }
-      if (ex) {
-        const { error: updErr } = await sb.from('customers').update({ points: Math.max(0,(ex.points||0)-pts) }).eq('cpf', clean);
-        if (updErr) { console.warn('[Points] redeem update error:', updErr.message); return; }
-      }
+      const r = await publicApi('redeem', { cpf: clean, pts });
+      if (!r.ok) { console.warn('[Points] redeem error:', r.error); return; }
     }
     persistCustomers(customers.map(c=>c.cpf===clean?{...c,points:Math.max(0,(c.points||0)-pts)}:c));
   }
 
-  function applyCouponCode() {
+  async function applyCouponCode() {
     const code = couponInput.trim().toUpperCase();
     if (!code) return;
-    const c = coupons.find(x => x.code.toUpperCase() === code && x.active !== false);
+    let c = coupons.find(x => x.code.toUpperCase() === code && x.active !== false);
+    if (!c && sb) {
+      const r = await publicApi('coupon', { code });
+      const k = r && r.coupon;
+      if (k) c = { id: k.id, code: k.code, type: k.type, value: k.value, minOrder: k.min_order, expiresAt: k.expires_at, active: k.active };
+    }
     if (!c) { showToast('Cupom inválido ou inexistente', 'error'); return; }
     if (c.expiresAt && new Date(c.expiresAt) < new Date()) { showToast('Cupom expirado', 'error'); return; }
     if (c.minOrder && myTotal < c.minOrder) { showToast(`Pedido mínimo R$ ${c.minOrder.toLocaleString('pt-BR')} para este cupom`, 'error'); return; }
@@ -3793,8 +3916,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       const updated = preorders.map(p => p.id === existing.id ? {...p, qty: newQty} : p);
       setPreorders(updated);
       localStorage.setItem('vg-preorders', JSON.stringify(updated));
-      if (sb) sb.from('preorders').update({ qty: newQty }).eq('id', existing.id)
-        .then(({ error }) => { if (error) console.warn('[Supabase] Preorder merge error:', error.message); });
+      if (sb) {
+        if (ADMIN_PW) sb.from('preorders').update({ qty: newQty }).eq('id', existing.id)
+          .then(({ error }) => { if (error) console.warn('[Supabase] Preorder merge error:', error.message); });
+        else if (existing.token) publicApi('preorder_update', { token: existing.token, fields: { qty: newQty } });
+      }
       if (!silent) showToast(`Reserva de ${peptide.name} atualizada: ×${newQty} total 🔔`, 'success');
       return;
     }
@@ -3812,17 +3938,17 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       status: 'pending',
       notifiedAt: null,
       reminderSent: false,
+      _mine: true,
     };
     const updated = [...preorders, entry];
     setPreorders(updated);
     localStorage.setItem('vg-preorders', JSON.stringify(updated));
     // Salvar no Supabase
-    if (sb) sb.from('preorders').insert({
+    if (sb) publicApi('preorder_add', { entry: {
       id: entry.id, token: entry.token, product_id: entry.productId,
       product_name: entry.productName, name: entry.name, whatsapp: entry.whatsapp,
-      qty: entry.qty, status: entry.status, date: entry.date, ts: entry.ts,
-      notified_at: null, reminder_sent: false
-    }).then(({ error }) => { if (error) { console.warn('[Supabase] Preorder save error:', error.message); showToast('Erro ao salvar pré-order no servidor: ' + error.message, 'error'); } });
+      qty: entry.qty, date: entry.date, ts: entry.ts,
+    } }).then(r => { if (!r.ok) { console.warn('[Supabase] Preorder save error:', r.error); showToast('Erro ao salvar pré-order no servidor: ' + (r.error || 'tente de novo'), 'error'); } });
     // Notify STORE about new pre-order (só se não vier do checkout, que já envia msg)
     if (!silent) {
       const reservaNum = '#' + (Date.now()+'').slice(-6);
@@ -3847,18 +3973,25 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
   }
 
   function persistPreorders(list) {
+    const before = new Map(preorders.map(p => [p.id, p]));
     setPreorders(list);
     localStorage.setItem('vg-preorders', JSON.stringify(list));
-    // Sync status changes to Supabase
+    // Sync só do que mudou: admin grava tudo; o cliente só a própria reserva (pelo token)
     if (!sb) return;
     list.forEach(po => {
-      sb.from('preorders').update({
-        status: po.status,
-        notified_at: po.notifiedAt ? new Date(po.notifiedAt).toISOString() : null,
-        reminder_sent: po.reminderSent || false
-      }).eq('id', po.id).then(({ error }) => {
-        if (error) console.warn('[Supabase] Preorder update error:', error.message);
-      });
+      const b = before.get(po.id);
+      if (b && b.status === po.status && b.qty === po.qty && b.notifiedAt === po.notifiedAt && b.reminderSent === po.reminderSent) return;
+      if (ADMIN_PW) {
+        sb.from('preorders').update({
+          status: po.status, qty: po.qty,
+          notified_at: po.notifiedAt ? new Date(po.notifiedAt).toISOString() : null,
+          reminder_sent: po.reminderSent || false
+        }).eq('id', po.id).then(({ error }) => {
+          if (error) console.warn('[Supabase] Preorder update error:', error.message);
+        });
+      } else if (po.token) {
+        publicApi('preorder_update', { token: po.token, fields: { qty: po.qty, status: po.status } });
+      }
     });
   }
 
@@ -4213,7 +4346,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
     }
     if (data.ok) {
       adminLockRef.current = { attempts: 0, until: 0 };
-      adminPwRef.current = pw;
+      adminPwRef.current = pw; ADMIN_PW = pw;
       setAdminPwModal(false); setAdminPwInput('');
       setAdminUnlocked(true); showToast("Admin desbloqueado ✓"); setView("admin");
     } else {
@@ -5526,14 +5659,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
                           const newQty = Math.max(1, (po.qty||1) - 1);
                           const updated = preorders.map(x => x.id===po.id ? {...x,qty:newQty} : x);
                           persistPreorders(updated);
-                          if(sb) sb.from('preorders').update({qty:newQty}).eq('id',po.id).then(({error})=>{if(error) console.warn(error.message);});
                         }} style={{width:26,height:26,background:'rgba(255,165,0,0.12)',border:'1px solid rgba(255,165,0,0.3)',borderRadius:6,color:'#ffaa00',fontSize:'1rem',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>−</button>
                         <span style={{fontFamily:"'Space Mono',monospace",fontSize:"0.8rem",color:"#ffaa00",fontWeight:700,minWidth:20,textAlign:'center'}}>{po.qty}</span>
                         <button onClick={()=>{
                           const newQty = (po.qty||1) + 1;
                           const updated = preorders.map(x => x.id===po.id ? {...x,qty:newQty} : x);
                           persistPreorders(updated);
-                          if(sb) sb.from('preorders').update({qty:newQty}).eq('id',po.id).then(({error})=>{if(error) console.warn(error.message);});
                         }} style={{width:26,height:26,background:'rgba(255,165,0,0.12)',border:'1px solid rgba(255,165,0,0.3)',borderRadius:6,color:'#ffaa00',fontSize:'1rem',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}}>+</button>
                       </div>
                       <button onClick={()=>{
