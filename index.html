@@ -2373,7 +2373,12 @@ class ErrorBoundary extends React.Component {
 
 // ── NOVO LAYOUT (vanguardpep.com/novo) ──────────────────────────────────────
 // Mesma lógica do site (carrinho, estoque, cupom, pedido), só a aparência muda.
-const IS_NOVO = /\/novo\/?$/.test(window.location.pathname);
+const NV_SLUG = (window.location.pathname.match(/^\/p\/([^/]+)/) || [])[1] ? decodeURIComponent(window.location.pathname.match(/^\/p\/([^/]+)/)[1]).toLowerCase() : null;
+// Loja nova em /novo e nas páginas de produto /p/<código> (links curtos para o WhatsApp)
+const IS_NOVO = /\/novo\/?$/.test(window.location.pathname) || !!NV_SLUG;
+const nvSlugOf = p => String(p.sku || p.id).toLowerCase();
+const nvStateFromUrl = () => /^\/p\//.test(window.location.pathname)
+  ? { s: 'produto', pid: decodeURIComponent(window.location.pathname.split('/')[2] || '').toLowerCase() } : {};
 
 const NOVO_CSS = `
 .novo-mode>nav,.novo-mode>.hero-banner,.novo-mode>.app,.novo-mode>.site-footer,.novo-mode>.mobile-bottom-nav{display:none!important}
@@ -2492,7 +2497,7 @@ function NovaLoja(P) {
     trackQuery, setTrackQuery, searchOrders, trackResults, trackLoading, statusLabel,
     notices, onVersionTap, versionTag } = P;
 
-  const initial = (window.history.state && window.history.state.nv) || {};
+  const initial = (window.history.state && window.history.state.nv) || nvStateFromUrl();
   const [screen, setScreen] = React.useState(initial.s || 'loja');
   const [pid, setPid] = React.useState(initial.pid || null);
   const [cat, setCat] = React.useState('all');
@@ -2502,11 +2507,15 @@ function NovaLoja(P) {
   const [doneCode, setDoneCode] = React.useState(null);
 
   function go(s, id) {
-    window.history.pushState({ nv: { s, pid: id || null } }, '');
+    const depth = ((window.history.state && window.history.state.nv && window.history.state.nv.d) || 0) + 1;
+    // Produto ganha endereço próprio (/p/<código>); o resto fica em /novo/
+    const prod = s === 'produto' && products.find(p => p.id === id);
+    const url = prod ? '/p/' + nvSlugOf(prod) : '/novo/';
+    window.history.pushState({ nv: { s, pid: id || null, d: depth } }, '', url);
     setScreen(s); setPid(id || null); window.scrollTo(0, 0);
   }
   React.useEffect(() => {
-    const onPop = e => { const st = (e.state && e.state.nv) || {}; setScreen(st.s || 'loja'); setPid(st.pid || null); };
+    const onPop = e => { const st = (e.state && e.state.nv) || nvStateFromUrl(); setScreen(st.s || 'loja'); setPid(st.pid || null); };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
@@ -2519,7 +2528,7 @@ function NovaLoja(P) {
   const lineOf = id => myOrders.find(o => o.peptideId === id && !o._packId);
   const visible = products.filter(p => (cat === 'all' || p.category === cat) &&
     (!q.trim() || (p.name + ' ' + (p.desc || '') + ' ' + (p.sku || '')).toLowerCase().includes(q.trim().toLowerCase())));
-  const product = pid ? products.find(p => p.id === pid) : null;
+  const product = pid ? products.find(p => p.id === pid || nvSlugOf(p) === String(pid).toLowerCase()) : null;
 
   const isPix = checkout.pagamento === 'pix';
   const freightRaw = calcFreight(checkout.estado, myTotal);
@@ -2534,7 +2543,7 @@ function NovaLoja(P) {
   );
   const Back = ({ title, to = 'loja' }) => (
     <div className="nv-back">
-      <button className="nv-ico" onClick={() => window.history.length > 1 ? window.history.back() : go(to)} aria-label="Voltar"><NvIcon d={NV_ICONS.back} /></button>
+      <button className="nv-ico" onClick={() => (window.history.state && window.history.state.nv && window.history.state.nv.d) ? window.history.back() : go(to)} aria-label="Voltar"><NvIcon d={NV_ICONS.back} /></button>
       <h2>{title}</h2>
     </div>
   );
@@ -2692,6 +2701,10 @@ function NovaLoja(P) {
             ? <button className="nv-btn" style={{ background: 'transparent', border: '1px solid rgba(255,196,107,.5)', color: 'var(--warn)' }} onClick={() => setPre({ product: p, name: checkout.nomeCompleto || '', whatsapp: checkout.telefone || '', qty: 1 })}>Reservar no próximo lote</button>
             : <button className="nv-btn" onClick={() => quickAdd(p)}>{qtyOf(p.id) ? `Adicionar mais um (${qtyOf(p.id)} no carrinho)` : 'Adicionar ao carrinho'}</button>}
           <button className="nv-btn2" onClick={() => go('calc')}>Abrir calculadora de dose</button>
+          <button className="nv-btn2" style={{ border: 'none', color: 'var(--mu)', height: 44 }} onClick={async () => {
+            const url = 'https://vanguardpep.com/p/' + nvSlugOf(p);
+            try { if (navigator.share) await navigator.share({ title: p.name, url }); else { await navigator.clipboard.writeText(url); alert('Link copiado: ' + url); } } catch {}
+          }}>Compartilhar link deste produto</button>
         </section>
       </div>
     );
@@ -2889,7 +2902,12 @@ function NovaLoja(P) {
     );
   }
 
-  if (!body) body = <div className="nv-wrap" style={{ paddingTop: 40 }}><button className="nv-btn2" onClick={() => go('loja')}>Voltar para a loja</button></div>;
+  if (!body) body = (
+    <div className="nv-wrap nv-narrow" style={{ paddingTop: 40, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {screen === 'produto' && <p className="nv-sub">{products.length ? 'Produto não encontrado. Ele pode ter saído do catálogo.' : 'Carregando produto...'}</p>}
+      <button className="nv-btn2" onClick={() => go('loja')}>Ver todos os produtos</button>
+    </div>
+  );
 
   return (
     <div className="nv">

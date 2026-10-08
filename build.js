@@ -159,6 +159,10 @@ esbuild.transform(jsxCode, {
   fs.writeFileSync(path.join(DIST_DIR, 'novo', 'index.html'), dist);
   console.log('📄 Gerado: novo/index.html');
 
+  // Endereços desconhecidos (ex.: produto cadastrado depois do deploy) também abrem o app
+  fs.writeFileSync(path.join(DIST_DIR, '404.html'), dist);
+  buildProductPages(dist);
+
   // Copiar páginas estáticas adicionais (landing de atacado servida em /atacado)
   const extraStatic = ['atacado/index.html'];
   extraStatic.forEach(f => {
@@ -187,3 +191,48 @@ esbuild.transform(jsxCode, {
   console.error('❌ Erro de compilação:', err.message);
   process.exit(1);
 });
+
+
+// ── Páginas por produto: /p/<código> ───────────────────────────────────────
+// Mesmo app, com título e prévia (Open Graph) do produto para links no WhatsApp.
+const SITE = 'https://vanguardpep.com';
+const PRODUCTS_URL = 'https://aumubzvdhzvtnqfzqeqd.supabase.co/rest/v1/products?select=id,sku,name,description,image_url&order=sort_order';
+const PUBLIC_KEY = 'sb_publishable_crfA-iUkVR2mnibsWQ2ZDA_wpwOBBY_';
+
+const escAttr = v => String(v || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+async function buildProductPages(dist) {
+  let products;
+  try {
+    const res = await fetch(PRODUCTS_URL, { headers: { apikey: PUBLIC_KEY, Authorization: 'Bearer ' + PUBLIC_KEY } });
+    products = await res.json();
+    if (!Array.isArray(products)) throw new Error(JSON.stringify(products).slice(0, 120));
+  } catch (e) {
+    console.warn('⚠️  Páginas de produto não geradas (sem acesso aos produtos):', e.message);
+    return;
+  }
+  const slugs = [];
+  for (const p of products) {
+    const slug = String(p.sku || p.id).toLowerCase().replace(/[^a-z0-9-]/g, '');
+    if (!slug) continue;
+    const title = `${p.name} — Vanguard Peptides`;
+    const desc = p.description || 'Peptídeos de alta pureza. Pague no PIX com frete grátis.';
+    const url = `${SITE}/p/${slug}`;
+    let page = dist
+      .replace(/<title>[\s\S]*?<\/title>/, `<title>${escAttr(title)}</title>`)
+      .replace(/(<meta name="description" content=")[^"]*(")/, `$1${escAttr(desc)}$2`)
+      .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${url}$2`)
+      .replace(/(<meta property="og:title" content=")[^"]*(")/, `$1${escAttr(p.name)}$2`)
+      .replace(/(<meta property="og:description" content=")[^"]*(")/, `$1${escAttr(desc)}$2`);
+    if (p.image_url) {
+      page = page
+        .replace(/(<meta property="og:image" content=")[^"]*(")/, `$1${escAttr(p.image_url)}$2`)
+        .replace(/<meta property="og:image:(width|height)"[^>]*>\s*/g, '');
+    }
+    const dir = path.join(DIST_DIR, 'p', slug);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'index.html'), page);
+    slugs.push(slug);
+  }
+  console.log(`📄 Páginas de produto: ${slugs.length} (/p/${slugs.slice(0, 4).join(', /p/')}...)`);
+}
