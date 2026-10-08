@@ -2371,6 +2371,558 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// ── NOVO LAYOUT (vanguardpep.com/novo) ──────────────────────────────────────
+// Mesma lógica do site (carrinho, estoque, cupom, pedido), só a aparência muda.
+const IS_NOVO = /\/novo\/?$/.test(window.location.pathname);
+
+const NOVO_CSS = `
+.novo-mode>nav,.novo-mode>.hero-banner,.novo-mode>.app,.novo-mode>.site-footer,.novo-mode>.mobile-bottom-nav{display:none!important}
+.nv{--bg:#050a0e;--bg2:#0a1219;--bg3:#0f1c28;--ac:#00e5c3;--tx:#e2eaf0;--mu:#a9bfcb;--mu2:#7d9aa8;--ln:rgba(0,229,195,.12);--warn:#ffc46b;--err:#ff9f80;
+  min-height:100vh;background:var(--bg);color:var(--tx);font-family:'DM Sans',sans-serif;position:relative;z-index:1}
+.nv *{box-sizing:border-box}
+.nv button,.nv input{font-family:inherit}
+.nv a{color:var(--ac);text-decoration:none}
+.nv-wrap{max-width:1100px;margin:0 auto;padding:0 16px}
+.nv-top{position:sticky;top:0;z-index:20;background:rgba(5,10,14,.94);border-bottom:1px solid var(--ln);backdrop-filter:blur(6px)}
+.nv-top .nv-wrap{display:flex;align-items:center;gap:8px;height:60px}
+.nv .nv-logo{font-family:'Syne',sans-serif;font-weight:800;font-size:20px;letter-spacing:.5px;background:none;border:none;color:var(--tx);cursor:pointer;padding:0}
+.nv-links{display:none;gap:4px;margin-left:16px}
+.nv-links button{height:40px;padding:0 12px;border:none;background:none;color:var(--mu);font-size:14px;cursor:pointer;border-radius:10px}
+.nv-links button:hover{color:var(--tx)}
+.nv-ico{width:44px;height:44px;border-radius:12px;border:none;background:transparent;color:var(--tx);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.nv-cartbtn{background:rgba(0,229,195,.1);color:var(--ac)}
+.nv-badge{position:absolute;top:4px;right:4px;min-width:18px;height:18px;border-radius:9px;background:var(--ac);color:#04110e;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.nv-strip{display:flex;justify-content:space-between;gap:8px;padding:10px 16px;background:var(--bg2);font-size:12px;color:var(--mu);max-width:1100px;margin:0 auto}
+.nv-h1{font-family:'Syne',sans-serif;font-weight:800;font-size:30px;line-height:1.08;letter-spacing:-.5px;margin:0}
+.nv-sub{margin:0;font-size:15px;line-height:1.45;color:var(--mu)}
+.nv-search{display:flex;align-items:center;gap:10px;height:48px;padding:0 14px;border-radius:14px;background:var(--bg3);border:1px solid var(--ln);color:var(--mu2)}
+.nv-search input{flex:1;min-width:0;height:100%;border:none;outline:none;background:transparent;color:var(--tx);font-size:16px}
+.nv-chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0;scrollbar-width:none}
+.nv-chip{flex-shrink:0;height:40px;padding:0 16px;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;background:transparent;color:#c7d6de;border:1px solid rgba(0,229,195,.2)}
+.nv-chip.on{background:var(--ac);color:#04110e;border-color:var(--ac)}
+.nv-grid{display:grid;grid-template-columns:1fr;gap:10px;padding-bottom:130px}
+.nv-card{display:flex;align-items:center;gap:14px;padding:12px;border-radius:16px;background:var(--bg2);border:1px solid rgba(0,229,195,.1)}
+.nv-card.out{border-style:dashed;border-color:rgba(169,191,203,.3)}
+.nv-thumb{width:64px;height:64px;flex-shrink:0;border-radius:12px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--ac);overflow:hidden;border:none;padding:0;cursor:pointer}
+.nv-thumb img{width:100%;height:100%;object-fit:cover}
+.nv-cbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.nv-tag{align-self:flex-start;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#ffb38f}
+.nv-name{margin:0;font-size:15px;font-weight:600;line-height:1.25;background:none;border:none;color:var(--tx);padding:0;text-align:left;cursor:pointer}
+.nv-desc{font-size:12px;line-height:1.35;color:var(--mu);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.nv-price{font-family:'Space Mono',monospace;font-size:15px;font-weight:700;margin-top:2px}
+.nv-old{font-size:12px;font-weight:400;color:var(--mu2);text-decoration:line-through;margin-left:6px}
+.nv-add{width:48px;height:48px;flex-shrink:0;border-radius:14px;border:1px solid rgba(0,229,195,.35);background:rgba(0,229,195,.08);color:var(--ac);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.nv-res{height:40px;padding:0 12px;flex-shrink:0;border-radius:12px;border:1px solid rgba(255,196,107,.5);background:transparent;color:var(--warn);font-size:13px;font-weight:700;cursor:pointer}
+.nv-qty{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0}
+.nv-qty button{width:44px;height:34px;border-radius:10px;font-size:20px;cursor:pointer}
+.nv-qty .p{border:none;background:var(--ac);color:#04110e;font-weight:700}
+.nv-qty .m{border:1px solid rgba(0,229,195,.3);background:transparent;color:var(--ac)}
+.nv-qty span{font-family:'Space Mono',monospace;font-size:13px;font-weight:700}
+.nv-bar{position:fixed;left:0;right:0;bottom:0;z-index:15;padding:12px 16px 18px;background:linear-gradient(rgba(5,10,14,0),#050a0e 35%)}
+.nv-barbtn{max-width:640px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;width:100%;height:58px;padding:0 20px;border-radius:16px;background:var(--ac);color:#04110e;border:none;cursor:pointer;font-weight:700;font-size:15px}
+.nv-btn{height:56px;width:100%;border-radius:16px;border:none;background:var(--ac);color:#04110e;font-size:16px;font-weight:700;cursor:pointer}
+.nv-btn:disabled{opacity:.6;cursor:wait}
+.nv-btn2{height:50px;width:100%;border-radius:14px;border:1px solid rgba(0,229,195,.35);background:transparent;color:var(--ac);font-size:15px;font-weight:700;cursor:pointer}
+.nv-back{display:flex;align-items:center;gap:8px;height:56px}
+.nv-back h2{margin:0;font-family:'Syne',sans-serif;font-weight:700;font-size:18px}
+.nv-box{padding:14px 16px;border-radius:16px;background:var(--bg2);border:1px solid rgba(0,229,195,.1)}
+.nv-sec{display:flex;flex-direction:column;gap:12px;margin-top:22px}
+.nv-sech{margin:0;display:flex;align-items:center;gap:10px;font-size:16px;font-weight:700}
+.nv-num{width:24px;height:24px;border-radius:12px;background:var(--ac);color:#04110e;font-size:13px;display:flex;align-items:center;justify-content:center}
+.nv-f{display:flex;flex-direction:column;gap:6px;min-width:0}
+.nv-f label{font-size:13px;color:var(--mu)}
+.nv-f input{height:50px;padding:0 14px;border-radius:12px;border:1px solid rgba(0,229,195,.18);background:var(--bg3);color:var(--tx);font-size:16px;outline:none;min-width:0;width:100%}
+.nv-f input:focus{border-color:var(--ac)}
+.nv-f.err input{border:1.5px solid #ff8a65}
+.nv-f .msg{font-size:13px;color:var(--err)}
+.nv-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.nv-pay{display:flex;align-items:center;gap:12px;min-height:64px;padding:12px 14px;border-radius:14px;cursor:pointer;background:var(--bg2);border:1.5px solid rgba(0,229,195,.14);color:var(--tx);text-align:left;width:100%}
+.nv-pay.on{background:rgba(0,229,195,.08);border-color:var(--ac)}
+.nv-dot{width:20px;height:20px;flex-shrink:0;border-radius:10px;border:2px solid #5a7a8a}
+.nv-pay.on .nv-dot{border:6px solid var(--ac)}
+.nv-row{display:flex;justify-content:space-between;font-size:14px;color:var(--mu)}
+.nv-row b{font-family:'Space Mono',monospace;font-weight:400;color:var(--tx)}
+.nv-total{display:flex;justify-content:space-between;align-items:baseline;padding-top:8px;border-top:1px solid var(--ln)}
+.nv-check{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:12px;background:var(--bg2);border:1px solid var(--ln);cursor:pointer;font-size:13px;line-height:1.5;color:var(--mu);text-align:left}
+.nv-check input{width:20px;height:20px;margin:1px 0 0;accent-color:#00e5c3;flex-shrink:0}
+.nv-line{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;padding:6px 0}
+.nv-mini{display:flex;align-items:center;gap:4px}
+.nv-mini button{width:34px;height:34px;border-radius:9px;border:1px solid rgba(0,229,195,.3);background:transparent;color:var(--ac);font-size:16px;cursor:pointer}
+.nv-step{display:flex;gap:12px}
+.nv-step i{display:flex;flex-direction:column;align-items:center;font-style:normal}
+.nv-step i b{width:14px;height:14px;border-radius:7px;border:2px solid #3d5663}
+.nv-step i b.on{background:var(--ac);border-color:var(--ac)}
+.nv-step i u{width:2px;height:34px;background:rgba(0,229,195,.2)}
+.nv-faq button{width:100%;min-height:56px;padding:14px 0;border:none;background:none;color:var(--tx);display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-size:15px;font-weight:600;cursor:pointer}
+.nv-foot{border-top:1px solid var(--ln);margin-top:40px;padding:24px 0 140px;font-size:13px;color:var(--mu)}
+.nv-sheet{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
+.nv-sheet>div{width:100%;max-width:520px;max-height:92vh;overflow:auto;background:var(--bg);border-radius:22px 22px 0 0;border:1px solid var(--ln);padding:20px 16px 24px;display:flex;flex-direction:column;gap:14px}
+.nv-pimg{height:260px;border-radius:20px;background:var(--bg3);border:1px solid rgba(0,229,195,.1);display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:'Space Mono',monospace;font-size:32px;font-weight:700;color:var(--ac)}
+.nv-pimg img{width:100%;height:100%;object-fit:contain}
+@media (min-width:760px){
+  .nv-links{display:flex}
+  .nv-h1{font-size:44px}
+  .nv-grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+  .nv-narrow{max-width:640px;margin:0 auto}
+}`;
+
+const nvFmt = v => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function NvIcon({ d, size = 22, w = 1.9 }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
+}
+const NV_ICONS = {
+  back: <path d="M15 6l-6 6 6 6" />,
+  cart: <><path d="M6 6h15l-1.5 9h-12z" /><path d="M6 6L5 3H2" /><circle cx="9" cy="20" r="1.4" /><circle cx="18" cy="20" r="1.4" /></>,
+  box: <><path d="M3 7l9-4 9 4-9 4-9-4z" /><path d="M3 7v10l9 4 9-4V7" /><path d="M12 11v10" /></>,
+  plus: <path d="M12 5v14M5 12h14" />,
+  search: <><circle cx="11" cy="11" r="7" /><path d="M20 20l-4-4" /></>,
+  arrow: <path d="M5 12h14M13 6l6 6-6 6" />,
+  check: <path d="M5 12l5 5 9-10" />,
+  chev: <path d="M6 9l6 6 6-6" />,
+  x: <path d="M6 6l12 12M18 6L6 18" />,
+};
+
+function NovaLoja(P) {
+  const { products, categories, effectivePrice, availableStock, myOrders, myTotal, cartCount,
+    quickAdd, updateQtyInCart, removeFromCart, addPackToCart, savePreorder,
+    checkout, updateCheckout, fetchCep, checkoutErrors, calcFreight,
+    couponInput, setCouponInput, appliedCoupon, setAppliedCoupon, applyCouponCode,
+    disclaimer, setDisclaimer, isSubmitting, submitOrder, orderSuccessCode, setOrderSuccessCode,
+    trackQuery, setTrackQuery, searchOrders, trackResults, trackLoading, statusLabel,
+    notices, onVersionTap, versionTag } = P;
+
+  const initial = (window.history.state && window.history.state.nv) || {};
+  const [screen, setScreen] = React.useState(initial.s || 'loja');
+  const [pid, setPid] = React.useState(initial.pid || null);
+  const [cat, setCat] = React.useState('all');
+  const [q, setQ] = React.useState('');
+  const [pre, setPre] = React.useState(null); // { product, name, whatsapp, qty }
+  const [faqOpen, setFaqOpen] = React.useState('0-0');
+  const [doneCode, setDoneCode] = React.useState(null);
+
+  function go(s, id) {
+    window.history.pushState({ nv: { s, pid: id || null } }, '');
+    setScreen(s); setPid(id || null); window.scrollTo(0, 0);
+  }
+  React.useEffect(() => {
+    const onPop = e => { const st = (e.state && e.state.nv) || {}; setScreen(st.s || 'loja'); setPid(st.pid || null); };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
+  // Pedido salvo → tela de confirmação
+  React.useEffect(() => {
+    if (orderSuccessCode) { setDoneCode(orderSuccessCode); setOrderSuccessCode(null); go('done'); }
+  }, [orderSuccessCode]);
+
+  const qtyOf = id => myOrders.filter(o => o.peptideId === id && !o._packId).reduce((s, o) => s + (o.qty || 0), 0);
+  const lineOf = id => myOrders.find(o => o.peptideId === id && !o._packId);
+  const visible = products.filter(p => (cat === 'all' || p.category === cat) &&
+    (!q.trim() || (p.name + ' ' + (p.desc || '') + ' ' + (p.sku || '')).toLowerCase().includes(q.trim().toLowerCase())));
+  const product = pid ? products.find(p => p.id === pid) : null;
+
+  const isPix = checkout.pagamento === 'pix';
+  const freightRaw = calcFreight(checkout.estado, myTotal);
+  const freight = isPix ? { value: 0, label: 'Grátis' } : { ...freightRaw, label: freightRaw.value ? nvFmt(freightRaw.value) : 'Grátis' };
+  const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round(myTotal * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal)) : 0;
+  const totalFinal = myTotal - couponDiscount + freight.value;
+
+  const Thumb = ({ p, big }) => (
+    <button className={big ? 'nv-pimg' : 'nv-thumb'} onClick={big ? undefined : () => go('produto', p.id)} aria-label={'Ver ' + p.name} style={big ? { width: '100%', border: 'none' } : null}>
+      {p.image_url ? <img src={p.image_url} alt="" loading="lazy" /> : (p.sku || p.name.slice(0, 4))}
+    </button>
+  );
+  const Back = ({ title, to = 'loja' }) => (
+    <div className="nv-back">
+      <button className="nv-ico" onClick={() => window.history.length > 1 ? window.history.back() : go(to)} aria-label="Voltar"><NvIcon d={NV_ICONS.back} /></button>
+      <h2>{title}</h2>
+    </div>
+  );
+  const Field = ({ k, label, hint, msg, ...rest }) => (
+    <div className={'nv-f' + (checkoutErrors[k] ? ' err' : '')}>
+      <label htmlFor={'nv-' + k}>{label}{hint && <span style={{ color: 'var(--mu2)' }}> {hint}</span>}</label>
+      <input id={'nv-' + k} value={checkout[k] || ''} aria-invalid={!!checkoutErrors[k]} onChange={e => updateCheckout(k, e.target.value)} {...rest} />
+      {checkoutErrors[k] && msg && <span className="msg">{msg}</span>}
+    </div>
+  );
+
+  const header = (
+    <header className="nv-top">
+      <div className="nv-wrap">
+        <button className="nv-logo" onClick={() => go('loja')}>VANGUARD</button>
+        <div role="navigation" className="nv-links" aria-label="Principal">
+          <button onClick={() => go('rastrear')}>Rastrear pedido</button>
+          <button onClick={() => go('calc')}>Calculadora</button>
+          <button onClick={() => go('faq')}>Dúvidas</button>
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+          <button className="nv-ico" onClick={() => go('rastrear')} aria-label="Rastrear pedido"><NvIcon d={NV_ICONS.box} /></button>
+          <button className="nv-ico nv-cartbtn" onClick={() => go('checkout')} aria-label={`Carrinho, ${cartCount} itens`}>
+            <NvIcon d={NV_ICONS.cart} />
+            {cartCount > 0 && <span className="nv-badge">{cartCount}</span>}
+          </button>
+        </div>
+      </div>
+    </header>
+  );
+
+  const footer = (
+    <div role="contentinfo" className="nv-foot">
+      <div className="nv-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between' }}>
+        <span>Produtos destinados exclusivamente a pesquisa.</span>
+        <span style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <a href="#" onClick={e => { e.preventDefault(); go('faq'); }}>Dúvidas</a>
+          <a href="https://wa.me/447418333521" target="_blank" rel="noreferrer">WhatsApp</a>
+          <a href="/">Versão anterior do site</a>
+          <span onClick={onVersionTap} style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, opacity: .6, userSelect: 'none' }}>{versionTag}</span>
+        </span>
+      </div>
+    </div>
+  );
+
+  const cartBar = cartCount > 0 && screen !== 'checkout' && screen !== 'done' && (
+    <div className="nv-bar">
+      <button className="nv-barbtn" onClick={() => go('checkout')}>
+        <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2, textAlign: 'left' }}>
+          <span style={{ fontSize: 12, fontWeight: 600 }}>{cartCount} {cartCount === 1 ? 'item' : 'itens'}</span>
+          <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 17 }}>{nvFmt(myTotal)}</span>
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Finalizar <NvIcon d={NV_ICONS.arrow} size={18} w={2.4} /></span>
+      </button>
+    </div>
+  );
+
+  const addControls = p => {
+    const avail = availableStock(p.id);
+    if (avail === 0) return <button className="nv-res" onClick={() => setPre({ product: p, name: checkout.nomeCompleto || '', whatsapp: checkout.telefone || '', qty: 1 })}>Reservar</button>;
+    const n = qtyOf(p.id);
+    if (!n) return <button className="nv-add" onClick={() => quickAdd(p)} aria-label={'Adicionar ' + p.name}><NvIcon d={NV_ICONS.plus} w={2.2} /></button>;
+    const line = lineOf(p.id);
+    return (
+      <div className="nv-qty">
+        <button className="p" onClick={() => quickAdd(p)} aria-label="Mais um">+</button>
+        <span>{n}</span>
+        <button className="m" onClick={() => line && updateQtyInCart(line.id, -1)} aria-label="Menos um">−</button>
+      </div>
+    );
+  };
+
+  const priceLine = p => {
+    const ep = effectivePrice(p);
+    return <span className="nv-price">{nvFmt(ep)}{ep < p.price && <span className="nv-old">{nvFmt(p.price)}</span>}</span>;
+  };
+
+  let body = null;
+
+  if (screen === 'loja') {
+    const activeNotices = (notices || []).slice(0, 1);
+    body = (
+      <div className="nv-wrap">
+        {activeNotices.map(n => <div key={n.id} style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,196,107,.08)', border: '1px solid rgba(255,196,107,.3)', fontSize: 14 }}>{n.text}</div>)}
+        <section style={{ padding: '22px 0 8px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <h1 className="nv-h1">Peptídeos de pesquisa, sem complicação.</h1>
+          <p className="nv-sub">Escolha, pague e acompanhe o envio pelo código do pedido.</p>
+        </section>
+        <div style={{ paddingTop: 12 }}>
+          <label htmlFor="nv-busca" style={{ position: 'absolute', left: -9999 }}>Buscar produto</label>
+          <div className="nv-search"><NvIcon d={NV_ICONS.search} size={18} w={2} /><input id="nv-busca" placeholder="Buscar: tirzepatida, GHK-Cu..." value={q} onChange={e => setQ(e.target.value)} /></div>
+        </div>
+        <div role="navigation" className="nv-chips" aria-label="Categorias">
+          {categories.map(c => <button key={c.id} className={'nv-chip' + (cat === c.id ? ' on' : '')} aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>{c.id === 'all' ? 'Todos' : c.name}</button>)}
+        </div>
+        <section className="nv-grid" aria-label="Produtos">
+          {visible.length === 0 && <div className="nv-box" style={{ gridColumn: '1/-1' }}>
+            <div style={{ fontWeight: 600, marginBottom: 6 }}>Nada encontrado para "{q}".</div>
+            <a href="https://wa.me/447418333521" target="_blank" rel="noreferrer">Pedir esse produto pelo WhatsApp</a>
+          </div>}
+          {visible.map(p => {
+            const out = availableStock(p.id) === 0;
+            return (
+              <article key={p.id} className={'nv-card' + (out ? ' out' : '')}>
+                <Thumb p={p} />
+                <div className="nv-cbody">
+                  {out ? <span className="nv-tag" style={{ color: 'var(--warn)' }}>Lote esgotado</span> : p.badge && <span className="nv-tag">{p.badge.replace(/^[^\wÀ-ú]+\s*/, '')}</span>}
+                  <button className="nv-name" onClick={() => go('produto', p.id)}>{p.name}</button>
+                  {p.desc && <span className="nv-desc">{p.desc}</span>}
+                  {priceLine(p)}
+                </div>
+                {addControls(p)}
+              </article>
+            );
+          })}
+        </section>
+      </div>
+    );
+  }
+
+  if (screen === 'produto' && product) {
+    const p = product;
+    const out = availableStock(p.id) === 0;
+    const packs = p.packs || [];
+    body = (
+      <div className="nv-wrap nv-narrow">
+        <Back title={p.name} />
+        <Thumb p={p} big />
+        <section style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 18 }}>
+          {p.badge && <span className="nv-tag">{p.badge.replace(/^[^\wÀ-ú]+\s*/, '')}</span>}
+          <h1 className="nv-h1" style={{ fontSize: 28 }}>{p.name}</h1>
+          {p.compounds && <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, color: 'var(--ac)' }}>{p.compounds}</span>}
+          {p.desc && <p className="nv-sub">{p.desc}</p>}
+          <div style={{ fontSize: 22 }}>{priceLine(p)}</div>
+        </section>
+        {packs.length > 0 && !out && (
+          <section className="nv-sec">
+            <h2 className="nv-sech" style={{ fontSize: 15 }}>Protocolos com desconto</h2>
+            {packs.map(pk => {
+              const unit = Math.round(effectivePrice(p) * (1 - (pk.discount || 0) / 100));
+              return (
+                <button key={pk.id} className="nv-pay" onClick={() => addPackToCart(p, pk)}>
+                  <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    <span style={{ fontSize: 15, fontWeight: 700 }}>{pk.name}</span>
+                    <span style={{ fontSize: 12, color: 'var(--mu)' }}>{pk.qty} frascos{pk.discount ? ` · ${pk.discount}% off` : ''}{pk.desc ? ` · ${pk.desc}` : ''}</span>
+                  </span>
+                  <span style={{ fontFamily: "'Space Mono',monospace", fontWeight: 700 }}>{nvFmt(unit * pk.qty)}</span>
+                </button>
+              );
+            })}
+          </section>
+        )}
+        <section className="nv-sec" style={{ paddingBottom: 30 }}>
+          {out
+            ? <button className="nv-btn" style={{ background: 'transparent', border: '1px solid rgba(255,196,107,.5)', color: 'var(--warn)' }} onClick={() => setPre({ product: p, name: checkout.nomeCompleto || '', whatsapp: checkout.telefone || '', qty: 1 })}>Reservar no próximo lote</button>
+            : <button className="nv-btn" onClick={() => quickAdd(p)}>{qtyOf(p.id) ? `Adicionar mais um (${qtyOf(p.id)} no carrinho)` : 'Adicionar ao carrinho'}</button>}
+          <button className="nv-btn2" onClick={() => go('calc')}>Abrir calculadora de dose</button>
+        </section>
+      </div>
+    );
+  }
+
+  if (screen === 'checkout') {
+    body = (
+      <div className="nv-wrap nv-narrow" style={{ paddingBottom: 30 }}>
+        <Back title="Finalizar pedido" />
+        {myOrders.length === 0 ? (
+          <div className="nv-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, textAlign: 'center', padding: 28 }}>
+            <span style={{ color: '#5a7a8a' }}><NvIcon d={NV_ICONS.cart} size={40} w={1.6} /></span>
+            <b>Seu carrinho está vazio</b>
+            <button className="nv-btn" style={{ height: 48 }} onClick={() => go('loja')}>Ver produtos</button>
+          </div>
+        ) : <>
+          <section className="nv-box">
+            {myOrders.map(o => {
+              const p = products.find(x => x.id === o.peptideId);
+              const unit = o._packPrice !== undefined ? o._packPrice : effectivePrice(p);
+              return (
+                <div key={o.id} className="nv-line">
+                  <span style={{ flex: 1, minWidth: 0 }}>{p ? p.name : 'Produto'}{o._packName ? ` · ${o._packName}` : ''}<br /><span style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, color: 'var(--mu)' }}>{nvFmt(unit)} cada</span></span>
+                  {o._packId
+                    ? <button className="nv-ico" style={{ width: 36, height: 36 }} onClick={() => removeFromCart(o.id)} aria-label="Remover"><NvIcon d={NV_ICONS.x} size={18} /></button>
+                    : <span className="nv-mini">
+                        <button onClick={() => updateQtyInCart(o.id, -1)} aria-label="Menos um">−</button>
+                        <span style={{ minWidth: 22, textAlign: 'center', fontFamily: "'Space Mono',monospace" }}>{o.qty}</span>
+                        <button onClick={() => p && quickAdd(p)} aria-label="Mais um">+</button>
+                      </span>}
+                </div>
+              );
+            })}
+          </section>
+
+          <section className="nv-sec">
+            <h2 className="nv-sech"><span className="nv-num">1</span>Seus dados</h2>
+            {Field({ k: 'nomeCompleto', label: 'Nome completo', autoComplete: 'name', msg: 'Informe seu nome.' })}
+            <div className="nv-2">
+              {Field({ k: 'telefone', label: 'WhatsApp', inputMode: 'tel', autoComplete: 'tel', placeholder: '(11) 90000-0000', msg: 'Informe o WhatsApp.' })}
+              {Field({ k: 'cpf', label: 'CPF', inputMode: 'numeric', placeholder: '000.000.000-00', msg: 'CPF inválido.' })}
+            </div>
+            {Field({ k: 'email', label: 'E-mail', hint: '(para o rastreio)', inputMode: 'email', autoComplete: 'email', placeholder: 'voce@email.com', msg: 'E-mail inválido.' })}
+          </section>
+
+          <section className="nv-sec">
+            <h2 className="nv-sech"><span className="nv-num">2</span>Entrega</h2>
+            <div className="nv-2">
+              <div className={'nv-f' + (checkoutErrors.cep ? ' err' : '')}>
+                <label htmlFor="nv-cep">CEP</label>
+                <input id="nv-cep" inputMode="numeric" autoComplete="postal-code" value={checkout.cep || ''} placeholder="00000-000"
+                  onChange={e => { updateCheckout('cep', e.target.value); if (e.target.value.replace(/\D/g, '').length === 8) fetchCep(e.target.value); }} />
+                {checkoutErrors.cep && <span className="msg">CEP inválido.</span>}
+              </div>
+              {Field({ k: 'numero', label: 'Número', inputMode: 'numeric', msg: 'Informe o número.' })}
+            </div>
+            {checkout.rua
+              ? <div style={{ display: 'flex', gap: 10, padding: '12px 14px', borderRadius: 12, background: 'rgba(0,229,195,.06)', fontSize: 14, lineHeight: 1.4 }}>
+                  <span style={{ color: 'var(--ac)' }}><NvIcon d={NV_ICONS.check} size={18} w={2} /></span>
+                  <span>{checkout.rua} — {checkout.bairro}<br /><span style={{ color: 'var(--mu)' }}>{checkout.cidade}/{checkout.estado}</span></span>
+                </div>
+              : <div className="nv-2">
+                  {Field({ k: 'rua', label: 'Rua', msg: 'Informe a rua.' })}
+                  {Field({ k: 'bairro', label: 'Bairro' })}
+                  {Field({ k: 'cidade', label: 'Cidade', msg: 'Informe a cidade.' })}
+                  {Field({ k: 'estado', label: 'UF', maxLength: 2, msg: 'Informe a UF.' })}
+                </div>}
+            {Field({ k: 'complemento', label: 'Complemento', hint: '(opcional)', placeholder: 'Apto, bloco...' })}
+          </section>
+
+          <section className="nv-sec">
+            <h2 className="nv-sech"><span className="nv-num">3</span>Pagamento</h2>
+            {[{ v: 'pix', t: 'PIX', s: 'Frete grátis · aprovação na hora', tag: 'Recomendado' }, { v: '2x', t: 'Cartão em 2x', s: freightRaw.value ? `Frete ${nvFmt(freightRaw.value)}` : 'Frete grátis neste pedido' }].map(m => (
+              <button key={m.v} className={'nv-pay' + (checkout.pagamento === m.v ? ' on' : '')} aria-pressed={checkout.pagamento === m.v} onClick={() => updateCheckout('pagamento', m.v)}>
+                <span className="nv-dot" />
+                <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}><span style={{ fontSize: 15, fontWeight: 700 }}>{m.t}</span><span style={{ fontSize: 13, color: 'var(--mu)' }}>{m.s}</span></span>
+                {m.tag && <span style={{ padding: '4px 8px', borderRadius: 6, background: 'var(--ac)', color: '#04110e', fontSize: 11, fontWeight: 700 }}>{m.tag}</span>}
+              </button>
+            ))}
+            {checkoutErrors.pagamento && <span style={{ fontSize: 13, color: 'var(--err)' }}>Escolha a forma de pagamento.</span>}
+            {appliedCoupon
+              ? <div className="nv-line" style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(0,229,195,.08)', border: '1px solid rgba(0,229,195,.3)' }}>
+                  <span><b style={{ fontFamily: "'Space Mono',monospace", color: 'var(--ac)' }}>{appliedCoupon.code}</b> · −{nvFmt(couponDiscount)}</span>
+                  <button onClick={() => { setAppliedCoupon(null); setCouponInput(''); }} style={{ height: 40, border: 'none', background: 'none', color: 'var(--mu)', cursor: 'pointer' }}>Remover</button>
+                </div>
+              : <div style={{ display: 'flex', gap: 8 }}>
+                  <label htmlFor="nv-cupom" style={{ position: 'absolute', left: -9999 }}>Cupom</label>
+                  <input id="nv-cupom" placeholder="Cupom de desconto" value={couponInput} onChange={e => setCouponInput(e.target.value)}
+                    style={{ flex: 1, minWidth: 0, height: 48, padding: '0 14px', borderRadius: 12, border: '1px solid rgba(0,229,195,.18)', background: 'var(--bg3)', color: 'var(--tx)', fontSize: 15, outline: 'none' }} />
+                  <button onClick={applyCouponCode} style={{ height: 48, padding: '0 16px', borderRadius: 12, border: '1px solid rgba(0,229,195,.35)', background: 'transparent', color: 'var(--ac)', fontWeight: 700, cursor: 'pointer' }}>Aplicar</button>
+                </div>}
+          </section>
+
+          <section className="nv-sec">
+            <div className="nv-row"><span>Subtotal</span><b>{nvFmt(myTotal)}</b></div>
+            {couponDiscount > 0 && <div className="nv-row"><span>Cupom</span><b style={{ color: 'var(--ac)' }}>− {nvFmt(couponDiscount)}</b></div>}
+            <div className="nv-row"><span>Frete</span><b>{checkout.pagamento ? freight.label : '—'}</b></div>
+            <div className="nv-total"><span style={{ fontSize: 16, fontWeight: 700 }}>Total</span><span style={{ fontFamily: "'Space Mono',monospace", fontSize: 22, fontWeight: 700 }}>{nvFmt(totalFinal)}</span></div>
+            <label className="nv-check">
+              <input type="checkbox" checked={!!disclaimer} onChange={() => setDisclaimer(d => !d)} />
+              <span><b style={{ color: 'var(--tx)' }}>Aviso legal</b><br />Declaro que tenho 18 anos ou mais e que este produto é adquirido exclusivamente para fins de pesquisa científica.</span>
+            </label>
+            <button className="nv-btn" disabled={isSubmitting} onClick={submitOrder}>{isSubmitting ? 'Salvando pedido...' : `Enviar pedido · ${nvFmt(totalFinal)}`}</button>
+            <span style={{ textAlign: 'center', fontSize: 12, color: 'var(--mu2)' }}>Abrimos o WhatsApp com seu pedido para combinar o pagamento.</span>
+          </section>
+        </>}
+      </div>
+    );
+  }
+
+  if (screen === 'done') {
+    body = (
+      <div className="nv-wrap nv-narrow" style={{ paddingTop: 48, display: 'flex', flexDirection: 'column', gap: 22 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14, textAlign: 'center' }}>
+          <div style={{ width: 72, height: 72, borderRadius: 36, background: 'rgba(0,229,195,.12)', border: '1.5px solid var(--ac)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ac)' }}><NvIcon d={NV_ICONS.check} size={34} w={2.4} /></div>
+          <h1 className="nv-h1" style={{ fontSize: 28 }}>Pedido recebido!</h1>
+          <p className="nv-sub">Abrimos o WhatsApp com o seu pedido. O pagamento é combinado por lá.</p>
+        </div>
+        {doneCode && <div className="nv-box" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: 13, color: 'var(--mu)' }}>Código do pedido</span>
+          <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 18, fontWeight: 700, letterSpacing: 1, color: 'var(--ac)' }}>{doneCode}</span>
+        </div>}
+        <button className="nv-btn2" onClick={() => { setTrackQuery(doneCode || ''); go('rastrear'); if (doneCode) searchOrders(doneCode); }}>Acompanhar pedido</button>
+        <button className="nv-btn2" style={{ border: 'none', color: 'var(--mu)' }} onClick={() => go('loja')}>Voltar para a loja</button>
+      </div>
+    );
+  }
+
+  if (screen === 'rastrear') {
+    body = (
+      <div className="nv-wrap nv-narrow" style={{ paddingBottom: 30 }}>
+        <Back title="Rastrear pedido" />
+        <div className="nv-f">
+          <label htmlFor="nv-cod">Código do pedido (veio no WhatsApp)</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input id="nv-cod" value={trackQuery} placeholder="VG-XXXXXX" onChange={e => setTrackQuery(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchOrders()} style={{ fontFamily: "'Space Mono',monospace", letterSpacing: 1 }} />
+            <button onClick={() => searchOrders()} disabled={trackLoading} style={{ height: 50, padding: '0 18px', borderRadius: 12, border: 'none', background: 'var(--ac)', color: '#04110e', fontWeight: 700, cursor: 'pointer' }}>{trackLoading ? '...' : 'Buscar'}</button>
+          </div>
+        </div>
+        {trackResults && trackResults.length === 0 && <div className="nv-box" style={{ marginTop: 16 }}>Nenhum pedido com esse código. Confira o código no WhatsApp.</div>}
+        {(trackResults || []).map(o => {
+          const steps = ['pendente', 'pago', 'enviado', 'entregue'];
+          const at = steps.indexOf(o.status);
+          return (
+            <section key={o.id} className="nv-box" style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 16, fontWeight: 700, color: 'var(--ac)' }}>{o.code}</span>
+                <span style={{ padding: '5px 10px', borderRadius: 8, background: 'rgba(0,168,255,.14)', color: '#7cc9ff', fontSize: 12, fontWeight: 700 }}>{statusLabel(o.status)}</span>
+              </div>
+              <div>
+                {['Pedido recebido', 'Pagamento confirmado', 'Enviado', 'Entregue'].map((t, i) => (
+                  <div key={t} className="nv-step">
+                    <i><b className={i <= at ? 'on' : ''} />{i < 3 && <u />}</i>
+                    <span style={{ fontSize: 15, fontWeight: 600, marginTop: -3, color: i <= at ? 'var(--tx)' : 'var(--mu)' }}>{t}</span>
+                  </div>
+                ))}
+              </div>
+              {o.tracking_code && <>
+                <div className="nv-line" style={{ borderTop: '1px solid var(--ln)', paddingTop: 12 }}><span style={{ color: 'var(--mu)' }}>Rastreio</span><b style={{ fontFamily: "'Space Mono',monospace" }}>{o.tracking_code}</b></div>
+                <a className="nv-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 50 }} href={`https://melhorrastreio.com.br/rastreio/${o.tracking_code}`} target="_blank" rel="noreferrer">Ver rastreio completo</a>
+              </>}
+            </section>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (screen === 'calc') {
+    body = <div className="nv-wrap nv-narrow"><Back title="Calculadora de dose" /><CalcView /></div>;
+  }
+
+  if (screen === 'faq') {
+    body = (
+      <div className="nv-wrap nv-narrow">
+        <Back title="Dúvidas" />
+        {FAQ_SECTIONS.map((sec, si) => (
+          <section key={si} style={{ marginTop: 18 }}>
+            <h2 style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 700, letterSpacing: .6, textTransform: 'uppercase', color: 'var(--mu2)' }}>{sec.title}</h2>
+            {sec.items.map((it, ii) => {
+              const id = si + '-' + ii, open = faqOpen === id;
+              return (
+                <div key={id} className="nv-faq" style={{ borderBottom: '1px solid var(--ln)' }}>
+                  <button aria-expanded={open} onClick={() => setFaqOpen(open ? null : id)}>
+                    <span>{it.q}</span>
+                    <span style={{ color: 'var(--ac)', transform: open ? 'rotate(180deg)' : 'none', display: 'flex' }}><NvIcon d={NV_ICONS.chev} size={18} w={2} /></span>
+                  </button>
+                  {open && <p style={{ margin: '0 0 16px', fontSize: 14, lineHeight: 1.55, color: 'var(--mu)' }}>{it.a}</p>}
+                </div>
+              );
+            })}
+          </section>
+        ))}
+      </div>
+    );
+  }
+
+  if (!body) body = <div className="nv-wrap" style={{ paddingTop: 40 }}><button className="nv-btn2" onClick={() => go('loja')}>Voltar para a loja</button></div>;
+
+  return (
+    <div className="nv">
+      <style>{NOVO_CSS}</style>
+      {header}
+      {screen === 'loja' && <div className="nv-strip"><span>PIX com <b style={{ color: 'var(--ac)' }}>frete grátis</b></span><span>Envio rápido</span><span>Pureza ≥ 99%</span></div>}
+      <div role="main">{body}</div>
+      {footer}
+      {cartBar}
+      {pre && (
+        <div className="nv-sheet" onClick={e => { if (e.target === e.currentTarget) setPre(null); }}>
+          <div role="dialog" aria-label="Reservar produto">
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: .6, textTransform: 'uppercase', color: 'var(--warn)' }}>Lote esgotado</span>
+            <h2 className="nv-h1" style={{ fontSize: 24 }}>Garanta {pre.product.name} no próximo lote</h2>
+            <p className="nv-sub">Sem pagar agora. Quando o lote chegar, avisamos no WhatsApp por ordem de reserva.</p>
+            <div className="nv-f"><label htmlFor="nv-pn">Seu nome</label><input id="nv-pn" value={pre.name} onChange={e => setPre({ ...pre, name: e.target.value })} /></div>
+            <div className="nv-f"><label htmlFor="nv-pw">WhatsApp</label><input id="nv-pw" inputMode="tel" value={pre.whatsapp} onChange={e => setPre({ ...pre, whatsapp: e.target.value })} /></div>
+            <div className="nv-line"><span style={{ fontWeight: 600 }}>Quantidade</span>
+              <span className="nv-mini"><button onClick={() => setPre({ ...pre, qty: Math.max(1, pre.qty - 1) })} aria-label="Menos um">−</button><span style={{ minWidth: 26, textAlign: 'center', fontFamily: "'Space Mono',monospace" }}>{pre.qty}</span><button onClick={() => setPre({ ...pre, qty: Math.min(20, pre.qty + 1) })} aria-label="Mais um">+</button></span>
+            </div>
+            <button className="nv-btn" onClick={() => {
+              if (!pre.name.trim() || pre.whatsapp.replace(/\D/g, '').length < 10) return;
+              savePreorder(pre.product, { name: pre.name.trim(), whatsapp: pre.whatsapp, qty: pre.qty });
+              setPre(null);
+            }}>Entrar na lista</button>
+            <button className="nv-btn2" style={{ border: 'none', color: 'var(--mu)' }} onClick={() => setPre(null)}>Cancelar</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [orders, setOrders] = useState(loadOrders);
   const [products, setProducts] = useState(loadProducts);
@@ -4169,6 +4721,36 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
     showToast(`Pack "${pack.name}" adicionado ao carrinho ✓`, 'success');
   }
 
+  // Novo layout: adiciona 1 unidade direto, sem o modal de nome/quantidade
+  async function quickAdd(product, qty = 1) {
+    let name = myName.trim();
+    if (!name) { name = (checkout.nomeCompleto || '').trim() || 'Cliente'; saveName(name); }
+    const avail = availableStock(product.id);
+    if (avail === 0) { showToast('Produto esgotado — use Reservar', 'error'); return; }
+    const existing = orders.find(o => !o._supabase && !o._packId && o.peptideId === product.id && (o.buyerName || '').toLowerCase() === name.toLowerCase());
+    if (existing) { await updateQtyInCart(existing.id, qty); return; }
+    if (avail !== null && avail < qty) { showToast(`Estoque insuficiente — apenas ${avail} disponível(is)`, 'error'); return; }
+    if (sb && stock[product.id] != null) {
+      const { data: newQty, error } = await sb.rpc('decrement_stock', { p_product_id: product.id, p_qty: qty });
+      if (error || newQty === -1) { showToast('Estoque insuficiente — outro cliente acabou de reservar 😅', 'error'); return; }
+      const newStock = { ...stock, [product.id]: newQty };
+      localStorage.setItem('vg-stock', JSON.stringify(newStock));
+      setStock(newStock);
+    }
+    const _now = new Date(); const _pad = n => String(n).padStart(2, '0'); const _rand = Math.random().toString(36).slice(2, 6);
+    const id = `${_now.getFullYear()}${_pad(_now.getMonth() + 1)}${_pad(_now.getDate())}${_pad(_now.getHours())}${_pad(_now.getMinutes())}${_pad(_now.getSeconds())}_${_rand}`;
+    persistOrders([...orders, { id, peptideId: product.id, buyerName: name, qty, createdAt: _now.toISOString() }]);
+    showToast(`${product.name} adicionado ✓`);
+  }
+
+  function versionTap() {
+    const now = Date.now();
+    const taps = (window.__vtaps || []).filter(t => now - t < 2000);
+    taps.push(now);
+    window.__vtaps = taps;
+    if (taps.length >= 5) { window.__vtaps = []; adminUnlocked ? setView('admin') : handleAdminUnlock(); }
+  }
+
   async function handleAddToCart() {
     const name = formName.trim();
     if (!name || formQty < 1) return;
@@ -4451,9 +5033,22 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
     return () => clearInterval(id);
   }, []);
 
+  const novoActive = IS_NOVO && view !== 'admin' && !portalToken && !manualOrderView;
   return (
-    <div>
+    <div className={novoActive ? 'novo-mode' : ''}>
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
+
+      {novoActive && <NovaLoja
+        products={products} categories={CATEGORIES} effectivePrice={effectivePrice} availableStock={availableStock}
+        myOrders={myOrders} myTotal={myTotal} cartCount={cartCount}
+        quickAdd={quickAdd} updateQtyInCart={updateQtyInCart} removeFromCart={removeFromCart} addPackToCart={addPackToCart} savePreorder={savePreorder}
+        checkout={checkout} updateCheckout={updateCheckout} fetchCep={fetchCep} checkoutErrors={checkoutErrors} calcFreight={calcFreight}
+        couponInput={couponInput} setCouponInput={setCouponInput} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} applyCouponCode={applyCouponCode}
+        disclaimer={disclaimer} setDisclaimer={setDisclaimer} isSubmitting={isSubmitting} submitOrder={sendToWhatsApp}
+        orderSuccessCode={orderSuccessCode} setOrderSuccessCode={setOrderSuccessCode}
+        trackQuery={trackQuery} setTrackQuery={setTrackQuery} searchOrders={searchOrders} trackResults={trackResults} trackLoading={trackLoading} statusLabel={statusLabel}
+        notices={notices.filter(n => !dismissedNotices.includes(n.id))} onVersionTap={versionTap} versionTag="v2.10ecf17"
+      />}
 
       {/* ── CUSTOMER PORTAL ── */}
       {portalToken && (() => {
@@ -8955,7 +9550,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       })()}
 
       {/* SUCESSO — CÓDIGO DO PEDIDO */}
-      {orderSuccessCode && (
+      {orderSuccessCode && !novoActive && (
         <div className="modal-overlay" onClick={()=>setOrderSuccessCode(null)}>
           <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:400,textAlign:'center'}}>
             <div style={{fontSize:'2.5rem',marginBottom:12}}>🎉</div>
@@ -9492,7 +10087,7 @@ _Vanguard Peptides_ 🧬`;
       )}
 
       {/* ── WELCOME MODAL (primeira visita) ── */}
-      {showWelcome && (
+      {showWelcome && !novoActive && (
         <div className="welcome-overlay">
           <div className="welcome-modal">
             <div className="welcome-logo">💊 Vanguard Peptides</div>
@@ -9513,7 +10108,7 @@ _Vanguard Peptides_ 🧬`;
       )}
 
       {/* ── NAME MODAL (mobile sem nome) ── */}
-      {showNameModal && (
+      {showNameModal && !novoActive && (
         <div className="welcome-overlay" onClick={()=>setShowNameModal(false)}>
           <div className="welcome-modal" onClick={e=>e.stopPropagation()}>
             <div className="welcome-logo">👤 Identificação</div>

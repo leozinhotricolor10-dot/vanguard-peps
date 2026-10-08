@@ -154,6 +154,11 @@ esbuild.transform(jsxCode, {
   if (!fs.existsSync(DIST_DIR)) fs.mkdirSync(DIST_DIR);
   fs.writeFileSync(DIST, dist);
 
+  // Novo layout em teste: mesma página servida em /novo (o app detecta o caminho)
+  fs.mkdirSync(path.join(DIST_DIR, 'novo'), { recursive: true });
+  fs.writeFileSync(path.join(DIST_DIR, 'novo', 'index.html'), dist);
+  console.log('📄 Gerado: novo/index.html');
+
   // Copiar páginas estáticas adicionais (landing de atacado servida em /atacado)
   const extraStatic = ['atacado/index.html'];
   extraStatic.forEach(f => {
