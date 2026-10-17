@@ -12,6 +12,15 @@ Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.566670e
 - **D) `redeem` removido da `public-api`** (`816c391`): no repo e em `C:Usersleonasupabaseunctionspublic-api` (idênticos). `redeemPoints` (sem uso) saiu do `index.html`; grep não acha mais chamada a `redeem`. **NÃO publicado** — o dono publica: `supabase functions deploy public-api --project-ref aumubzvdhzvtnqfzqeqd --no-verify-jwt --use-api` (em `C:Usersleona`). Depois conferir que `{action:"redeem"}` responde `Unknown action`.
 - Teste: build + harness injetado só no `dist/` local (verify-admin/admin-db simulados, rpc de estoque simulada, create-order simulado com opção de falha, public-api só leitura real — `snapshot/points/coupon/preorder_get` —, track simulado, me-senders/melhorenvios/qualquer outra escrita bloqueada, `window.open/confirm/alert/prompt` interceptados). Conferido em 1360 e 375px sem rolagem lateral: `/`, `/novo`, `/p/tz15`, `/p/cu50`, `/antigo/` (+ admin antigo com 14 abas), `/#/produto/<id>`, `/#/faq`, `/#/carrinho`, `/#/frete`, `/#/admin`, rastreio VG-…, portal `?preorder` (encontrado/não encontrado/concluir compra), `?pedido` (sucesso, falha, sem estoque), pedido manual do admin (sucesso/falha), desconto manual (com e sem coluna), checkout da loja nova até o WhatsApp (sem `redeem`). 23 testes do create-order passando.
 
+## Reset de dados 17/10/2026
+
+- O dono zerou no banco: pedidos entregues/extraviados, `expenses`, `import_history`, `purchase_order_caps` e `stock`. **Backup em `arq_*_20261017`** (tabelas de arquivo; nao apagar). Pedidos ativos (ex.: o `enviado` de R$299) continuam no banco e vem do Supabase normalmente.
+- Problema: o admin guarda copias em localStorage e, com o banco vazio, "Migrar localStorage -> Supabase" reenviaria importacoes/despesas/caps antigos (e o financeiro continuaria mostrando-os).
+- Solucao: constante `DATA_RESET_ID = '20261017'` (index.html, antes do bloco Supabase) + `applyDataReset()` que roda no carregamento do script, antes de qualquer `useState` ler localStorage. Se `localStorage['vg-data-reset'] !== DATA_RESET_ID`, remove `DATA_RESET_KEYS` (`vg-imports`, `vg-expenses`, `vg-purchase-orders`, `vg-stock-lots`, `vg-shipping-costs`, `vg-orders`, `vg-stock`) e grava o marcador. Vale em qualquer aparelho/caminho (loja e admin, `/` e `/antigo/`). Dados criados depois nao sao limpos de novo (marcador igual).
+- Preservado de proposito: `vg-products`, `vg-coupons`, `vg-promo`, `vg-bundles`, `vg-customers`, `vg-preorders`, `vg-me-*`, `vg-articles`, `vg-notices`, `vg-notifs`, `vg-notify`, `vg-tracking-seen`, carrinho, checkout, preferencias e dismiss de banners.
+- Observacao: `vg-shipping-costs` (custo de frete por pedido, so local) tambem foi zerado; o frete de pedidos ainda ativos cai na estimativa do financeiro.
+- **Novo reset no futuro:** zerar as tabelas no banco e trocar `DATA_RESET_ID` por outro valor (ex.: a data `AAAAMMDD`); ajustar `DATA_RESET_KEYS` se houver chaves novas. Cada aparelho limpa uma vez na proxima abertura.
+
 ## Tarefa em andamento (pedida pelo dono)
 
 **Migrar todas as telas para o novo layout em `/novo`**, para ele ver como fica. Plano combinado:

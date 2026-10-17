@@ -1218,6 +1218,22 @@ function saveProducts(p) {
     .then(({ error }) => { if (error) console.warn('[Supabase] Products sync error:', error.message); });
 }
 
+// ── Reset de dados (uso unico por ID) ────────────────────────────────────────
+// Quando o dono zera os dados de negocio no banco, as copias em localStorage dos aparelhos
+// (principalmente do admin) reenviariam/mostrariam dados antigos. Trocar DATA_RESET_ID faz cada
+// aparelho limpar essas copias UMA vez na proxima abertura (loja e admin, / e /antigo/).
+// Nao mexe em: vg-products, vg-coupons, vg-promo, vg-bundles, vg-customers, vg-preorders, vg-me-*,
+// vg-articles, vg-notices, carrinho, checkout, preferencias, sessao, dismiss de banners.
+const DATA_RESET_ID = '20261017';
+const DATA_RESET_KEYS = ['vg-imports', 'vg-expenses', 'vg-purchase-orders', 'vg-stock-lots', 'vg-shipping-costs', 'vg-orders', 'vg-stock'];
+(function applyDataReset() {
+  try {
+    if (localStorage.getItem('vg-data-reset') === DATA_RESET_ID) return;
+    DATA_RESET_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+    localStorage.setItem('vg-data-reset', DATA_RESET_ID);
+  } catch (e) {}
+})();
+
 // ── Supabase ──────────────────────────────────────────────────────────────────
 const SUPABASE_URL = 'https://aumubzvdhzvtnqfzqeqd.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_crfA-iUkVR2mnibsWQ2ZDA_wpwOBBY_';
