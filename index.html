@@ -2387,6 +2387,27 @@ function nvBundleFull(b, products, effectivePrice) {
   if (ps.some(p => !p)) return null;
   return ps.reduce((s, p) => s + effectivePrice(p), 0);
 }
+// Corpo dos artigos: aceita texto puro ou HTML simples; só tags de texto passam (nada de script/atributos)
+const NV_ART_TAGS = { H2: 'h3', H3: 'h3', H4: 'h3', P: 'p', UL: 'ul', OL: 'ol', LI: 'li', STRONG: 'strong', B: 'strong', EM: 'em', I: 'em', BR: 'br', BLOCKQUOTE: 'blockquote' };
+function nvArticleBody(body) {
+  const src = String(body || '');
+  if (!/<[a-z][\s\S]*>/i.test(src)) {
+    return src.split(/\n\s*\n/).map((t, i) => t.trim() && <p key={i}>{t.trim()}</p>);
+  }
+  let doc;
+  try { doc = new DOMParser().parseFromString(src, 'text/html'); } catch { return <p>{src.replace(/<[^>]+>/g, '')}</p>; }
+  const walk = (node, key) => {
+    if (node.nodeType === 3) return node.textContent;
+    if (node.nodeType !== 1) return null;
+    const kids = Array.from(node.childNodes).map((c, i) => walk(c, i));
+    const tag = NV_ART_TAGS[node.tagName];
+    if (tag === 'br') return <br key={key} />;
+    return tag ? React.createElement(tag, { key }, kids) : <React.Fragment key={key}>{kids}</React.Fragment>;
+  };
+  return Array.from(doc.body.childNodes).map((c, i) => walk(c, i)).filter(x => !(typeof x === 'string' && !x.trim()));
+}
+const nvReadMin = body => Math.max(1, Math.round(String(body || '').replace(/<[^>]+>/g, ' ').split(/\s+/).filter(Boolean).length / 200));
+
 function calcBundleDiscount(bundleIds, cart, products, effectivePrice) {
   const have = {};
   cart.forEach(o => { if (!o._packId) have[o.peptideId] = (have[o.peptideId] || 0) + (o.qty || 0); });
@@ -2427,7 +2448,7 @@ const NOVO_CSS = `
 .nv-chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0;scrollbar-width:none}
 .nv-chip{flex-shrink:0;height:40px;padding:0 16px;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;background:transparent;color:#c7d6de;border:1px solid rgba(0,229,195,.2)}
 .nv-chip.on{background:var(--ac);color:#04110e;border-color:var(--ac)}
-.nv-grid{display:grid;grid-template-columns:1fr;gap:10px;padding-bottom:130px}
+.nv-grid{display:grid;grid-template-columns:1fr;gap:10px;padding-bottom:24px}
 .nv-card{display:flex;align-items:center;gap:14px;padding:12px;border-radius:16px;background:var(--bg2);border:1px solid rgba(0,229,195,.1)}
 .nv-card.out{border-style:dashed;border-color:rgba(169,191,203,.3)}
 .nv-cbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
@@ -2485,6 +2506,16 @@ const NOVO_CSS = `
 .nv-combo{flex:0 0 270px;scroll-snap-align:start;padding:16px;border-radius:18px;background:var(--bg2);border:1px solid rgba(0,229,195,.18);display:flex;flex-direction:column;gap:10px}
 .nv-pill{align-self:flex-start;padding:4px 8px;border-radius:6px;background:rgba(0,229,195,.14);color:#5ff3dc;font-size:11px;font-weight:700}
 .nv-sku{height:30px;padding:0 8px;border-radius:8px;border:none;background:var(--bg3);font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--ac);cursor:pointer}
+.nv-art{display:flex;flex-direction:column;gap:14px;padding:4px 4px 0}
+.nv-art h3{margin:10px 0 0;font-size:19px;font-weight:700;line-height:1.3}
+.nv-art p,.nv-art li{margin:0;font-size:16px;line-height:1.65;color:#c7d6de}
+.nv-art ul,.nv-art ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:6px}
+.nv-art strong{color:var(--tx)}
+.nv-art blockquote{margin:0;padding-left:14px;border-left:2px solid var(--ln);color:var(--mu)}
+.nv-kick{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ac)}
+.nv-alist{display:flex;flex-direction:column}
+.nv-alist button{display:flex;flex-direction:column;gap:4px;padding:14px 0;border:none;border-top:1px solid var(--ln);background:none;color:var(--tx);text-align:left;cursor:pointer;width:100%}
+.nv-alist button:last-child{border-bottom:1px solid var(--ln)}
 .nv-sheet{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
 .nv-sheet>div{width:100%;max-width:520px;max-height:92vh;overflow:auto;background:var(--bg);border-radius:22px 22px 0 0;border:1px solid var(--ln);padding:20px 16px 24px;display:flex;flex-direction:column;gap:14px}
 @media (min-width:760px){
@@ -2514,7 +2545,7 @@ const NV_ICONS = {
 function NovaLoja(P) {
   const { products, categories, effectivePrice, availableStock, myOrders, myTotal, cartCount,
     quickAdd, updateQtyInCart, removeFromCart, addPackToCart, savePreorder,
-    addBundleToCart, bundleInfo,
+    addBundleToCart, bundleInfo, articles,
     checkout, updateCheckout, fetchCep, checkoutErrors, calcFreight,
     couponInput, setCouponInput, appliedCoupon, setAppliedCoupon, applyCouponCode,
     disclaimer, setDisclaimer, isSubmitting, submitOrder, orderSuccessCode, setOrderSuccessCode,
@@ -2589,6 +2620,7 @@ function NovaLoja(P) {
         <div role="navigation" className="nv-links" aria-label="Principal">
           <button onClick={() => go('rastrear')}>Rastrear pedido</button>
           <button onClick={() => go('calc')}>Calculadora</button>
+          <button onClick={() => go('artigos')}>Artigos</button>
           <button onClick={() => go('faq')}>Dúvidas</button>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
@@ -2607,6 +2639,7 @@ function NovaLoja(P) {
       <div className="nv-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between' }}>
         <span>Produtos destinados exclusivamente a pesquisa.</span>
         <span style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+          <a href="#" onClick={e => { e.preventDefault(); go('artigos'); }}>Artigos</a>
           <a href="#" onClick={e => { e.preventDefault(); go('faq'); }}>Dúvidas</a>
           <a href="https://wa.me/447418333521" target="_blank" rel="noreferrer">WhatsApp</a>
           <a href="/">Versão anterior do site</a>
@@ -2647,6 +2680,20 @@ function NovaLoja(P) {
     const ep = effectivePrice(p);
     return <span className="nv-price">{nvFmt(ep)}{ep < p.price && <span className="nv-old">{nvFmt(p.price)}</span>}</span>;
   };
+
+  const arts = (articles || []).filter(a => a && a.title);
+  const article = screen === 'artigo' && pid ? arts.find(a => a.id === pid) : null;
+  const artList = list => (
+    <div className="nv-alist">
+      {list.map(a => (
+        <button key={a.id} onClick={() => go('artigo', a.id)}>
+          {a.tag && <span className="nv-kick">{a.tag}</span>}
+          <span style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.3 }}>{a.title}</span>
+          {a.subtitle && <span className="nv-desc">{a.subtitle}</span>}
+        </button>
+      ))}
+    </div>
+  );
 
   let body = null;
 
@@ -2710,6 +2757,61 @@ function NovaLoja(P) {
             );
           })}
         </section>
+        {cat === 'all' && !q.trim() && arts.length > 0 && (
+          <section className="nv-sec" style={{ marginTop: 18 }} aria-label="Artigos">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <h2 className="nv-h2">Artigos</h2>
+              {arts.length > 3 && <a href="#" onClick={e => { e.preventDefault(); go('artigos'); }} style={{ fontSize: 14, fontWeight: 600 }}>Ver todos</a>}
+            </div>
+            {artList(arts.slice(0, 3))}
+          </section>
+        )}
+      </div>
+    );
+  }
+
+  if (screen === 'artigos') {
+    body = (
+      <div className="nv-wrap nv-narrow" style={{ paddingBottom: 20 }}>
+        <Back title="Artigos" />
+        <p className="nv-sub" style={{ margin: '6px 0 16px' }}>Leituras curtas sobre os peptídeos do catálogo.</p>
+        {arts.length ? artList(arts) : <div className="nv-box">Nenhum artigo publicado ainda.</div>}
+      </div>
+    );
+  }
+
+  if (screen === 'artigo' && article) {
+    const a = article;
+    const rel = a.relatedProductId ? products.find(p => p.id === a.relatedProductId || p.name.toLowerCase().includes((a.relatedProductId || '').replace(/[0-9]/g, '').toLowerCase())) : null;
+    const others = arts.filter(x => x.id !== a.id).slice(0, 2);
+    body = (
+      <div className="nv-wrap nv-narrow" style={{ paddingBottom: 20 }}>
+        <Back title="Artigos" to="artigos" />
+        <article className="nv-art">
+          <span className="nv-kick">{[a.tag, nvReadMin(a.body) + ' min de leitura'].filter(Boolean).join(' · ')}</span>
+          <h1 className="nv-h1" style={{ fontSize: 28, lineHeight: 1.12 }}>{a.title}</h1>
+          {a.subtitle && <p style={{ color: 'var(--mu)' }}>{a.subtitle}</p>}
+          {a.date && <span style={{ fontSize: 13, color: 'var(--mu2)' }}>{a.date}</span>}
+          {nvArticleBody(a.body)}
+          {rel && (
+            <button className="nv-pay" style={{ marginTop: 6 }} onClick={() => go('produto', rel.id)}>
+              <span className="nv-sku" style={{ height: 'auto', padding: '8px', display: 'flex', alignItems: 'center' }}>{rel.sku || 'VG'}</span>
+              <span style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <span style={{ fontSize: 12, color: 'var(--mu)' }}>Produto citado</span>
+                <span style={{ fontSize: 15, fontWeight: 700 }}>{rel.name}</span>
+                {priceLine(rel)}
+              </span>
+              <span style={{ color: 'var(--ac)', display: 'flex' }}><NvIcon d={NV_ICONS.arrow} size={20} w={2} /></span>
+            </button>
+          )}
+          <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--mu2)' }}>Conteúdo informativo para pesquisa. Não substitui orientação profissional.</p>
+        </article>
+        {others.length > 0 && (
+          <section className="nv-sec">
+            <h2 className="nv-sech" style={{ fontSize: 15 }}>Leia também</h2>
+            {artList(others)}
+          </section>
+        )}
       </div>
     );
   }
@@ -2963,6 +3065,7 @@ function NovaLoja(P) {
 
   if (!body) body = (
     <div className="nv-wrap nv-narrow" style={{ paddingTop: 40, display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {screen === 'artigo' && <p className="nv-sub">Artigo não encontrado.</p>}
       {screen === 'produto' && <p className="nv-sub">{products.length ? 'Produto não encontrado. Ele pode ter saído do catálogo.' : 'Carregando produto...'}</p>}
       <button className="nv-btn2" onClick={() => go('loja')}>Ver todos os produtos</button>
     </div>
@@ -5169,7 +5272,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${bund
         products={products} categories={CATEGORIES} effectivePrice={effectivePrice} availableStock={availableStock}
         myOrders={myOrders} myTotal={myTotal} cartCount={cartCount}
         quickAdd={quickAdd} updateQtyInCart={updateQtyInCart} removeFromCart={removeFromCart} addPackToCart={addPackToCart} savePreorder={savePreorder}
-        addBundleToCart={addBundleToCart} bundleInfo={bundleInfo}
+        addBundleToCart={addBundleToCart} bundleInfo={bundleInfo} articles={articles}
         checkout={checkout} updateCheckout={updateCheckout} fetchCep={fetchCep} checkoutErrors={checkoutErrors} calcFreight={calcFreight}
         couponInput={couponInput} setCouponInput={setCouponInput} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} applyCouponCode={applyCouponCode}
         disclaimer={disclaimer} setDisclaimer={setDisclaimer} isSubmitting={isSubmitting} submitOrder={sendToWhatsApp}
