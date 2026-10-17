@@ -1,15 +1,32 @@
 # Handoff — Vanguard Peptides (17/10/2026)
 
-Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.566670e** (site principal no layout novo; /novo redireciona; Simular frete na loja nova; desconto manual; pedidos manuais e edição de itens ajustam estoque; redeem removido no código).
+Estado do projeto e o que fazer na próxima sessão. Versão no ar: ver tag `v2.xxxxxxx` no rodapé do site (última conferida: **v2.d1d85ca**).
+
+## Estado em 17/10/2026 (fim da sessão) — LEIA PRIMEIRO
+
+**No ar (produção):** `vanguardpep.com/` = layout novo (loja + admin casca nova); `/antigo/` = antigo (rollback); `/novo` redireciona para `/`; PWA instalável (ícone V real); banner do sorteio (some em 31/10/2026); combos com imagem de montagem; fotos padronizadas dos produtos também na loja nova; desconto manual; pedidos manuais e edição de itens ajustam estoque; `create-order` com combos, pontos, rate limit e checagem de estoque; `public-api` SEM `redeem` (publicada).
+
+**Mudanças no banco/Supabase feitas hoje (todas aplicadas):**
+- Migrações: `orders_bundles_points` (colunas `bundle_discount`, `bundles`, `points_used`, `points_discount`), `order_rate_limits` (+ função `order_rate_hit`, só `service_role`), `orders_manual_discount` (coluna `manual_discount`; o dono rodou o SQL).
+- `site_config`: chaves `bundles` (combos), `points_config`, `origin_cep`.
+- **Reset de dados:** pedidos entregues/extraviados, `expenses`, `import_history`, `purchase_order_caps` apagados e `stock` zerado (19 linhas = 0). **Backups (não apagar):** `arq_orders_20261017`, `arq_expenses_20261017`, `arq_import_history_20261017`, `arq_purchase_order_caps_20261017`, `arq_stock_20261017`, `arq_products_image_20261017` (endereços antigos de imagem). Ficou o pedido `enviado` de R$299.
+- `products.image_url` dos 18 SKUs (menos BA03) → `https://vanguardpep.com/assets/produtos/<sku>-v2.webp` (arquivos em `assets/produtos/`, gerados por `produto-fotos/gerar.py`; combos por `produto-fotos/gerar_combos.py` em `assets/combos/`). Os PNG grandes ficam só na máquina do dono (`produto-fotos/final/`, no .gitignore).
+- Edge Functions publicadas hoje: `create-order` (com guards.ts) e `public-api` (sem redeem).
+
+**Decisões do dono desta sessão:** perfil do cliente adiado (2 etapas, sem expor dados por CPF); `BA03` (Bac Water) sai do catálogo quando ele pedir; rótulos físicos saíram impressos com `SKU: SNAP10` por erro (as fotos usam o SKU certo do catálogo); atendente de IA/WhatsApp e página de protocolos (conteúdo próprio, com fontes primárias — NÃO copiar peptidedosages.com, que tem "all rights reserved") aprovados em conceito, ainda não iniciados.
+
+**Pendências do dono:** informar as quantidades reais de estoque (hoje tudo 0 = loja mostra esgotado, combos também); lançar as importações em andamento no admin (SKUs corretos: CU50, BA03, 2S50, MS40, TSM5; não há SKU de Retatrutide 60mg/30mg no catálogo); decidir se zera os R$299 do faturamento; fazer um pedido real no `/` novo e conferir no log do `create-order` que não aparece `rate limit indisponível` e qual cabeçalho de IP a Supabase manda; os limites do rate limit e a recusa de produto inexistente foram aceitos.
+
+**Próximos passos sugeridos:** (1) estoque real; (2) página de protocolos + calculadora de reconstituição; (3) atendente por IA no chat do site (depois WhatsApp com número dedicado; a API oficial da Meta pode reprovar esse nicho); (4) perfil do cliente etapa 1; (5) token do carrinho para fechar de vez a chamada direta à API sem reservar estoque.
 
 ## Rodada de 17/10/2026 (aprovada pelo dono) — o que mudou
 
-- **A) Desconto manual** (`a3facab`): grava em `orders.manual_discount` (coluna NOVA — **SQL a aplicar: `sql/orders_manual_discount.sql`**). Antes gravava em `discount`, que não existe. Total = subtotal − cupom − combo − pontos − desconto manual + frete (`orderTotalWith`, também ao editar itens). Sem a coluna, o admin mostra "Falta aplicar o SQL…" e não muda nada. `orderDiscounts()` lê `manual`; painel do /novo e detalhe mostram a linha.
+- **A) Desconto manual** (`a3facab`): grava em `orders.manual_discount` (coluna NOVA — SQL `sql/orders_manual_discount.sql` **já aplicado em 17/10/2026**). Antes gravava em `discount`, que não existe. Total = subtotal − cupom − combo − pontos − desconto manual + frete (`orderTotalWith`, também ao editar itens). Sem a coluna, o admin mostra "Falta aplicar o SQL…" e não muda nada. `orderDiscounts()` lê `manual`; painel do /novo e detalhe mostram a linha.
 - **B) Pedidos manuais baixam estoque** (`324d63f`): `reserveOrderStock`/`releaseOrderStock` no App (mesma RPC `decrement_stock` do carrinho, agregado por produto, só produtos com linha em `stock`). Usado em `createManualOrder` (admin) e no `?pedido` (cliente). Se faltar estoque de um item, devolve o que já reservou e não chama o create-order; se o create-order falhar (ou erro de rede), devolve com `increment_stock`. Como `decrement_stock` nunca deixa negativo, o `guards.ts` (recusa só saldo negativo) aceita. Remover pedido no admin já devolvia o estoque. Limite: erro de rede depois do servidor gravar = estoque devolvido sem querer (igual ao comportamento antigo).
 - **Editar itens do pedido ajusta o estoque** (admin antigo e /novo): `saveOrderItemsEdit` compara itens antes × depois (`stockDiffOfEdit`, só produtos com linha em `stock`, só pedidos do Supabase). Aumentos baixam com `reserveOrderStock` ANTES de gravar e voltam se a gravação falhar; reduções/remoções devolvem com `increment_stock` só DEPOIS de gravar. Mostra a prévia "Estoque ao salvar" e um `confirm` com o resumo; trava contra clique duplo (`itemsSavingRef`). Total pelo `orderTotalWith`.
 - **/novo redireciona para /** (mantém query e hash). **Simular frete** virou tela da loja nova (`#/frete`).
 - **C) Site principal no layout novo** (`9331c8e`): ver "Site principal no layout novo + ROLLBACK" abaixo.
-- **D) `redeem` removido da `public-api`** (`816c391`): no repo e em `C:Usersleonasupabaseunctionspublic-api` (idênticos). `redeemPoints` (sem uso) saiu do `index.html`; grep não acha mais chamada a `redeem`. **NÃO publicado** — o dono publica: `supabase functions deploy public-api --project-ref aumubzvdhzvtnqfzqeqd --no-verify-jwt --use-api` (em `C:Usersleona`). Depois conferir que `{action:"redeem"}` responde `Unknown action`.
+- **D) `redeem` removido da `public-api`** (`816c391`): no repo e em `C:/Users/leona/supabase/functions/public-api` (idênticos). `redeemPoints` (sem uso) saiu do `index.html`; grep não acha mais chamada a `redeem`. **Publicado em 17/10/2026** (`supabase functions deploy public-api --project-ref aumubzvdhzvtnqfzqeqd --no-verify-jwt --use-api`). Falta só conferir, num teste do dono, que `{action:"redeem"}` responde `Unknown action`.
 - Teste: build + harness injetado só no `dist/` local (verify-admin/admin-db simulados, rpc de estoque simulada, create-order simulado com opção de falha, public-api só leitura real — `snapshot/points/coupon/preorder_get` —, track simulado, me-senders/melhorenvios/qualquer outra escrita bloqueada, `window.open/confirm/alert/prompt` interceptados). Conferido em 1360 e 375px sem rolagem lateral: `/`, `/novo`, `/p/tz15`, `/p/cu50`, `/antigo/` (+ admin antigo com 14 abas), `/#/produto/<id>`, `/#/faq`, `/#/carrinho`, `/#/frete`, `/#/admin`, rastreio VG-…, portal `?preorder` (encontrado/não encontrado/concluir compra), `?pedido` (sucesso, falha, sem estoque), pedido manual do admin (sucesso/falha), desconto manual (com e sem coluna), checkout da loja nova até o WhatsApp (sem `redeem`). 23 testes do create-order passando.
 
 ## Reset de dados 17/10/2026
@@ -21,7 +38,7 @@ Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.566670e
 - Observacao: `vg-shipping-costs` (custo de frete por pedido, so local) tambem foi zerado; o frete de pedidos ainda ativos cai na estimativa do financeiro.
 - **Novo reset no futuro:** zerar as tabelas no banco e trocar `DATA_RESET_ID` por outro valor (ex.: a data `AAAAMMDD`); ajustar `DATA_RESET_KEYS` se houver chaves novas. Cada aparelho limpa uma vez na proxima abertura.
 
-## Tarefa em andamento (pedida pelo dono)
+## Migração para o layout novo (concluída; refinos do admin seguem)
 
 **Migrar todas as telas para o novo layout em `/novo`**, para ele ver como fica. Plano combinado:
 
@@ -172,10 +189,10 @@ supabase functions deploy <nome> --project-ref aumubzvdhzvtnqfzqeqd --no-verify-
 
 ## Pendências (fora a tarefa acima)
 
-1. Dono: aplicar `sql/orders_manual_discount.sql`; publicar a `public-api` sem `redeem`; fazer um pedido real no `/` novo pelo celular.
+1. Dono: fazer um pedido real no `/` novo pelo celular (conferir o log do `create-order`); informar o estoque real; lançar importações (ver "Estado em 17/10/2026").
 2. **Remetente ativo ainda com CPF fictício 18749536273** — dono precisa trocar pelo CPF real em 📮 REMETENTES.
 3. Token do sandbox do Melhor Envios (`MELHORENVIOS_SANDBOX_TOKEN`) para o modo Teste.
-4. Fotos leves / cadastrar fotos (8 de 19 produtos têm foto).
+4. ~~Fotos~~ FEITO: 18 produtos com foto padronizada (BA03 sai do catálogo).
 5. Pagamento automático: aguardando o dono dizer se o DominiPay tem API (Mercado Pago tem risco de bloqueio para esse tipo de produto).
 6. PIX: no checkout do site o PIX dá **frete grátis, não 10%** (servidor `create-order` também). Os 10% só existem no pedido manual. Dono decide se quer 10% no site.
 
