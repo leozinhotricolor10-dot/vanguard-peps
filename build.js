@@ -200,6 +200,8 @@ Sitemap: ${SITE}/sitemap.xml
 `);
   buildProductPages(dist);
   copyPwa(dist);
+  // Imagens estáticas (banner de sorteio etc.) → dist/assets
+  if (fs.existsSync(path.join(__dirname, 'assets'))) fs.cpSync(path.join(__dirname, 'assets'), path.join(DIST_DIR, 'assets'), { recursive: true });
 
   // Copiar páginas estáticas adicionais (landing de atacado servida em /atacado)
   const extraStatic = ['atacado/index.html'];

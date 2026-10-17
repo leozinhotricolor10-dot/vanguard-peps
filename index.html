@@ -2565,6 +2565,22 @@ const NOVO_CSS = `
 .nv-step i b.on{background:var(--ac);border-color:var(--ac)}
 .nv-step i u{width:2px;height:34px;background:rgba(0,229,195,.2)}
 .nv-faq button{width:100%;min-height:56px;padding:14px 0;border:none;background:none;color:var(--tx);display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-size:15px;font-weight:600;cursor:pointer}
+.nv-sorteio{position:relative;margin:12px auto 0;max-width:1068px;border-radius:16px;overflow:hidden;background:var(--bg2);border:1px solid var(--ln)}
+.nv-sorteio-img{display:block;width:100%;padding:0;border:none;background:none;cursor:pointer}
+.nv-sorteio-img img{display:block;width:100%;height:auto;aspect-ratio:2/3}
+.nv-sorteio-t{display:none}
+.nv-sorteio-x{position:absolute;top:8px;right:8px;z-index:2;width:34px;height:34px;border-radius:17px;border:1px solid rgba(255,255,255,.25);background:rgba(5,10,14,.7);color:#fff;font-size:20px;line-height:1;cursor:pointer}
+@media (min-width:760px){
+.nv-sorteio{display:grid;grid-template-columns:280px 1fr;align-items:center;gap:36px;padding:20px 48px 20px 20px;background:radial-gradient(120% 140% at 100% 0,rgba(0,229,195,.14),transparent 55%),var(--bg2)}
+.nv-sorteio-img{width:280px;border-radius:12px;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,.45)}
+.nv-sorteio-t{display:flex;flex-direction:column;align-items:flex-start;gap:12px}
+.nv-sorteio-tag{font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ac)}
+.nv-sorteio-t h2{margin:0;font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(24px,2.6vw,32px);line-height:1.1;color:var(--tx)}
+.nv-sorteio-t ul{margin:0;padding-left:18px;color:var(--mu);font-size:16px;line-height:1.6}
+.nv-sorteio-t b{color:var(--tx)}
+.nv-sorteio-t p{margin:0;font-size:13px;color:var(--mu2)}
+.nv-sorteio-t .nv-btn{width:auto;padding:0 28px}
+}
 .nv-pwa{display:flex;align-items:center;gap:10px;margin:12px auto 0;max-width:1068px;padding:10px 12px;border-radius:12px;background:var(--bg2);border:1px solid var(--ln);font-size:13px;color:var(--mu);line-height:1.4}
 .nv-pwa b{color:var(--tx)}
 .nv-pwa .nv-pwa-t{flex:1;min-width:0}
@@ -2859,6 +2875,43 @@ function NvInstallBanner() {
       <span className="nv-pwa-t">{evt ? <><b>Instale o app da Vanguard</b> na tela inicial do celular.</> : <><b>Instale o app:</b> toque em Compartilhar e depois em &quot;Adicionar à Tela de Início&quot;.</>}</span>
       {evt && <button onClick={install}>Instalar app</button>}
       <button className="nv-pwa-x" onClick={dismiss} aria-label="Dispensar">×</button>
+    </div></div>
+  );
+}
+
+// ── Banner de campanha (sorteio) — para trocar/encerrar edite só estas constantes ──
+const SORTEIO = {
+  id: 'sorteio-ghkcu-2026-10',            // muda a cada campanha (reabre o banner p/ quem fechou)
+  img: '/assets/sorteio-ghkcu.webp', w: 800, h: 1200,
+  sku: 'CU50',                            // produto aberto ao clicar
+  ate: '2026-10-31T23:59:00-03:00',       // fim da vigência (horário de Brasília)
+  alt: 'Sorteio da Vanguard Labs: 2 vials de GHK-Cu 50mg para nossos clientes. Participa quem comprou nos últimos 30 dias e quem comprar até o final do mês.',
+};
+function NvSorteio({ products, go }) {
+  const KEY = 'vg-sorteio-' + SORTEIO.id;
+  const [gone, setGone] = React.useState(() => { try { return !!localStorage.getItem(KEY); } catch (e) { return false; } });
+  let now = Date.now();
+  try { if (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) && window.__vgNow) now = +window.__vgNow; } catch (e) {}
+  if (gone || now > new Date(SORTEIO.ate).getTime()) return null;
+  const prod = products.find(p => (p.sku || '').toUpperCase() === SORTEIO.sku);
+  const open = () => { if (prod) go('produto', prod.id); };
+  const dismiss = () => { setGone(true); try { localStorage.setItem(KEY, String(Date.now())); } catch (e) {} };
+  return (
+    <div className="nv-wrap"><div className="nv-sorteio" role="region" aria-label="Sorteio de GHK-Cu 50mg">
+      <button className="nv-sorteio-x" onClick={dismiss} aria-label="Fechar banner do sorteio">×</button>
+      <button className="nv-sorteio-img" onClick={open} aria-label="Ver GHK-Cu 50mg" disabled={!prod}>
+        <img src={SORTEIO.img} width={SORTEIO.w} height={SORTEIO.h} alt={SORTEIO.alt} loading="eager" decoding="async" />
+      </button>
+      <div className="nv-sorteio-t">
+        <span className="nv-sorteio-tag">Sorteio</span>
+        <h2>2 vials de GHK-Cu 50mg para nossos clientes</h2>
+        <ul>
+          <li>Quem comprou com a gente <b>nos últimos 30 dias</b></li>
+          <li>Quem comprar <b>até o final do mês</b></li>
+        </ul>
+        <p>Participação automática, sem cadastro.</p>
+        {prod && <button className="nv-btn" onClick={open}>Ver GHK-Cu 50mg</button>}
+      </div>
     </div></div>
   );
 }
@@ -3469,6 +3522,7 @@ function NovaLoja(P) {
     <div className="nv">
       <style>{NOVO_CSS}</style>
       {header}
+      {screen === 'loja' && <NvSorteio products={products} go={go} />}
       {screen === 'loja' && <NvInstallBanner />}
       {screen === 'loja' && <div className="nv-strip"><span>PIX com <b style={{ color: 'var(--ac)' }}>frete grátis</b></span><span>Envio rápido</span><span>Pureza ≥ 99%</span></div>}
       <div role="main">{body}</div>

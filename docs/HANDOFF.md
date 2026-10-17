@@ -172,3 +172,11 @@ supabase functions deploy <nome> --project-ref aumubzvdhzvtnqfzqeqd --no-verify-
 ## Coisas que NÃO fazer
 
 - Não criar remetentes fictícios / CPFs inventados na pool de produção, não remover a trava `BLOCKED_SENDER_DOCS` / `isTestSender`, não voltar para o commit `57172ef`. O dono já pediu isso e foi recusado (falsidade ideológica em etiquetas reais). Remetentes fictícios só no modo Teste (sandbox).
+
+## Banner de campanha (sorteio) na home (out/2026)
+
+- Componente `NvSorteio` (antes de `NovaLoja` no `index.html`), só na home da loja nova (`screen === 'loja'`; não aparece em checkout/admin/telas internas nem no `/antigo/`). Não toca em pedidos, estoque ou preço.
+- **Trocar/encerrar**: editar só a constante `SORTEIO` (topo do bloco): `id` (muda a cada campanha, pois a chave de dispensa é `vg-sorteio-<id>` no localStorage), `img`/`w`/`h`, `sku` (produto aberto ao clicar), `ate` (fim da vigência, ISO com -03:00; depois disso o banner some sozinho) e `alt`. Os textos do lado direito (desktop) estão no JSX do componente. Para encerrar antes do prazo: colocar uma data passada em `ate`. Imagem nova: salvar em `assets/` (copiada para `dist/assets/` pelo `build.js`).
+- Layout: celular (<760px) mostra o pôster inteiro na largura; desktop/tablet = card com pôster de 280px à esquerda + texto e botão "Ver GHK-Cu 50mg" em HTML à direita. Botão × dispensa e lembra no localStorage (try/catch).
+- Imagem: `assets/sorteio-ghkcu.webp` (800×1200, ~114 KB, reduzida da arte original de 1024×1536).
+- Teste de vigência local: em `localhost`, definir `window.__vgNow = <timestamp>` no console e navegar dentro do app (o override é ignorado em outros hosts).
