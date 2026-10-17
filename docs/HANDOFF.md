@@ -71,11 +71,11 @@ Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfV
 - Admin usa **`admin-db`** (ações fixas list/get/insert/update/upsert/delete por tabela e coluna-chave, exige senha). Em `index.html`, `sb.from(t)` é roteado para a admin-db quando `ADMIN_PW` está definido (login).
 - Uma admin-db genérica que repetia qualquer consulta foi **recusada pelo classificador** como superfície de RCE — manter restrita.
 - `melhorenvios-proxy`: lista de rotas permitidas + senha (exceto cotação pública). Chamada sem senha não conta como tentativa de login.
-- Riscos conhecidos ainda abertos: anon pode chamar `increment_stock`/`decrement_stock`; upload anônimo no bucket `product-images`; a ação `redeem` da `public-api` ainda existe e aceita qualquer CPF (o site novo não usa mais; dá para remover depois que o cache dos clientes renovar — falta o dono aprovar); `create-order` **no ar** ainda não tem rate limit nem confere estoque — a versão com as duas travas está pronta no repo, **não publicada** (ver "Pronto e NÃO publicado" abaixo).
+- Riscos conhecidos ainda abertos: anon pode chamar `increment_stock`/`decrement_stock`; upload anônimo no bucket `product-images`; a ação `redeem` da `public-api` ainda existe e aceita qualquer CPF (o site novo não usa mais; dá para remover depois que o cache dos clientes renovar — falta o dono aprovar); `create-order` agora tem rate limit e checagem de estoque no servidor (ver "PUBLICADO" abaixo); a checagem não cobre quem chama a API direto sem reservar estoque.
 
-## Pronto e NÃO publicado: rate limit + estoque no `create-order` (17/10/2026)
+## PUBLICADO: rate limit + estoque no `create-order` (17/10/2026)
 
-Aprovado pelo dono; código, SQL e testes prontos no repo e na pasta de trabalho (`C:\Users\leona\supabase\functions\create-order`, já sincronizada). **Nada foi publicado nem aplicado em produção.**
+Aprovado pelo dono; código, SQL e testes prontos no repo e na pasta de trabalho (`C:\Users\leona\supabase\functions\create-order`, já sincronizada). **Publicado em produção em 17/10/2026:** SQL aplicado (migração `order_rate_limits`; conferido rls=true, políticas=0, anon sem EXECUTE) e função `create-order` publicada. Falta só um pedido real do dono para conferir no log que não aparece `rate limit indisponível` e que `order_rate_limits` ganha linhas (e qual cabeçalho de IP a Supabase manda).
 
 Arquivos: `supabase/functions/create-order/guards.ts` (novo, lógica pura), `index.ts` (usa o guards), `sql/create_order_guards.sql` (novo), `tests/create-order.test.ts` e `tests/create-order.handler.test.mjs` (novos).
 
