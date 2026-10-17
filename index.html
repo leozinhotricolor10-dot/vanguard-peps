@@ -1149,7 +1149,21 @@ function orderDiscounts(o) {
     coupon: Number(o.coupon_discount) || 0, couponCode: o.coupon_code || null,
     bundle: Number(o.bundle_discount) || 0, bundles: Array.isArray(o.bundles) ? o.bundles : [],
     points: Number(o.points_discount) || 0, pointsUsed: Number(o.points_used) || 0,
+    manual: Number(o.manual_discount) || 0, // desconto manual do admin (sql/orders_manual_discount.sql)
   };
+}
+// Subtotal dos itens de um pedido do admin (pedidos antigos podem não ter "subtotal" gravado)
+function orderItemsSubtotal(o, products) {
+  if (o._subtotal != null && !isNaN(parseFloat(o._subtotal))) return parseFloat(o._subtotal);
+  const items = o._items && o._items.length ? o._items : [{ peptideId: o.peptideId, qty: o.qty || 1 }];
+  return items.reduce((s, it) => { const p = products.find(x => x.id === it.peptideId); return s + (it.price || (p ? p.price : 0)) * (it.qty || 1); }, 0);
+}
+// Total = subtotal − cupom − combo − pontos − desconto manual (nunca abaixo de 0) + frete.
+// Mesma conta do create-order (itens após descontos, depois o frete).
+function orderTotalWith(subtotal, freight, d, manual) {
+  const dd = d || {};
+  const items = Math.max(0, (Number(subtotal) || 0) - (dd.coupon || 0) - (dd.bundle || 0) - (dd.points || 0) - (Number(manual) || 0));
+  return Math.round((items + (Number(freight) || 0)) * 100) / 100;
 }
 function loadBundlesCache() {
   try { const s = localStorage.getItem('vg-bundles'); return s ? parseBundlesCfg(s) : DEFAULT_BUNDLES; } catch { return DEFAULT_BUNDLES; }
@@ -3528,6 +3542,7 @@ function App() {
   const [editItems, setEditItems] = useState([]);
   const [addItemProductId, setAddItemProductId] = useState('');
   const [discountInput, setDiscountInput] = useState(null); // null = fechado, string = editando
+  const [discountSaving, setDiscountSaving] = useState(false);
   const MANUAL_ORDER_EMPTY = { name:'', cpf:'', phone:'', email:'', cep:'', rua:'', numero:'', complemento:'', bairro:'', cidade:'', estado:'', payment:'pix', notes:'', items:[] };
   const [manualOrderModal, setManualOrderModal] = useState(false);
   const [manualOrder, setManualOrder] = useState(MANUAL_ORDER_EMPTY);
@@ -7360,6 +7375,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                               <span className="nvp-lbl">Itens</span>
                               {nvaItemsText(sel).map((t, i) => <span key={i}>{t}</span>)}
                               {parseFloat(sel._freight) > 0 && <span className="nvp-mut">Frete {nvFmt(sel._freight)}</span>}
+                              {(() => { const d = sel._discounts || {}; const parts = [['Cupom', d.coupon], ['Combo', d.bundle], ['Pontos', d.points], ['Desconto manual', d.manual]].filter(([, v]) => v > 0);
+                                return parts.length ? <span className="nvp-mut">{parts.map(([l, v]) => `${l} −${nvFmt(v)}`).join(' · ')}</span> : null; })()}
                               <div className="nvp-sum"><span>Total</span><b>{nvFmt(sel._total)}</b></div>
                               <span className="nvp-mut">{nvaWhen(sel.createdAt)}{sel._payment ? ' · ' + sel._payment : ''}{sel.tracking_code ? ' · rastreio ' + sel.tracking_code : ''}</span>
                             </div>
@@ -10069,7 +10086,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                   const newSubtotal = editItems.reduce((s,it)=>{ const p2=products.find(x=>x.id===it.peptideId); return s+(it.price||(p2?p2.price:0))*(it.qty||1); },0);
                   const isPix = (orderDetail._payment||'').toLowerCase().includes('pix');
                   const newFreight = isPix ? 0 : (orderDetail._freight ?? 60);
-                  const newTotal = newSubtotal + newFreight;
+                  const newTotal = orderTotalWith(newSubtotal, newFreight, orderDetail._discounts, orderDetail._discounts && orderDetail._discounts.manual);
                   return (
                     <div style={{marginTop:10,padding:'8px 10px',background:'rgba(0,229,195,0.05)',border:'1px solid rgba(0,229,195,0.15)',borderRadius:8,fontSize:'0.78rem'}}>
                       <div style={{display:'flex',justifyContent:'space-between',color:'var(--muted)',marginBottom:3}}><span>Subtotal</span><span style={{fontFamily:"'Space Mono',monospace"}}>R$ {newSubtotal.toLocaleString('pt-BR')}</span></div>
@@ -10086,9 +10103,10 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                     const newSubtotal = editItems.reduce((s,it)=>{ const p2=products.find(x=>x.id===it.peptideId); return s+(it.price||(p2?p2.price:0))*(it.qty||1); },0);
                     const isPix = (orderDetail._payment||'').toLowerCase().includes('pix');
                     const newFreight = isPix ? 0 : (orderDetail._freight ?? 60);
-                    const newTotal = newSubtotal + newFreight;
+                    const newTotal = orderTotalWith(newSubtotal, newFreight, orderDetail._discounts, orderDetail._discounts && orderDetail._discounts.manual);
                     const updated = {...orderDetail, _items: editItems, _subtotal: newSubtotal, _freight: newFreight, _total: newTotal};
-                    if(sb) await sb.from('orders').update({ items: editItems, subtotal: newSubtotal, freight: newFreight, total: newTotal }).eq('id', orderDetail.id);
+                    if(sb) { const { error } = await sb.from('orders').update({ items: editItems, subtotal: newSubtotal, freight: newFreight, total: newTotal }).eq('id', orderDetail.id);
+                      if (error) { showToast('Erro ao salvar no servidor: ' + error.message, 'error'); return; } }
                     persistOrders(orders.map(o=>o.id===orderDetail.id?updated:o));
                     setOrderDetail(updated);
                     setEditItemsMode(false);
@@ -10113,7 +10131,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                   {orderDetail._subtotal != null && <div style={{display:'flex',justifyContent:'space-between',color:'var(--muted)'}}><span>Subtotal</span><span style={{fontFamily:"'Space Mono',monospace"}}>R$ {orderDetail._subtotal.toLocaleString('pt-BR')}</span></div>}
                   {orderDetail._freight != null && <div style={{display:'flex',justifyContent:'space-between',color:'var(--muted)'}}><span>Frete</span><span style={{fontFamily:"'Space Mono',monospace"}}>{orderDetail._freight===0?'GRÁTIS':'R$ '+orderDetail._freight.toLocaleString('pt-BR')}</span></div>}
                   {(() => { const d = orderDetail._discounts; if (!d) return null; const row = (k, label, v) => v > 0 && <div key={k} style={{display:'flex',justifyContent:'space-between',color:'#ffaa00'}}><span>{label}</span><span style={{fontFamily:"'Space Mono',monospace"}}>− R$ {v.toLocaleString('pt-BR')}</span></div>;
-                    return <>{row('c', 'Cupom ' + (d.couponCode || ''), d.coupon)}{d.bundles.length ? d.bundles.map((b, i) => row('b' + i, 'Combo ' + b.name, b.discount)) : row('b', 'Combos', d.bundle)}{row('p', `Pontos VG (${d.pointsUsed} pts)`, d.points)}</>; })()}
+                    return <>{row('c', 'Cupom ' + (d.couponCode || ''), d.coupon)}{d.bundles.length ? d.bundles.map((b, i) => row('b' + i, 'Combo ' + b.name, b.discount)) : row('b', 'Combos', d.bundle)}{row('p', `Pontos VG (${d.pointsUsed} pts)`, d.points)}{row('m', 'Desconto manual', d.manual)}</>; })()}
                   {orderDetail._total != null && <div style={{display:'flex',justifyContent:'space-between',fontWeight:700,fontSize:'0.85rem',paddingTop:4,borderTop:'1px solid var(--border)'}}><span>Total</span><span style={{fontFamily:"'Space Mono',monospace",color:'var(--accent)'}}>R$ {orderDetail._total.toLocaleString('pt-BR')}</span></div>}
                 </div>
               </>)}
@@ -10132,52 +10150,64 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
               </div>
             )}
 
-            {/* Desconto manual */}
+            {/* Desconto manual (coluna orders.manual_discount; total = subtotal − cupom − combo − pontos − manual + frete) */}
+            {(() => {
+              const dd = orderDetail._discounts || {};
+              const curManual = dd.manual || 0;
+              const subtotalNow = orderItemsSubtotal(orderDetail, products);
+              const freightNow = parseFloat(orderDetail._freight) || 0;
+              const parseDisc = () => Math.max(0, Math.round((parseFloat(String(discountInput).replace(',', '.')) || 0) * 100) / 100);
+              return (
             <div style={{background:'var(--bg2)',borderRadius:10,padding:'12px 14px',marginBottom:10}}>
-              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:discountInput!==null||orderDetail._discount?8:0}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:discountInput!==null||curManual?8:0}}>
                 <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'#ffaa00',letterSpacing:'1px'}}>🏷️ DESCONTO MANUAL</div>
-                {discountInput===null && <button onClick={()=>setDiscountInput(String(orderDetail._discount||''))}
+                {discountInput===null && <button onClick={()=>setDiscountInput(String(curManual||''))}
                   style={{background:'none',border:'none',color:'#ffaa00',fontSize:'0.62rem',cursor:'pointer',padding:0}}>
-                  {orderDetail._discount ? '✏️ editar' : '+ aplicar desconto'}
+                  {curManual ? '✏️ editar' : '+ aplicar desconto'}
                 </button>}
               </div>
               {discountInput!==null ? (
                 <div>
                   <div style={{fontSize:'0.72rem',color:'var(--muted)',marginBottom:6}}>Valor do desconto (R$)</div>
                   <div style={{display:'flex',gap:6,marginBottom:6}}>
-                    <input autoFocus type="number" min="0" value={discountInput} onChange={e=>setDiscountInput(e.target.value)}
+                    <input autoFocus type="number" min="0" step="0.01" value={discountInput} onChange={e=>setDiscountInput(e.target.value)}
                       placeholder="ex: 30"
-                      style={{flex:1,padding:'8px 10px',background:'var(--surface)',border:'1px solid rgba(255,170,0,0.4)',borderRadius:7,color:'var(--text)',fontSize:'0.85rem'}}
+                      style={{flex:1,minWidth:0,padding:'8px 10px',background:'var(--surface)',border:'1px solid rgba(255,170,0,0.4)',borderRadius:7,color:'var(--text)',fontSize:'0.85rem'}}
                       onKeyDown={e=>{ if(e.key==='Escape') setDiscountInput(null); }} />
-                    <button onClick={async ()=>{
-                      const disc = parseFloat(discountInput)||0;
-                      const base = (orderDetail._subtotal ?? orderDetail._total ?? 0);
-                      const freight = orderDetail._freight ?? 0;
-                      const newTotal = Math.max(0, base + freight - disc);
-                      const updated = {...orderDetail, _discount: disc||undefined, _total: newTotal};
-                      if(sb) await sb.from('orders').update({ discount: disc||null, total: newTotal }).eq('id', orderDetail.id);
-                      persistOrders(orders.map(o=>o.id===orderDetail.id?updated:o));
-                      setOrderDetail(updated);
-                      setDiscountInput(null);
-                      showToast(disc>0?`Desconto de R$ ${disc.toLocaleString('pt-BR')} aplicado ✓`:'Desconto removido','success');
-                    }} style={{padding:'8px 14px',background:'rgba(255,170,0,0.15)',border:'1px solid rgba(255,170,0,0.4)',borderRadius:7,color:'#ffaa00',fontWeight:700,fontSize:'0.75rem',cursor:'pointer'}}>✓</button>
+                    <button disabled={discountSaving} onClick={async ()=>{
+                      const disc = parseDisc();
+                      const newTotal = orderTotalWith(subtotalNow, freightNow, dd, disc);
+                      setDiscountSaving(true);
+                      try {
+                        if (sb && orderDetail._supabase) {
+                          const { error } = await sb.from('orders').update({ manual_discount: disc, total: newTotal }).eq('id', orderDetail.id);
+                          if (error) {
+                            const noCol = /manual_discount/i.test(error.message || '');
+                            showToast(noCol ? 'Falta aplicar o SQL sql/orders_manual_discount.sql no Supabase — desconto não salvo' : 'Erro ao salvar desconto: ' + error.message, 'error');
+                            return;
+                          }
+                        }
+                        const updated = {...orderDetail, _discounts: { ...dd, manual: disc }, _total: newTotal};
+                        persistOrders(orders.map(o=>o.id===orderDetail.id?updated:o));
+                        setOrderDetail(updated);
+                        setDiscountInput(null);
+                        showToast(disc>0?`Desconto de R$ ${disc.toLocaleString('pt-BR')} aplicado ✓`:'Desconto removido','success');
+                      } finally { setDiscountSaving(false); }
+                    }} style={{padding:'8px 14px',background:'rgba(255,170,0,0.15)',border:'1px solid rgba(255,170,0,0.4)',borderRadius:7,color:'#ffaa00',fontWeight:700,fontSize:'0.75rem',cursor:discountSaving?'wait':'pointer'}}>✓</button>
                     <button onClick={()=>setDiscountInput(null)} style={{padding:'8px 10px',background:'none',border:'1px solid var(--border)',borderRadius:7,color:'var(--muted)',fontSize:'0.75rem',cursor:'pointer'}}>✕</button>
                   </div>
-                  {(() => {
-                    const disc = parseFloat(discountInput)||0;
-                    const base = orderDetail._subtotal ?? orderDetail._total ?? 0;
-                    const freight = orderDetail._freight ?? 0;
-                    const newTotal = Math.max(0, base + freight - disc);
-                    return disc > 0 && <div style={{fontSize:'0.72rem',color:'#ffaa00'}}>Novo total: <strong>R$ {newTotal.toLocaleString('pt-BR')}</strong></div>;
-                  })()}
+                  <div style={{fontSize:'0.72rem',color:'#ffaa00'}}>Novo total: <strong>R$ {orderTotalWith(subtotalNow, freightNow, dd, parseDisc()).toLocaleString('pt-BR')}</strong>
+                    {(dd.coupon || dd.bundle || dd.points) ? <span style={{color:'var(--muted)'}}> (já descontados cupom/combo/pontos)</span> : null}</div>
                 </div>
-              ) : orderDetail._discount > 0 ? (
+              ) : curManual > 0 ? (
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:'0.82rem'}}>
                   <span style={{color:'var(--muted)'}}>Desconto aplicado</span>
-                  <span style={{fontFamily:"'Space Mono',monospace",fontWeight:700,color:'#ffaa00'}}>− R$ {orderDetail._discount.toLocaleString('pt-BR')}</span>
+                  <span style={{fontFamily:"'Space Mono',monospace",fontWeight:700,color:'#ffaa00'}}>− R$ {curManual.toLocaleString('pt-BR')}</span>
                 </div>
               ) : null}
             </div>
+              );
+            })()}
 
             {/* Pagamento + Obs */}
             <div style={{display:'grid',gridTemplateColumns: orderDetail._notes ? '1fr 1fr' : '1fr',gap:10,marginBottom:16}}>
