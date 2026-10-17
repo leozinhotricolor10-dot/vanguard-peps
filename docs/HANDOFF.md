@@ -1,6 +1,6 @@
 # Handoff — Vanguard Peptides (17/10/2026)
 
-Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.5cbc7de** (commit `d944235`).
+Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.7bdb422** (commit `7bdb422`).
 
 ## Tarefa em andamento (pedida pelo dono)
 
@@ -25,11 +25,12 @@ Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfV
 
 ## Loja /novo — combos, artigos e pontos (Passo 1, feito)
 
-- **Combos (`BUNDLES`)**: o site antigo nunca exibiu os combos (a constante existia sem uso). No `/novo` aparecem na home (rolagem lateral) só se todos os itens existem no catálogo e o preço do combo é menor que a soma dos preços atuais (`nvBundleFull`). `addBundleToCart` (App) reserva 1 de cada item numa única gravação. Ids aplicados ficam em `cartBundles` (localStorage `vg-cart-bundles`); `calcBundleDiscount` só conta um combo enquanto os itens estão no carrinho (tirou um item, o combo cai e não volta sozinho). Desconto entra no total do checkout, na barra do carrinho, na mensagem do WhatsApp e nas observações (`notes`) do pedido. Só vale com `IS_NOVO`; o site antigo não muda.
-- **Limite conhecido**: a Edge Function `create-order` não conhece combos (nem pontos) — o `total` gravado no banco é o preço cheio; o desconto fica só na mensagem do WhatsApp e em `notes`. Mesmo comportamento que os pontos já tinham.
+- **Combos**: cadastrados no admin antigo, aba **🎁 COMBOS** (criar/editar/pausar/excluir), salvos em `site_config.bundles` (texto JSON `[{id,name,desc,items,price,badge,active}]`, escrita pela admin-db com senha). App guarda em `bundles` (cache `vg-bundles`, seed `DEFAULT_BUNDLES` = os 3 combos antigos; `parseBundlesCfg` igual ao servidor). No `/novo` aparecem na home só se ativos, todos os itens existem e o preço é menor que a soma atual (`nvBundleFull`). `addBundleToCart` reserva 1 de cada item. Ids aplicados ficam em `cartBundles` (`vg-cart-bundles`); `calcBundleDiscount` só conta um combo enquanto os itens estão no carrinho. Só vale com `IS_NOVO`.
+- **Servidor valida combos e pontos (out/2026)**: `create-order` recebe `bundles: [ids]` e `points: n`; lê `site_config.bundles`/`points_config` (fallback = seed / redeem 5), confere os itens do combo no pedido com o preço do banco (`pricing.ts`, lógica pura), confere o saldo do CPF, debita os pontos com trava otimista (`eq('points', saldo lido)`) e estorna se o insert falhar. Pontos: só centenas, nunca acima do saldo (erro "Pontos insuficientes") nem do valor do pedido. Grava `bundle_discount`, `bundles`, `points_used`, `points_discount` e o `total` final (SQL `sql/orders_bundles_points.sql`, aplicado). O site **não chama mais** `public-api` `redeem` no checkout; a mensagem do WhatsApp usa os valores devolvidos pelo servidor. O detalhe do pedido no admin mostra cupom/combo/pontos (`_discounts`). Também passou a recusar `qty` não inteira/negativa.
+- **Regra de pontos**: o admin (aba CLIENTES → config) agora salva também em `site_config.points_config`; a loja lê de lá ao abrir.
 - **Artigos**: telas `artigos` (lista) e `artigo` (leitura), link no menu e rodapé, bloco com 3 artigos na home. Fonte: `articles` do App (localStorage `vg-articles`, padrão `DEFAULT_ARTICLES`; artigos editados no admin só existem no navegador do admin). Corpo renderizado por `nvArticleBody` com lista branca de tags (sem `innerHTML`).
 - **Pontos VG**: saldo via `checkPoints` ao digitar o CPF (e ao abrir o checkout com CPF salvo); opções 100/200/500/usar tudo; pontos aplicados zeram se o CPF mudar. Resgate (`redeemPoints`) acontece no `sendToWhatsApp` depois do `create-order`, como no site antigo.
-- **Teste local usado**: harness que intercepta `fetch` antes do app carregar (injetado só na cópia local de `dist/novo/index.html`): bloqueia `rpc/decrement_stock`/`increment_stock`, `functions/v1/create-order`, `public-api` `redeem`/`points` e `window.open`, e devolve estoque alto para testar produtos esgotados.
+- **Teste local usado** (repetido para combos/pontos, numa cópia `dist/t/novo/index.html` apagada depois, com `validarCPF` desligado na cópia para não digitar CPF; `verify-admin`/`admin-db` simulados para testar a aba COMBOS): harness que intercepta `fetch` antes do app carregar (injetado só na cópia local de `dist/novo/index.html`): bloqueia `rpc/decrement_stock`/`increment_stock`, `functions/v1/create-order`, `public-api` `redeem`/`points` e `window.open`, e devolve estoque alto para testar produtos esgotados.
 
 ## Build e deploy
 
@@ -51,7 +52,8 @@ Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfV
 - Admin usa **`admin-db`** (ações fixas list/get/insert/update/upsert/delete por tabela e coluna-chave, exige senha). Em `index.html`, `sb.from(t)` é roteado para a admin-db quando `ADMIN_PW` está definido (login).
 - Uma admin-db genérica que repetia qualquer consulta foi **recusada pelo classificador** como superfície de RCE — manter restrita.
 - `melhorenvios-proxy`: lista de rotas permitidas + senha (exceto cotação pública). Chamada sem senha não conta como tentativa de login.
-- Riscos conhecidos ainda abertos: anon pode chamar `increment_stock`/`decrement_stock`; upload anônimo no bucket `product-images`; resgate de pontos aceita qualquer CPF.
+- Riscos conhecidos ainda abertos: anon pode chamar `increment_stock`/`decrement_stock`; upload anônimo no bucket `product-images`; a ação `redeem` da `public-api` ainda existe e aceita qualquer CPF (o site novo não usa mais; dá para remover depois que o cache dos clientes renovar — falta o dono aprovar); `create-order` não tem rate limit nem confere estoque (o estoque é reservado pelo navegador via RPC).
+- Desconto manual no detalhe do pedido grava a coluna `discount`, que **não existe** em `orders` (bug antigo; o total muda só localmente) e recalcula o total sem os descontos de combo/pontos.
 
 ## Edge Functions (Supabase `aumubzvdhzvtnqfzqeqd`)
 
@@ -61,7 +63,7 @@ Cópia do código em `supabase/functions/` neste repo; a pasta de trabalho é `C
 supabase functions deploy <nome> --project-ref aumubzvdhzvtnqfzqeqd --no-verify-jwt --use-api
 ```
 
-`admin-db`, `public-api`, `me-senders` (pool de remetentes em bucket privado), `melhorenvios-proxy` (aceita `env: "sandbox"`), `verify-admin`, `create-order`.
+`admin-db`, `public-api`, `me-senders` (pool de remetentes em bucket privado), `melhorenvios-proxy` (aceita `env: "sandbox"`), `verify-admin`, `create-order` (`index.ts` + `pricing.ts`; a lógica de preço roda no Node 24 para teste: `node arquivo.test.ts` importando o `pricing.ts`).
 
 ## Pendências (fora a tarefa acima)
 
