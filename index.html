@@ -2674,6 +2674,13 @@ const NOVO_CSS = `
 .nv-hotname{font-size:17px;font-weight:700}
 @keyframes nv-spin{to{--nv-a:360deg}}
 @media (prefers-reduced-motion:reduce){.nv-hot{animation:none}}
+.nv-hotrow.nv-marq{scroll-snap-type:none;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;touch-action:pan-x pan-y;cursor:grab}
+.nv-hotrow.nv-marq.drag{cursor:grabbing}
+.nv-hotrow.nv-marq .nv-hot{scroll-snap-align:none;flex:0 0 min(74vw,280px);max-width:280px}
+@media (min-width:760px){
+  .nv-hotrow.nv-marq{display:flex;overflow-x:auto;padding-bottom:14px}
+  .nv-hotrow.nv-marq .nv-hot{flex:0 0 290px;max-width:290px}
+}
 @media (min-width:760px){
   .nv-hotrow{overflow:visible;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));padding-bottom:6px}
   .nv-hot{flex:none;max-width:none}
@@ -2934,6 +2941,83 @@ const NV_ICONS = {
   chev: <path d="M6 9l6 6 6-6" />,
   x: <path d="M6 6l12 12M18 6L6 18" />,
 };
+
+// Carrossel continuo "Mais vendidos": rAF mexe no scrollLeft (leve), copias aria-hidden emendam o loop.
+// Pausa: hover (mouse), toque/arraste, roda/scroll manual; retoma ~2,5s depois. reduced-motion = estatico.
+function NvMarquee({ items, render }) {
+  const ref = React.useRef(null);
+  const [reduced] = React.useState(() => { try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; } });
+  const [sets, setSets] = React.useState(3);
+  const n = items.length;
+  React.useEffect(() => {
+    if (reduced) return;
+    const calc = () => setSets(Math.max(3, Math.ceil((window.innerWidth || 1200) / (Math.max(n, 1) * 300)) + 2));
+    calc(); window.addEventListener('resize', calc);
+    return () => window.removeEventListener('resize', calc);
+  }, [reduced, n]);
+  // copias nao focaveis (aria-hidden) - roda a cada render pois os botoes podem ser recriados
+  React.useEffect(() => {
+    const el = ref.current; if (!el || reduced) return;
+    el.querySelectorAll('[data-copy="1"] button, [data-copy="1"] a, [data-copy="1"] input, [data-copy="1"] select').forEach(x => x.setAttribute('tabindex', '-1'));
+  });
+  React.useEffect(() => {
+    const el = ref.current; if (!el || reduced || n === 0) return;
+    const SPEED = 32; // px/s
+    let raf = 0, last = 0, pos = 0, setPos = -1, holdUntil = 0, hover = false, down = false, loop = 0, drag = null, moved = false;
+    const hold = (ms) => { holdUntil = Math.max(holdUntil, performance.now() + (ms || 2500)); };
+    const measure = () => {
+      const kids = el.children;
+      if (kids.length > n) loop = kids[n].offsetLeft - kids[0].offsetLeft; // largura de um conjunto (com gap)
+      if (loop > 0 && (el.scrollLeft < loop - 1)) { pos = el.scrollLeft + loop; el.scrollLeft = pos; setPos = el.scrollLeft; }
+    };
+    const wrap = (v) => { if (loop <= 0) return v; while (v >= 2 * loop) v -= loop; while (v < loop) v += loop; return v; };
+    const tick = (t) => {
+      raf = requestAnimationFrame(tick);
+      const dt = Math.min(0.05, (t - (last || t)) / 1000); last = t;
+      if (loop <= 0) { measure(); return; }
+      if (Math.abs(el.scrollLeft - setPos) > 2) { // usuario mexeu (toque/roda/arraste)
+        hold(); pos = el.scrollLeft;
+      }
+      if (hover || down || t < holdUntil || document.hidden) { pos = el.scrollLeft; setPos = el.scrollLeft; const w = wrap(pos); if (w !== pos) { pos = w; el.scrollLeft = w; setPos = el.scrollLeft; } return; }
+      pos = wrap(pos + SPEED * dt);
+      el.scrollLeft = pos; setPos = el.scrollLeft;
+    };
+    const onEnter = (e) => { if (e.pointerType === 'mouse') hover = true; };
+    const onLeave = (e) => { if (e.pointerType === 'mouse') { hover = false; hold(1500); } };
+    const onDown = (e) => {
+      if (e.pointerType === 'mouse') { if (e.button !== 0) return; drag = { x: e.clientX, s: el.scrollLeft }; moved = false; down = true; }
+      else { down = true; }
+    };
+    const onMove = (e) => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x;
+      if (Math.abs(dx) > 5) { moved = true; el.classList.add('drag'); }
+      if (moved) el.scrollLeft = drag.s - dx;
+    };
+    const onUp = () => { if (down) { down = false; hold(); } if (drag) { drag = null; el.classList.remove('drag'); } };
+    const onClickCap = (e) => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } };
+    const onWheel = () => hold();
+    const onFocusIn = () => hold(6000);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => { loop = 0; }) : null;
+    if (ro) ro.observe(el);
+    el.addEventListener('pointerenter', onEnter); el.addEventListener('pointerleave', onLeave);
+    el.addEventListener('pointerdown', onDown); el.addEventListener('wheel', onWheel, { passive: true });
+    el.addEventListener('click', onClickCap, true); el.addEventListener('focusin', onFocusIn);
+    window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp); window.addEventListener('pointercancel', onUp);
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf); if (ro) ro.disconnect();
+      el.removeEventListener('pointerenter', onEnter); el.removeEventListener('pointerleave', onLeave);
+      el.removeEventListener('pointerdown', onDown); el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('click', onClickCap, true); el.removeEventListener('focusin', onFocusIn);
+      window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); window.removeEventListener('pointercancel', onUp);
+    };
+  }, [reduced, n, sets]);
+  if (reduced) return <div className="nv-hotrow">{items.map((p, i) => render(p, i, p.id, false))}</div>;
+  const out = [];
+  for (let s = 0; s < sets; s++) items.forEach((p, i) => out.push(render(p, i, p.id + '~' + s, s > 0)));
+  return <div className="nv-hotrow nv-marq" ref={ref}>{out}</div>;
+}
 
 function NvProdImg({ p, eager, ratio, className, alt }) {
   const [bad, setBad] = React.useState(false);
@@ -3210,11 +3294,10 @@ function NovaLoja(P) {
         {cat === 'all' && !q.trim() && hot.length > 0 && (
           <section className="nv-sec nv-hotsec" style={{ marginTop: 4, marginBottom: 20 }} aria-label="Mais vendidos">
             <h2 className="nv-h2">Mais vendidos</h2>
-            <div className="nv-hotrow">
-              {hot.map((p, idx) => {
+            <NvMarquee items={hot} render={(p, idx, key, copy) => {
                 const out = availableStock(p.id) === 0;
                 return (
-                  <div key={p.id} className="nv-hot">
+                  <div key={key} className="nv-hot" {...(copy ? { 'aria-hidden': 'true', 'data-copy': '1' } : {})}>
                     <article className={'nv-hotin' + (out ? ' out' : '')}>
                       <span className="nv-hotbadge">🔥 Mais vendido</span>
                       <button className="nv-pic" onClick={() => go('produto', p.id)} aria-label={'Ver ' + p.name} tabIndex={-1}><NvProdImg p={p} eager={idx < 3} /></button>
@@ -3227,8 +3310,7 @@ function NovaLoja(P) {
                     </article>
                   </div>
                 );
-              })}
-            </div>
+              }} />
           </section>
         )}
         {cat === 'all' && !q.trim() && combos.length > 0 && (
