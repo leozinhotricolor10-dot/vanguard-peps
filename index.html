@@ -2608,6 +2608,72 @@ const NOVO_ADMIN_CSS = `
 .novo-admin .admin-action-btn:hover{border-color:rgba(0,229,195,.45);color:#00e5c3}
 .novo-admin .admin-table{background:#0a1219;border-radius:14px;border-color:rgba(0,229,195,.1)}
 .novo-admin .admin-table-header{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;color:#a9bfcb;background:#0a1219}
+.nvp-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:16px 0 20px}
+.nvp-kpis>div{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border-radius:14px;background:#0a1219;border:1px solid rgba(0,229,195,.1);min-width:0}
+.nvp-kpis span{font-size:12px;color:#a9bfcb}
+.nvp-kpis b{font-family:'Space Mono',monospace;font-size:22px;color:#e2eaf0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nvp-kpis b.nvp-c-warn{color:#ffb38f}.nvp-kpis b.nvp-c-ok{color:#00e5c3}
+.novo-admin .nvp-search input{height:42px;font-size:14px!important;background:#0f1c28!important;border-color:rgba(0,229,195,.18)!important}
+.novo-admin .nvp-filters{gap:8px!important}
+.novo-admin .nvp-filters button{height:36px;padding:0 14px!important;border-radius:18px!important;font-family:'DM Sans',sans-serif!important;font-size:13px!important;font-weight:600}
+.nvp-wrap{display:grid;grid-template-columns:minmax(0,1fr);gap:20px;align-items:start}
+/* base (celular e tablet): um card por pedido; >=1100px vira linha + painel de detalhe */
+.nvp-list{display:flex;flex-direction:column;gap:10px;min-width:0}
+.nvp-empty{padding:32px 20px;text-align:center;color:#a9bfcb;font-size:14px;border-radius:14px;background:#0a1219}
+.nvp-row{display:flex;flex-direction:column;gap:10px;padding:14px;border-radius:16px;background:#0a1219;border:1px solid rgba(0,229,195,.1);min-width:0}
+.nvp-head{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"who tot" "who st";gap:4px 10px;align-items:start;min-width:0;padding:0;border:none;background:none;color:#e2eaf0;font-family:'DM Sans',sans-serif;text-align:left;cursor:pointer}
+.nvp-head .nvp-who{grid-area:who}.nvp-head .nvp-tot{grid-area:tot;justify-self:end}.nvp-head .nvp-stc{grid-area:st;justify-self:end}
+.nvp-row .nvp-next{height:46px;border-radius:12px;font-size:14px}
+.nvp-who{display:flex;flex-direction:column;gap:2px;min-width:0}
+.nvp-who b{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nvp-who small{font-size:12px;color:#a9bfcb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nvp-who code,.nvp-ph code{font-family:'Space Mono',monospace;color:#00e5c3;font-weight:700}
+.nvp-tot{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;white-space:nowrap}
+.nvp-pill{display:inline-block;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700;white-space:nowrap}
+.nvp-st-pendente{background:rgba(255,107,53,.14);color:#ffb38f}
+.nvp-st-pago{background:rgba(0,229,195,.14);color:#5ff3dc}
+.nvp-st-enviado{background:rgba(0,168,255,.14);color:#7cc9ff}
+.nvp-st-entregue{background:rgba(169,191,203,.12);color:#c7d6de}
+.nvp-st-extraviado{background:rgba(255,80,80,.14);color:#ff8a8a}
+.nvp-acts{display:flex;flex-direction:column;gap:6px;min-width:0}
+.nvp-next{height:36px;padding:0 12px;border-radius:10px;border:1px solid rgba(0,229,195,.3);background:transparent;color:#00e5c3;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nvp-next.primary{border-color:#00e5c3;background:#00e5c3;color:#04110e}
+.nvp-next:hover{filter:brightness(1.08)}
+.nvp-sec{display:flex;flex-wrap:wrap;gap:0 14px}
+.nvp-sec button,.nvp-link{padding:2px 0;min-height:34px;border:none;background:none;color:#8fc9bf;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;text-align:left}
+.nvp-sec button:hover,.nvp-link:hover{color:#00e5c3;text-decoration:underline}
+.nvp-sec .nvp-del,.nvp-link.nvp-del{color:#d08a8a}
+.nvp-total{display:flex;justify-content:flex-end;gap:24px;padding:14px 16px;border-radius:14px;background:#0a1219;font-family:'Space Mono',monospace;font-size:13px;color:#a9bfcb}
+.nvp-total b{color:#00e5c3}
+.nvp-panel{display:none}
+@media (min-width:1100px){
+  .nvp-wrap{grid-template-columns:minmax(0,1fr) 320px}
+  .nvp-list{gap:0;border-radius:14px;border:1px solid rgba(0,229,195,.1);background:#0a1219;overflow:hidden}
+  .nvp-empty,.nvp-total{border-radius:0}
+  .nvp-total{border-top:1px solid rgba(0,229,195,.1)}
+  .nvp-row{display:grid;grid-template-columns:minmax(0,1fr) 170px;gap:12px;align-items:center;padding:10px 16px;border:none;border-top:1px solid rgba(0,229,195,.08);border-radius:0;background:none}
+  .nvp-row:first-child{border-top:none}
+  .nvp-row.on{background:rgba(0,229,195,.06)}
+  .nvp-head{grid-template-columns:minmax(0,1fr) 100px 96px;grid-template-areas:"who tot st";align-items:center;gap:12px;padding:4px 0}
+  .nvp-head .nvp-tot,.nvp-head .nvp-stc{justify-self:start}
+  .nvp-row .nvp-next{height:36px;border-radius:10px;font-size:13px}
+  .nvp-row .nvp-sec{gap:0 10px}
+  .nvp-row .nvp-sec button{min-height:24px}
+  .nvp-panel{display:flex;flex-direction:column;gap:14px;position:sticky;top:20px;padding:18px;border-radius:16px;background:#0a1219;border:1px solid rgba(0,229,195,.14);min-width:0}
+  .nvp-ph{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:16px}
+  .nvp-prog{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .nvp-prog span{height:5px;border-radius:3px;background:#1d3140}
+  .nvp-prog span.on{background:#00e5c3}
+  .nvp-sect{display:flex;flex-direction:column;gap:4px;padding-top:12px;border-top:1px solid rgba(0,229,195,.1);font-size:13px;color:#c7d6de;overflow-wrap:anywhere}
+  .nvp-sect b{font-size:15px;color:#e2eaf0}
+  .nvp-lbl{font-size:12px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#a9bfcb}
+  .nvp-mut{color:#a9bfcb;font-size:12px}
+  .nvp-sum{display:flex;justify-content:space-between;padding-top:6px;font-size:15px;font-weight:700;color:#e2eaf0}
+  .nvp-sum b{font-family:'Space Mono',monospace}
+  .nvp-pacts{gap:8px}
+  .nvp-pacts .nvp-next{height:42px;font-size:14px}
+  .nvp-pacts .nvp-next.primary{height:46px}
+}
 .nva-inner{display:flex;gap:4px;margin:16px 0 18px;padding:4px;border-radius:12px;background:#0a1219;border:1px solid rgba(0,229,195,.12);width:max-content;max-width:100%}
 .nva-inner button{height:38px;padding:0 18px;border-radius:9px;border:none;background:transparent;color:#a9bfcb;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
 .nva-inner button:hover{color:#e2eaf0}
@@ -2615,6 +2681,9 @@ const NOVO_ADMIN_CSS = `
 @media (max-width:759px){
   .nva-inner{width:auto;margin:0 0 14px}
   .nva-inner button{flex:1}
+  .nvp-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 14px}
+  .nvp-kpis>div{padding:10px 12px;border-radius:12px}
+  .nvp-kpis b{font-size:18px}
   .nva-side{display:none}
   .novo-admin>.app{padding:0}
   .novo-admin>.app>main{padding:14px 16px 96px;width:100%;max-width:100%}
@@ -3634,6 +3703,7 @@ function App() {
   const [disclaimer, setDisclaimer] = useState(false);
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
   const [nvaSec, setNvaSec] = useState('pedidos'); // item do menu do admin no /novo (Etiquetas = Pedidos filtrado)
+  const [nvaSelOrder, setNvaSelOrder] = useState(null); // pedido aberto no painel lateral (Pedidos no /novo, desktop largo)
   const [adminSearch, setAdminSearch] = useState('');
   const [adminPage, setAdminPage] = useState(1);
   const [groupByClient, setGroupByClient] = useState(false);
@@ -5543,6 +5613,64 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
     setAdminTab(it.tab);
     window.scrollTo(0, 0);
   }
+  // ── Pedidos no /novo: próximo passo de cada pedido ──
+  // Só chama as funções que o admin antigo já usa (cycleStatus, gerarEtiqueta, modal PIX,
+  // sendTrackingWhatsApp, adminRemove); a única coisa nova é a confirmação antes de agir.
+  const NVA_ST = { pendente: 'Aguardando', pago: 'Pago', enviado: 'Enviado', entregue: 'Entregue', extraviado: 'Extraviado' };
+  const NVA_NEXT = { pendente: 'pago', pago: 'enviado', enviado: 'entregue' };
+  function nvaAdvance(order) {
+    const next = NVA_NEXT[order.status || 'pendente'];
+    if (!next) return;
+    const wa = order._phone ? '\n\nAbre o WhatsApp do cliente com a mensagem automática.' : '';
+    if (!window.confirm(`${order._code || '#' + order.id} · ${order.buyerName || 'Cliente'}\n\nMarcar como ${NVA_ST[next].toUpperCase()}?${wa}`)) return;
+    cycleStatus(order.id);
+  }
+  function nvaWhats(order) {
+    const digits = (order._phone || '').replace(/\D/g, '');
+    const intl = digits.startsWith('55') ? digits : '55' + digits;
+    window.open(`https://wa.me/${intl}`, '_blank');
+  }
+  function nvaRemove(order) {
+    if (!window.confirm(`Remover o pedido ${order._code || '#' + order.id} (${order.buyerName || 'Cliente'})?\n\nO estoque dos itens volta para a loja.`)) return;
+    if (nvaSelOrder === order.id) setNvaSelOrder(null);
+    adminRemove(order.id);
+  }
+  function nvaSteps(order) {
+    const st = order.status || 'pendente';
+    const sec = [];
+    let main;
+    if (st === 'pendente') {
+      main = { label: 'Marcar como pago', run: () => nvaAdvance(order), primary: true };
+      sec.push({ label: 'Cobrar PIX', run: () => { setPixCode(''); setPixModal(order); } });
+    } else if (st === 'pago' && !order.label_url) {
+      main = { label: 'Gerar etiqueta', run: () => gerarEtiqueta(order), primary: true };
+      sec.push({ label: 'Marcar como enviado', run: () => nvaAdvance(order) });
+    } else if (st === 'pago') {
+      main = { label: 'Marcar como enviado', run: () => nvaAdvance(order), primary: true };
+      sec.push({ label: 'Reimprimir etiqueta', run: () => gerarEtiqueta(order) });
+    } else if (st === 'enviado') {
+      main = { label: 'Marcar como entregue', run: () => nvaAdvance(order), primary: true };
+    } else {
+      main = { label: 'Ver detalhes', run: () => setOrderDetail(order), primary: false };
+    }
+    if (order.tracking_code) sec.push({ label: 'Enviar rastreio', run: () => sendTrackingWhatsApp(order) });
+    if (order._phone) sec.push({ label: 'WhatsApp', run: () => nvaWhats(order) });
+    return { main, sec };
+  }
+  function nvaWhen(iso) {
+    const d = iso ? new Date(iso) : null;
+    if (!d || isNaN(d)) return '';
+    const t = new Date();
+    const hm = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    if (d.toDateString() === t.toDateString()) return 'hoje ' + hm;
+    const y = new Date(t); y.setDate(t.getDate() - 1);
+    if (d.toDateString() === y.toDateString()) return 'ontem ' + hm;
+    return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  }
+  function nvaItemsText(order) {
+    const items = order._items && order._items.length > 0 ? order._items : [{ peptideId: order.peptideId, qty: order.qty || 1 }];
+    return items.map(it => { const p2 = products.find(x => x.id === it.peptideId); return `${it.qty || 1}× ${p2 ? p2.name : (it.name || it.peptideId || '—')}`; });
+  }
   return (
     <div className={novoActive ? 'novo-mode' : novoAdmin ? 'novo-admin' : ''}>
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
@@ -6899,7 +7027,19 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
 
             {novoAdmin && <NovaAdminSub active={nvaActive} onPick={nvaPick} badges={nvaBadges} />}
             {novoAdmin && <NovaAdminInnerTabs active={nvaActive} adminTab={adminTab} setAdminTab={setAdminTab} />}
-            {(!novoAdmin || adminTab === 'pedidos') && <div className="admin-grid" style={{marginBottom:24,marginTop:novoAdmin?16:0}}>
+            {novoAdmin && adminTab === 'pedidos' && (() => {
+              const ao = sb ? orders.filter(o => o._supabase) : orders;
+              const n = s => ao.filter(o => (o.status || 'pendente') === s).length;
+              return (
+                <div className="nvp-kpis">
+                  <div><span>Aguardando pagamento</span><b className="nvp-c-warn">{n('pendente')}</b></div>
+                  <div><span>Pagos para enviar</span><b className="nvp-c-ok">{n('pago')}</b></div>
+                  <div><span>Em trânsito</span><b>{n('enviado')}</b></div>
+                  <div><span>Receita bruta</span><b>R$ {totalRevenue.toLocaleString('pt-BR')}</b></div>
+                </div>
+              );
+            })()}
+            {!novoAdmin && <div className="admin-grid" style={{marginBottom:24}}>
               <div className="admin-stat"><div className="admin-stat-label">Compradores</div><div className="admin-stat-value">{totalBuyers}</div></div>
               <div className="admin-stat"><div className="admin-stat-label">Total unidades</div><div className="admin-stat-value">{totalUnits}</div></div>
               <div className="admin-stat"><div className="admin-stat-label">Receita bruta</div><div className="admin-stat-value">R$ {totalRevenue.toLocaleString("pt-BR")}</div></div>
@@ -7001,7 +7141,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                 );
                 return (
                 <div>
-                  <div style={{position:'relative',marginBottom:12}}>
+                  <div className="nvp-search" style={{position:'relative',marginBottom:12}}>
                     <span style={{position:'absolute',left:12,top:'50%',transform:'translateY(-50%)',color:'var(--muted)',fontSize:'0.85rem',pointerEvents:'none'}}>🔍</span>
                     <input
                       type="text"
@@ -7012,7 +7152,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                     />
                     {adminSearch && <button onClick={()=>{ setAdminSearch(''); setAdminPage(1); }} style={{position:'absolute',right:10,top:'50%',transform:'translateY(-50%)',background:'transparent',border:'none',color:'var(--muted)',cursor:'pointer',fontSize:'0.9rem',lineHeight:1}}>✕</button>}
                   </div>
-                  <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
+                  <div className="nvp-filters" style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
                     {[
                       {id:'all',label:'Todos',count:adminOrders.length},
                       {id:'pendente',label:'🟡 Pendente',count:statusCounts.pendente},
@@ -7157,6 +7297,84 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                   const safePage = Math.min(adminPage, totalPages);
                   const pagedOrders = filteredOrders.slice((safePage-1)*ADMIN_PAGE_SIZE, safePage*ADMIN_PAGE_SIZE);
                   return (<>
+                {novoAdmin ? (() => {
+                  // /novo: cards no celular, linhas + painel de detalhe no desktop largo
+                  const sel = filteredOrders.find(o => o.id === nvaSelOrder) || pagedOrders[0] || null;
+                  const pick = order => {
+                    if (window.matchMedia && window.matchMedia('(min-width:1100px)').matches) setNvaSelOrder(order.id);
+                    else setOrderDetail(order);
+                  };
+                  const pill = order => { const st = order.status || 'pendente'; return <span className={'nvp-pill nvp-st-' + st}>{NVA_ST[st] || st}</span>; };
+                  return (
+                    <div className="nvp-wrap">
+                      <div className="nvp-list">
+                        {pagedOrders.length === 0 && (
+                          <div className="nvp-empty">{adminSearch ? `Nenhum pedido encontrado para "${adminSearch}"` : 'Nenhum pedido nesta categoria'}</div>
+                        )}
+                        {pagedOrders.map(order => {
+                          const { main, sec } = nvaSteps(order);
+                          const items = nvaItemsText(order);
+                          const tot = parseFloat(order._total) || 0;
+                          return (
+                            <div key={order.id} className={'nvp-row' + (sel && sel.id === order.id ? ' on' : '')}>
+                              <button className="nvp-head" onClick={() => pick(order)} aria-label={`Abrir pedido ${order._code || order.id} de ${order.buyerName || 'cliente'}`}>
+                                <span className="nvp-who">
+                                  <b>{order.buyerName || 'Cliente'}</b>
+                                  <small><code>{order._code || '#' + order.id}</code> · {nvaWhen(order.createdAt)}</small>
+                                  <small className="nvp-items">{items.join(' · ')}</small>
+                                </span>
+                                <span className="nvp-tot">{nvFmt(tot)}</span>
+                                <span className="nvp-stc">{pill(order)}</span>
+                              </button>
+                              <div className="nvp-acts">
+                                <button className={'nvp-next' + (main.primary ? ' primary' : '')} onClick={main.run}>{main.label}</button>
+                                <div className="nvp-sec">
+                                  {sec.map(s => <button key={s.label} onClick={s.run}>{s.label}</button>)}
+                                  <button className="nvp-del" onClick={() => nvaRemove(order)}>Remover</button>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div className="nvp-total"><span>Total geral</span><b>R$ {totalRevenue.toLocaleString('pt-BR')}</b></div>
+                      </div>
+                      {sel && (() => {
+                        const { main, sec } = nvaSteps(sel);
+                        const st = sel.status || 'pendente';
+                        const stepIdx = ['pendente', 'pago', 'enviado', 'entregue'].indexOf(st);
+                        const a = sel._address || {};
+                        const line1 = [a.rua, a.numero, a.complemento].filter(Boolean).join(', ') + (a.bairro ? ' — ' + a.bairro : '');
+                        const line2 = [a.cidade && (a.cidade + (a.estado ? '/' + a.estado : '')), a.cep].filter(Boolean).join(' · ');
+                        return (
+                          <aside className="nvp-panel" aria-label="Detalhes do pedido">
+                            <div className="nvp-ph"><code>{sel._code || '#' + sel.id}</code>{pill(sel)}</div>
+                            {stepIdx >= 0 && <div className="nvp-prog" aria-hidden="true">{[0, 1, 2, 3].map(i => <span key={i} className={i <= stepIdx ? 'on' : ''} />)}</div>}
+                            <div className="nvp-sect">
+                              <span className="nvp-lbl">Cliente</span>
+                              <b>{sel.buyerName || 'Cliente'}</b>
+                              {line1.trim() && <span>{line1}</span>}
+                              {line2 && <span>{line2}</span>}
+                              {(sel._email || sel._phone) && <span className="nvp-mut">{[sel._email, sel._phone].filter(Boolean).join(' · ')}</span>}
+                            </div>
+                            <div className="nvp-sect">
+                              <span className="nvp-lbl">Itens</span>
+                              {nvaItemsText(sel).map((t, i) => <span key={i}>{t}</span>)}
+                              {parseFloat(sel._freight) > 0 && <span className="nvp-mut">Frete {nvFmt(sel._freight)}</span>}
+                              <div className="nvp-sum"><span>Total</span><b>{nvFmt(sel._total)}</b></div>
+                              <span className="nvp-mut">{nvaWhen(sel.createdAt)}{sel._payment ? ' · ' + sel._payment : ''}{sel.tracking_code ? ' · rastreio ' + sel.tracking_code : ''}</span>
+                            </div>
+                            <div className="nvp-sect nvp-pacts">
+                              <button className={'nvp-next' + (main.primary ? ' primary' : '')} onClick={main.run}>{main.label}</button>
+                              {sec.map(s => <button key={s.label} className="nvp-next" onClick={s.run}>{s.label}</button>)}
+                              <button className="nvp-link" onClick={() => setOrderDetail(sel)}>Abrir detalhe completo</button>
+                              <button className="nvp-link nvp-del" onClick={() => nvaRemove(sel)}>Remover pedido</button>
+                            </div>
+                          </aside>
+                        );
+                      })()}
+                    </div>
+                  );
+                })() : (
                 <div className="admin-table">
                   <div className="admin-table-header">
                     <span>Produto</span>
@@ -7228,6 +7446,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                     <span style={{color:"var(--accent)",fontWeight:700}}>R$ {totalRevenue.toLocaleString("pt-BR")}</span>
                   </div>
                 </div>
+                )}
                 {totalPages > 1 && (
                   <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginTop:14}}>
                     <button onClick={()=>setAdminPage(p=>Math.max(1,p-1))} disabled={safePage===1}
