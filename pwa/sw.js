@@ -12,7 +12,7 @@
  */
 const BUILD_ID = '__BUILD_ID__';
 const CACHE = 'vg-static-' + BUILD_ID;
-const STATIC = ['/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png', '/apple-touch-icon.png'];
+const STATIC = ['/manifest.webmanifest', '/icon-192.png', '/icon-512.png', '/icon-maskable-512.png', '/apple-touch-icon.png', '/favicon-48.png'];
 
 const OFFLINE_HTML = '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"/>' +
   '<meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#050a0e"/>' +

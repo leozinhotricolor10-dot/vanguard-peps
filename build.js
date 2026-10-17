@@ -236,7 +236,7 @@ Sitemap: ${SITE}/sitemap.xml
 function copyPwa(dist) {
   const crypto = require('crypto');
   const PWA_DIR = path.join(__dirname, 'pwa');
-  const files = ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
+  const files = ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png', 'favicon-48.png'];
   const h = crypto.createHash('sha1').update(dist);
   const swSrc = fs.readFileSync(path.join(PWA_DIR, 'sw.js'), 'utf-8');
   h.update(swSrc);
