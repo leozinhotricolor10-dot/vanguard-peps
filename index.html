@@ -2380,6 +2380,28 @@ const nvSlugOf = p => String(p.sku || p.id).toLowerCase();
 const nvStateFromUrl = () => /^\/p\//.test(window.location.pathname)
   ? { s: 'produto', pid: decodeURIComponent(window.location.pathname.split('/')[2] || '').toLowerCase() } : {};
 
+// Combos (BUNDLES): o preço "cheio" é a soma dos preços atuais; o desconto do combo
+// só vale enquanto todos os itens estiverem no carrinho (1 de cada por combo aplicado).
+function nvBundleFull(b, products, effectivePrice) {
+  const ps = b.items.map(id => products.find(p => p.id === id));
+  if (ps.some(p => !p)) return null;
+  return ps.reduce((s, p) => s + effectivePrice(p), 0);
+}
+function calcBundleDiscount(bundleIds, cart, products, effectivePrice) {
+  const have = {};
+  cart.forEach(o => { if (!o._packId) have[o.peptideId] = (have[o.peptideId] || 0) + (o.qty || 0); });
+  const applied = [];
+  for (const id of bundleIds || []) {
+    const b = BUNDLES.find(x => x.id === id);
+    if (!b || !b.items.every(i => (have[i] || 0) >= 1)) continue;
+    const full = nvBundleFull(b, products, effectivePrice);
+    if (full === null) continue;
+    b.items.forEach(i => { have[i]--; });
+    applied.push({ id: b.id, name: b.name, discount: Math.max(0, full - b.price) });
+  }
+  return { total: applied.reduce((s, x) => s + x.discount, 0), applied };
+}
+
 const NOVO_CSS = `
 .novo-mode>nav,.novo-mode>.hero-banner,.novo-mode>.app,.novo-mode>.site-footer,.novo-mode>.mobile-bottom-nav{display:none!important}
 .nv{--bg:#050a0e;--bg2:#0a1219;--bg3:#0f1c28;--ac:#00e5c3;--tx:#e2eaf0;--mu:#a9bfcb;--mu2:#7d9aa8;--ln:rgba(0,229,195,.12);--warn:#ffc46b;--err:#ff9f80;
@@ -2458,6 +2480,11 @@ const NOVO_CSS = `
 .nv-step i u{width:2px;height:34px;background:rgba(0,229,195,.2)}
 .nv-faq button{width:100%;min-height:56px;padding:14px 0;border:none;background:none;color:var(--tx);display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-size:15px;font-weight:600;cursor:pointer}
 .nv-foot{border-top:1px solid var(--ln);margin-top:40px;padding:24px 0 140px;font-size:13px;color:var(--mu)}
+.nv-h2{margin:0;font-family:'Syne',sans-serif;font-weight:700;font-size:20px}
+.nv-combos{display:flex;gap:12px;overflow-x:auto;margin:0 -16px;padding:0 16px 6px;scroll-snap-type:x mandatory;scrollbar-width:none}
+.nv-combo{flex:0 0 270px;scroll-snap-align:start;padding:16px;border-radius:18px;background:var(--bg2);border:1px solid rgba(0,229,195,.18);display:flex;flex-direction:column;gap:10px}
+.nv-pill{align-self:flex-start;padding:4px 8px;border-radius:6px;background:rgba(0,229,195,.14);color:#5ff3dc;font-size:11px;font-weight:700}
+.nv-sku{height:30px;padding:0 8px;border-radius:8px;border:none;background:var(--bg3);font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--ac);cursor:pointer}
 .nv-sheet{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
 .nv-sheet>div{width:100%;max-width:520px;max-height:92vh;overflow:auto;background:var(--bg);border-radius:22px 22px 0 0;border:1px solid var(--ln);padding:20px 16px 24px;display:flex;flex-direction:column;gap:14px}
 @media (min-width:760px){
@@ -2487,6 +2514,7 @@ const NV_ICONS = {
 function NovaLoja(P) {
   const { products, categories, effectivePrice, availableStock, myOrders, myTotal, cartCount,
     quickAdd, updateQtyInCart, removeFromCart, addPackToCart, savePreorder,
+    addBundleToCart, bundleInfo,
     checkout, updateCheckout, fetchCep, checkoutErrors, calcFreight,
     couponInput, setCouponInput, appliedCoupon, setAppliedCoupon, applyCouponCode,
     disclaimer, setDisclaimer, isSubmitting, submitOrder, orderSuccessCode, setOrderSuccessCode,
@@ -2530,7 +2558,15 @@ function NovaLoja(P) {
   const freightRaw = calcFreight(checkout.estado, myTotal);
   const freight = isPix ? { value: 0, label: 'Grátis' } : { ...freightRaw, label: freightRaw.value ? nvFmt(freightRaw.value) : 'Grátis' };
   const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round(myTotal * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal)) : 0;
-  const totalFinal = myTotal - couponDiscount + freight.value;
+  const bundleDiscount = (bundleInfo && bundleInfo.total) || 0;
+  const totalFinal = myTotal - couponDiscount - bundleDiscount + freight.value;
+  // Combos exibíveis: todos os itens no catálogo e preço do combo abaixo da soma atual
+  const combos = BUNDLES.map(b => {
+    const full = nvBundleFull(b, products, effectivePrice);
+    if (full === null || full <= b.price) return null;
+    const items = b.items.map(id => products.find(p => p.id === id));
+    return { ...b, full, prods: items, out: items.some(p => availableStock(p.id) === 0) };
+  }).filter(Boolean);
 
   const Back = ({ title, to = 'loja' }) => (
     <div className="nv-back">
@@ -2585,7 +2621,7 @@ function NovaLoja(P) {
       <button className="nv-barbtn" onClick={() => go('checkout')}>
         <span style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2, textAlign: 'left' }}>
           <span style={{ fontSize: 12, fontWeight: 600 }}>{cartCount} {cartCount === 1 ? 'item' : 'itens'}</span>
-          <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 17 }}>{nvFmt(myTotal)}</span>
+          <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 17 }}>{nvFmt(myTotal - bundleDiscount)}</span>
         </span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>Finalizar <NvIcon d={NV_ICONS.arrow} size={18} w={2.4} /></span>
       </button>
@@ -2630,6 +2666,30 @@ function NovaLoja(P) {
         <div role="navigation" className="nv-chips" aria-label="Categorias">
           {categories.map(c => <button key={c.id} className={'nv-chip' + (cat === c.id ? ' on' : '')} aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>{c.id === 'all' ? 'Todos' : c.name}</button>)}
         </div>
+        {cat === 'all' && !q.trim() && combos.length > 0 && (
+          <section className="nv-sec" style={{ marginTop: 4, marginBottom: 18 }} aria-label="Combos">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+              <h2 className="nv-h2">Combos</h2>
+              <span style={{ fontSize: 13, color: 'var(--mu)' }}>{combos.length > 1 ? 'arraste para o lado' : ''}</span>
+            </div>
+            <div className="nv-combos">
+              {combos.map(b => (
+                <article key={b.id} className="nv-combo">
+                  <span className="nv-pill">Economize {nvFmt(b.full - b.price)}</span>
+                  <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{b.name}</h3>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                    {b.prods.map(p => <button key={p.id} className="nv-sku" onClick={() => go('produto', p.id)}>{p.sku || p.name}</button>)}
+                  </div>
+                  <span style={{ fontSize: 13, lineHeight: 1.4, color: 'var(--mu)' }}>{b.desc}</span>
+                  <span className="nv-price" style={{ fontSize: 18 }}>{nvFmt(b.price)}<span className="nv-old">{nvFmt(b.full)}</span></span>
+                  {b.out
+                    ? <button className="nv-btn2" style={{ height: 46, marginTop: 'auto', borderColor: 'rgba(255,196,107,.5)', color: 'var(--warn)', cursor: 'default' }} disabled>Item esgotado</button>
+                    : <button className="nv-btn" style={{ height: 46, fontSize: 14, marginTop: 'auto' }} onClick={() => addBundleToCart(b)}>Adicionar combo</button>}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
         <section className="nv-grid" aria-label="Produtos">
           {visible.length === 0 && <div className="nv-box" style={{ gridColumn: '1/-1' }}>
             <div style={{ fontWeight: 600, marginBottom: 6 }}>Nada encontrado para "{q}".</div>
@@ -2727,6 +2787,15 @@ function NovaLoja(P) {
                 </div>
               );
             })}
+            {Object.values((bundleInfo ? bundleInfo.applied : []).filter(b => b.discount > 0).reduce((acc, b) => {
+              acc[b.id] = acc[b.id] ? { ...acc[b.id], n: acc[b.id].n + 1, discount: acc[b.id].discount + b.discount } : { ...b, n: 1 };
+              return acc;
+            }, {})).map(b => (
+              <div key={b.id} className="nv-line" style={{ borderTop: '1px solid var(--ln)', marginTop: 4, paddingTop: 10 }}>
+                <span style={{ flex: 1, minWidth: 0, color: 'var(--ac)' }}>{b.n > 1 ? b.n + '× ' : ''}Combo {b.name}</span>
+                <b style={{ fontFamily: "'Space Mono',monospace", fontWeight: 400, color: 'var(--ac)' }}>− {nvFmt(b.discount)}</b>
+              </div>
+            ))}
           </section>
 
           <section className="nv-sec">
@@ -2789,6 +2858,7 @@ function NovaLoja(P) {
 
           <section className="nv-sec">
             <div className="nv-row"><span>Subtotal</span><b>{nvFmt(myTotal)}</b></div>
+            {bundleDiscount > 0 && <div className="nv-row"><span>Combos</span><b style={{ color: 'var(--ac)' }}>− {nvFmt(bundleDiscount)}</b></div>}
             {couponDiscount > 0 && <div className="nv-row"><span>Cupom</span><b style={{ color: 'var(--ac)' }}>− {nvFmt(couponDiscount)}</b></div>}
             <div className="nv-row"><span>Frete</span><b>{checkout.pagamento ? freight.label : '—'}</b></div>
             <div className="nv-total"><span style={{ fontSize: 16, fontWeight: 700 }}>Total</span><span style={{ fontFamily: "'Space Mono',monospace", fontSize: 22, fontWeight: 700 }}>{nvFmt(totalFinal)}</span></div>
@@ -3231,6 +3301,9 @@ function App() {
   const [meForm, setMeForm] = useState({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' });
   const [customers, setCustomers] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-customers')||'[]'); } catch { return []; } });
   const [appliedPoints, setAppliedPoints] = useState(0);
+  // Combos adicionados pelo /novo (ids de BUNDLES); desconto calculado em bundleInfo
+  const [cartBundles, setCartBundlesState] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-cart-bundles') || '[]'); } catch { return []; } });
+  function setCartBundles(ids) { setCartBundlesState(ids); try { localStorage.setItem('vg-cart-bundles', JSON.stringify(ids)); } catch {} }
   const [pointsBalance, setPointsBalance] = useState(null); // null | {cpf,points,...}
   const [pointsConfig, setPointsConfig] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-points-config')||'null') || { rate: 1, redeem: 5 }; } catch { return { rate: 1, redeem: 5 }; } });
   const [pixModal, setPixModal] = useState(null); // order | null
@@ -4090,7 +4163,9 @@ function App() {
       const freight = isPix ? { value: 0, label: 'Frete grátis', reason: 'Frete grátis no PIX' } : freightRaw;
       const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round(myTotal * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal)) : 0;
       const pointsDiscount = Math.floor(appliedPoints / 100) * (pointsConfig.redeem || 5);
-      const totalFinal = myTotal - couponDiscount - pointsDiscount + freight.value;
+      const bundleDiscount = bundleInfo.total;
+      const bundleNote = bundleInfo.applied.filter(b => b.discount > 0).map(b => `Combo ${b.name}: -R$ ${b.discount.toLocaleString('pt-BR')}`).join(' | ');
+      const totalFinal = myTotal - couponDiscount - bundleDiscount - pointsDiscount + freight.value;
       const itens = myOrders.map(o => {
         const p = products.find(x => x.id === o.peptideId);
         if (!p) return `• [produto removido] ×${o.qty}`;
@@ -4117,7 +4192,7 @@ ${itens}
 
 💰 *Resumo*
 Subtotal: R$ ${myTotal.toLocaleString('pt-BR')}
-Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${couponDiscount > 0 ? '\n🏷️ Cupom '+appliedCoupon.code+': -R$ '+couponDiscount.toLocaleString('pt-BR') : ''}${pointsDiscount > 0 ? '\n⭐ Pontos VG ('+appliedPoints+' pts): -R$ '+pointsDiscount.toLocaleString('pt-BR') : ''}
+Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${bundleDiscount > 0 ? '\n🎁 ' + bundleNote.split(' | ').join('\n🎁 ') : ''}${couponDiscount > 0 ? '\n🏷️ Cupom '+appliedCoupon.code+': -R$ '+couponDiscount.toLocaleString('pt-BR') : ''}${pointsDiscount > 0 ? '\n⭐ Pontos VG ('+appliedPoints+' pts): -R$ '+pointsDiscount.toLocaleString('pt-BR') : ''}
 *Total: R$ ${totalFinal.toLocaleString('pt-BR')}*${checkout.observacoes ? '\n\n📝 *Obs:* ' + checkout.observacoes : ''}`;
 
       // Salvar pedido via Edge Function (preços validados server-side)
@@ -4141,7 +4216,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
               items: orderItems,
               payment: checkout.pagamento,
               coupon_code: appliedCoupon ? appliedCoupon.code : null,
-              notes: checkout.observacoes,
+              notes: [checkout.observacoes, bundleNote].filter(Boolean).join('\n') || null,
             }),
           });
           const createData = await createRes.json();
@@ -4173,6 +4248,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
       setCouponInput('');
       setAppliedPoints(0);
       setPointsBalance(null);
+      setCartBundles([]);
       if (orderCode) setOrderSuccessCode(orderCode);
       setView("catalog");
     } finally {
@@ -4699,6 +4775,50 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
   const myOrders = useMemo(() => orders.filter(o => !o._supabase && (o.buyerName || '').toLowerCase() === myName.toLowerCase()), [orders, myName]);
   const myTotal  = useMemo(() => myOrders.reduce((s, o) => { const p = products.find(x => x.id === o.peptideId); const unitPrice = o._packPrice !== undefined ? o._packPrice : effectivePrice(p); return s + (o.qty||0) * unitPrice; }, 0), [myOrders, productPromo]);
   const cartCount = myOrders.reduce((s, o) => s + (o.qty || 0), 0);
+  // Desconto de combo só no /novo (o site antigo não mostra combos)
+  const bundleInfo = useMemo(() => IS_NOVO ? calcBundleDiscount(cartBundles, myOrders, products, effectivePrice) : { total: 0, applied: [] }, [cartBundles, myOrders, products, productPromo]);
+  React.useEffect(() => {
+    // Combo cujo item saiu do carrinho deixa de valer (não volta sozinho)
+    if (IS_NOVO && bundleInfo.applied.length !== cartBundles.length) setCartBundles(bundleInfo.applied.map(b => b.id));
+  }, [bundleInfo]);
+
+  // Adiciona 1 de cada item do combo numa única gravação do carrinho
+  async function addBundleToCart(bundle) {
+    let name = myName.trim();
+    if (!name) { name = (checkout.nomeCompleto || '').trim() || 'Cliente'; saveName(name); }
+    const items = bundle.items.map(id => products.find(p => p.id === id));
+    if (items.some(p => !p)) { showToast('Combo indisponível no momento', 'error'); return; }
+    const mine = o => !o._supabase && !o._packId && (o.buyerName || '').toLowerCase() === name.toLowerCase();
+    for (const p of items) {
+      const avail = availableStock(p.id);
+      if (avail !== null && avail <= 0) { showToast(`${p.name} esgotado — combo indisponível`, 'error'); return; }
+    }
+    let newStock = { ...stock };
+    const done = [];
+    for (const p of items) {
+      if (sb && stock[p.id] != null) {
+        const { data: q, error } = await sb.rpc('decrement_stock', { p_product_id: p.id, p_qty: 1 });
+        if (error || q === -1) {
+          // devolve o que já foi reservado deste combo
+          for (const d of done) { const { data: back } = await sb.rpc('increment_stock', { p_product_id: d, p_qty: 1 }); if (back != null) newStock[d] = back; }
+          localStorage.setItem('vg-stock', JSON.stringify(newStock)); setStock(newStock);
+          showToast(`Estoque insuficiente de ${p.name} 😅`, 'error'); return;
+        }
+        newStock[p.id] = q; done.push(p.id);
+      }
+    }
+    if (done.length) { localStorage.setItem('vg-stock', JSON.stringify(newStock)); setStock(newStock); }
+    let next = [...orders];
+    const _now = new Date(); const _pad = n => String(n).padStart(2, '0');
+    items.forEach((p, i) => {
+      const ex = next.find(o => mine(o) && o.peptideId === p.id);
+      if (ex) next = next.map(o => o === ex ? { ...o, qty: (o.qty || 0) + 1 } : o);
+      else next.push({ id: `${_now.getFullYear()}${_pad(_now.getMonth() + 1)}${_pad(_now.getDate())}${_pad(_now.getHours())}${_pad(_now.getMinutes())}${_pad(_now.getSeconds())}_${Math.random().toString(36).slice(2, 6)}${i}`, peptideId: p.id, buyerName: name, qty: 1, createdAt: _now.toISOString() });
+    });
+    persistOrders(next);
+    setCartBundles([...cartBundles, bundle.id]);
+    showToast(`Combo "${bundle.name}" adicionado ✓`);
+  }
 
   function openModal(peptide) {
     setModal({ peptide });
@@ -5049,6 +5169,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${coup
         products={products} categories={CATEGORIES} effectivePrice={effectivePrice} availableStock={availableStock}
         myOrders={myOrders} myTotal={myTotal} cartCount={cartCount}
         quickAdd={quickAdd} updateQtyInCart={updateQtyInCart} removeFromCart={removeFromCart} addPackToCart={addPackToCart} savePreorder={savePreorder}
+        addBundleToCart={addBundleToCart} bundleInfo={bundleInfo}
         checkout={checkout} updateCheckout={updateCheckout} fetchCep={fetchCep} checkoutErrors={checkoutErrors} calcFreight={calcFreight}
         couponInput={couponInput} setCouponInput={setCouponInput} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} applyCouponCode={applyCouponCode}
         disclaimer={disclaimer} setDisclaimer={setDisclaimer} isSubmitting={isSubmitting} submitOrder={sendToWhatsApp}
