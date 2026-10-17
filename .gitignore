@@ -1,2 +1,5 @@
 node_modules/
 dist/
+produto-fotos/final/*.png
+produto-fotos/final/web/
+produto-fotos/teste/
