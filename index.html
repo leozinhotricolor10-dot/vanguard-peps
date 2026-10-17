@@ -2546,6 +2546,7 @@ function NovaLoja(P) {
   const { products, categories, effectivePrice, availableStock, myOrders, myTotal, cartCount,
     quickAdd, updateQtyInCart, removeFromCart, addPackToCart, savePreorder,
     addBundleToCart, bundleInfo, articles,
+    pointsBalance, setPointsBalance, appliedPoints, setAppliedPoints, pointsConfig, checkPoints,
     checkout, updateCheckout, fetchCep, checkoutErrors, calcFreight,
     couponInput, setCouponInput, appliedCoupon, setAppliedCoupon, applyCouponCode,
     disclaimer, setDisclaimer, isSubmitting, submitOrder, orderSuccessCode, setOrderSuccessCode,
@@ -2590,7 +2591,14 @@ function NovaLoja(P) {
   const freight = isPix ? { value: 0, label: 'Grátis' } : { ...freightRaw, label: freightRaw.value ? nvFmt(freightRaw.value) : 'Grátis' };
   const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round(myTotal * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal)) : 0;
   const bundleDiscount = (bundleInfo && bundleInfo.total) || 0;
-  const totalFinal = myTotal - couponDiscount - bundleDiscount + freight.value;
+  // Pontos VG: mesma regra do App (cada 100 pts = R$ pointsConfig.redeem)
+  const ptsValue = pts => Math.floor((pts || 0) / 100) * ((pointsConfig && pointsConfig.redeem) || 5);
+  const pointsDiscount = ptsValue(appliedPoints);
+  const totalFinal = myTotal - couponDiscount - bundleDiscount - pointsDiscount + freight.value;
+  // CPF salvo de visita anterior: consulta o saldo ao abrir o checkout
+  React.useEffect(() => {
+    if (screen === 'checkout' && pointsBalance == null && (checkout.cpf || '').replace(/\D/g, '').length === 11) checkPoints(checkout.cpf);
+  }, [screen]);
   // Combos exibíveis: todos os itens no catálogo e preço do combo abaixo da soma atual
   const combos = BUNDLES.map(b => {
     const full = nvBundleFull(b, products, effectivePrice);
@@ -2905,7 +2913,14 @@ function NovaLoja(P) {
             {Field({ k: 'nomeCompleto', label: 'Nome completo', autoComplete: 'name', msg: 'Informe seu nome.' })}
             <div className="nv-2">
               {Field({ k: 'telefone', label: 'WhatsApp', inputMode: 'tel', autoComplete: 'tel', placeholder: '(11) 90000-0000', msg: 'Informe o WhatsApp.' })}
-              {Field({ k: 'cpf', label: 'CPF', inputMode: 'numeric', placeholder: '000.000.000-00', msg: 'CPF inválido.' })}
+              {Field({ k: 'cpf', label: 'CPF', inputMode: 'numeric', placeholder: '000.000.000-00', msg: 'CPF inválido.',
+                onChange: e => {
+                  const v = e.target.value;
+                  updateCheckout('cpf', v);
+                  // CPF mudou: pontos aplicados de outro CPF deixam de valer
+                  if (appliedPoints) setAppliedPoints(0);
+                  if (v.replace(/\D/g, '').length === 11) checkPoints(v); else setPointsBalance(null);
+                } })}
             </div>
             {Field({ k: 'email', label: 'E-mail', hint: '(para o rastreio)', inputMode: 'email', autoComplete: 'email', placeholder: 'voce@email.com', msg: 'E-mail inválido.' })}
           </section>
@@ -2956,11 +2971,37 @@ function NovaLoja(P) {
                     style={{ flex: 1, minWidth: 0, height: 48, padding: '0 14px', borderRadius: 12, border: '1px solid rgba(0,229,195,.18)', background: 'var(--bg3)', color: 'var(--tx)', fontSize: 15, outline: 'none' }} />
                   <button onClick={applyCouponCode} style={{ height: 48, padding: '0 16px', borderRadius: 12, border: '1px solid rgba(0,229,195,.35)', background: 'transparent', color: 'var(--ac)', fontWeight: 700, cursor: 'pointer' }}>Aplicar</button>
                 </div>}
+            {(() => {
+              const bal = pointsBalance ? (pointsBalance.points || 0) : 0;
+              if (pointsBalance == null) return <span style={{ fontSize: 13, color: 'var(--mu2)' }}>Tem pontos VG? Informe o CPF acima para ver o saldo.</span>;
+              if (appliedPoints > 0) return (
+                <div className="nv-line" style={{ padding: '12px 14px', borderRadius: 12, background: 'rgba(255,196,107,.08)', border: '1px solid rgba(255,196,107,.35)' }}>
+                  <span><b style={{ fontFamily: "'Space Mono',monospace", color: 'var(--warn)' }}>{appliedPoints} pts</b> · −{nvFmt(pointsDiscount)}</span>
+                  <button onClick={() => setAppliedPoints(0)} style={{ height: 40, border: 'none', background: 'none', color: 'var(--mu)', cursor: 'pointer' }}>Remover</button>
+                </div>
+              );
+              if (bal < 100) return <span style={{ fontSize: 13, color: 'var(--mu2)' }}>{bal > 0 ? `Você tem ${bal} pontos VG — o resgate começa em 100 pontos.` : 'Nenhum ponto VG neste CPF ainda. Este pedido já acumula pontos.'}</span>;
+              const all = bal - (bal % 100);
+              const opts = [...new Set([100, 200, 500].filter(p => p <= bal).concat(all))];
+              return (
+                <div className="nv-box" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <span style={{ fontSize: 14 }}>Você tem <b style={{ color: 'var(--warn)' }}>{bal} pontos VG</b> · valem até <b style={{ color: 'var(--warn)' }}>{nvFmt(ptsValue(all))}</b></span>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {opts.map(p => (
+                      <button key={p} onClick={() => setAppliedPoints(p)} style={{ height: 40, padding: '0 12px', borderRadius: 10, border: '1px solid rgba(255,196,107,.45)', background: 'transparent', color: 'var(--warn)', fontFamily: "'Space Mono',monospace", fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                        {p === all && p !== 100 && p !== 200 && p !== 500 ? `Usar tudo (${p})` : `${p} pts`} · −{nvFmt(ptsValue(p))}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </section>
 
           <section className="nv-sec">
             <div className="nv-row"><span>Subtotal</span><b>{nvFmt(myTotal)}</b></div>
             {bundleDiscount > 0 && <div className="nv-row"><span>Combos</span><b style={{ color: 'var(--ac)' }}>− {nvFmt(bundleDiscount)}</b></div>}
+            {pointsDiscount > 0 && <div className="nv-row"><span>Pontos VG ({appliedPoints} pts)</span><b style={{ color: 'var(--warn)' }}>− {nvFmt(pointsDiscount)}</b></div>}
             {couponDiscount > 0 && <div className="nv-row"><span>Cupom</span><b style={{ color: 'var(--ac)' }}>− {nvFmt(couponDiscount)}</b></div>}
             <div className="nv-row"><span>Frete</span><b>{checkout.pagamento ? freight.label : '—'}</b></div>
             <div className="nv-total"><span style={{ fontSize: 16, fontWeight: 700 }}>Total</span><span style={{ fontFamily: "'Space Mono',monospace", fontSize: 22, fontWeight: 700 }}>{nvFmt(totalFinal)}</span></div>
@@ -5273,6 +5314,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ 60,00'} (${freight.reason})${bund
         myOrders={myOrders} myTotal={myTotal} cartCount={cartCount}
         quickAdd={quickAdd} updateQtyInCart={updateQtyInCart} removeFromCart={removeFromCart} addPackToCart={addPackToCart} savePreorder={savePreorder}
         addBundleToCart={addBundleToCart} bundleInfo={bundleInfo} articles={articles}
+        pointsBalance={pointsBalance} setPointsBalance={setPointsBalance} appliedPoints={appliedPoints} setAppliedPoints={setAppliedPoints} pointsConfig={pointsConfig} checkPoints={checkPoints}
         checkout={checkout} updateCheckout={updateCheckout} fetchCep={fetchCep} checkoutErrors={checkoutErrors} calcFreight={calcFreight}
         couponInput={couponInput} setCouponInput={setCouponInput} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} applyCouponCode={applyCouponCode}
         disclaimer={disclaimer} setDisclaimer={setDisclaimer} isSubmitting={isSubmitting} submitOrder={sendToWhatsApp}
