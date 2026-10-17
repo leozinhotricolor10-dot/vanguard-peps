@@ -2529,8 +2529,26 @@ const NOVO_CSS = `
 .nv-chips{display:flex;gap:8px;overflow-x:auto;padding:12px 0;scrollbar-width:none}
 .nv-chip{flex-shrink:0;height:40px;padding:0 16px;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;white-space:nowrap;background:transparent;color:#c7d6de;border:1px solid rgba(0,229,195,.2)}
 .nv-chip.on{background:var(--ac);color:#04110e;border-color:var(--ac)}
-.nv-grid{display:grid;grid-template-columns:1fr;gap:10px;padding-bottom:24px}
-.nv-card{display:flex;align-items:center;gap:14px;padding:12px;border-radius:16px;background:var(--bg2);border:1px solid rgba(0,229,195,.1)}
+.nv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding-bottom:24px}
+.nv-card{display:flex;flex-direction:column;gap:10px;padding:0 0 10px;border-radius:16px;background:var(--bg2);border:1px solid rgba(0,229,195,.1);overflow:hidden;min-width:0}
+.nv-ph{display:flex;align-items:center;justify-content:center;width:100%;color:rgba(0,229,195,.55);background:radial-gradient(70% 55% at 50% 45%,rgba(0,229,195,.12),transparent 70%),#070d12}
+.nv-img{display:block;width:100%;height:auto;background:#050709}
+.nv-pic{position:relative;display:block;width:100%;padding:0;border:none;background:#050709;cursor:pointer;overflow:hidden}
+.nv-pic .nv-img,.nv-pic .nv-ph{aspect-ratio:4/5;object-fit:cover;object-position:50% 45%}
+.nv-card.out .nv-pic .nv-img,.nv-card.out .nv-pic .nv-ph{filter:brightness(.62) saturate(.7)}
+.nv-card.out .nv-pic::after{content:'';position:absolute;inset:0;background:rgba(5,10,14,.15)}
+.nv-cfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 10px}
+.nv-cfoot .nv-qty{flex-direction:row;gap:6px}
+.nv-cfoot .nv-qty button{width:36px;height:40px}
+.nv-cfoot .nv-add{width:44px;height:44px}
+.nv-cfoot .nv-res{height:40px;padding:0 10px}
+.nv-pdp{display:flex;flex-direction:column;gap:6px}
+.nv-pdp-pic{width:100%;max-width:300px;margin:12px auto 0;border-radius:18px;overflow:hidden;border:1px solid var(--ln);background:#050709}
+.nv-pdp-pic .nv-img,.nv-pdp-pic .nv-ph{aspect-ratio:4/5;object-fit:cover;object-position:50% 45%}
+.nv-thumb{width:48px;height:60px;flex-shrink:0;border-radius:8px;overflow:hidden;border:1px solid var(--ln);background:#050709}
+.nv-thumb .nv-img,.nv-thumb .nv-ph{width:100%;height:100%;aspect-ratio:auto;object-fit:cover;object-position:50% 45%}
+.nv-thumb .nv-img{transform:scale(1.45)}
+.nv-thumb .nv-ph svg{width:60%}
 .nv-card.out{border-style:dashed;border-color:rgba(169,191,203,.3)}
 .nv-cbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .nv-tag{align-self:flex-start;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#ffb38f}
@@ -2605,7 +2623,11 @@ const NOVO_CSS = `
 .nv-foot{border-top:1px solid var(--ln);margin-top:40px;padding:24px 0 140px;font-size:13px;color:var(--mu)}
 .nv-h2{margin:0;font-family:'Syne',sans-serif;font-weight:700;font-size:20px}
 .nv-combos{display:flex;gap:12px;overflow-x:auto;margin:0 -16px;padding:0 16px 6px;scroll-snap-type:x mandatory;scrollbar-width:none}
-.nv-combo{flex:0 0 270px;scroll-snap-align:start;padding:16px;border-radius:18px;background:var(--bg2);border:1px solid rgba(0,229,195,.18);display:flex;flex-direction:column;gap:10px}
+.nv-combo{flex:0 0 270px;scroll-snap-align:start;padding:16px;border-radius:18px;background:var(--bg2);border:1px solid rgba(0,229,195,.18);display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.nv-cimg{display:block;width:calc(100% + 32px);margin:-16px -16px 2px;max-width:none;height:auto;aspect-ratio:5/4;object-fit:cover;background:#050709;border-radius:18px 18px 0 0}
+.nv-ccol{display:flex;align-items:flex-end;justify-content:center;overflow:hidden;padding:10% 0 0}
+.nv-cvial{position:relative;display:block;flex:0 1 52%;min-width:0;margin:0 -9%;-webkit-mask-image:linear-gradient(90deg,transparent,#000 28%,#000 72%,transparent);mask-image:linear-gradient(90deg,transparent,#000 28%,#000 72%,transparent)}
+.nv-cvial .nv-img,.nv-cvial .nv-ph{width:100%;height:auto;aspect-ratio:2/3;object-fit:cover}
 .nv-pill{align-self:flex-start;padding:4px 8px;border-radius:6px;background:rgba(0,229,195,.14);color:#5ff3dc;font-size:11px;font-weight:700}
 .nv-sku{height:30px;padding:0 8px;border-radius:8px;border:none;background:var(--bg3);font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--ac);cursor:pointer}
 .nv-art{display:flex;flex-direction:column;gap:14px;padding:4px 4px 0}
@@ -2623,8 +2645,15 @@ const NOVO_CSS = `
 @media (min-width:760px){
   .nv-links{display:flex}
   .nv-h1{font-size:44px}
-  .nv-grid{grid-template-columns:repeat(auto-fill,minmax(320px,1fr))}
+  .nv-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
   .nv-narrow{max-width:640px;margin:0 auto}
+}
+@media (min-width:900px){
+  .nv-pdp-wrap{max-width:980px}
+  .nv-pdp{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);column-gap:48px;align-items:start}
+  .nv-pdp-pic{margin:18px 0 0;position:sticky;top:80px;max-width:none}
+  .nv-pdp-pic .nv-img,.nv-pdp-pic .nv-ph{aspect-ratio:2/3}
+  .nv-pdp-info{padding-top:18px}
 }`;
 
 // ── ADMIN NO /novo ───────────────────────────────────────────────────────────
@@ -2864,6 +2893,32 @@ const NV_ICONS = {
   x: <path d="M6 6l12 12M18 6L6 18" />,
 };
 
+function NvProdImg({ p, eager, ratio, className, alt }) {
+  const [bad, setBad] = React.useState(false);
+  const src = p && p.image_url;
+  React.useEffect(() => { setBad(false); }, [src]);
+  const r = ratio === 'tall' ? [800, 1200] : [800, 1000];
+  if (!src || bad) {
+    return (
+      <div className={'nv-ph ' + (className || '')} role="img" aria-label={alt || 'Frasco Vanguard Labs'} style={{ aspectRatio: r[0] + '/' + r[1] }}>
+        <svg viewBox="0 0 24 24" width="44%" fill="none" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 3h6v3H9z" /><path d="M8 6h8v2.5l1 1.5v9a1.5 1.5 0 0 1-1.5 1.5h-7A1.5 1.5 0 0 1 7 19v-9l1-1.5z" /><path d="M9.5 13l2.5 4 2.5-4" strokeWidth="1.6" /></svg>
+      </div>
+    );
+  }
+  return <img className={'nv-img ' + (className || '')} src={src} alt={alt || ('Frasco ' + p.name + ' Vanguard Labs')} width={r[0]} height={r[1]} loading={eager ? 'eager' : 'lazy'} decoding="async" onError={() => setBad(true)} />;
+}
+function NvComboImg({ b }) {
+  const [bad, setBad] = React.useState(false);
+  React.useEffect(() => { setBad(false); }, [b.id]);
+  const label = 'Frascos do combo ' + b.name;
+  if (!bad) return <img className="nv-cimg" src={'/assets/combos/' + encodeURIComponent(b.id) + '-v1.webp'} alt={label} width={1000} height={800} loading="lazy" decoding="async" onError={() => setBad(true)} />;
+  const ps = b.prods.slice(0, 4);
+  return (
+    <div className="nv-cimg nv-ccol" role="img" aria-label={label}>
+      {ps.map(p => <span key={p.id} className="nv-cvial" style={{ zIndex: ps.length - Math.abs(ps.indexOf(p) - (ps.length - 1)) }}><NvProdImg p={p} ratio="tall" alt="" /></span>)}
+    </div>
+  );
+}
 function NvInstallBanner() {
   const KEY = 'vg-pwa-dismiss';
   const [evt, setEvt] = React.useState(() => window.__vgInstallEvt || null);
@@ -3122,6 +3177,7 @@ function NovaLoja(P) {
             <div className="nv-combos">
               {combos.map(b => (
                 <article key={b.id} className="nv-combo">
+                  <NvComboImg b={b} />
                   <span className="nv-pill">Economize {nvFmt(b.full - b.price)}</span>
                   <h3 style={{ margin: 0, fontSize: 17, fontWeight: 700 }}>{b.name}</h3>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -3142,17 +3198,17 @@ function NovaLoja(P) {
             <div style={{ fontWeight: 600, marginBottom: 6 }}>Nada encontrado para "{q}".</div>
             <a href="https://wa.me/447418333521" target="_blank" rel="noreferrer">Pedir esse produto pelo WhatsApp</a>
           </div>}
-          {visible.map(p => {
+          {visible.map((p, idx) => {
             const out = availableStock(p.id) === 0;
             return (
               <article key={p.id} className={'nv-card' + (out ? ' out' : '')}>
-                <div className="nv-cbody">
+                <button className="nv-pic" onClick={() => go('produto', p.id)} aria-label={'Ver ' + p.name} tabIndex={-1}><NvProdImg p={p} eager={idx < 4} /></button>
+                <div className="nv-cbody" style={{ padding: '0 10px' }}>
                   {out ? <span className="nv-tag" style={{ color: 'var(--warn)' }}>Lote esgotado</span> : p.badge && <span className="nv-tag">{p.badge.replace(/^[^\wÀ-ú]+\s*/, '')}</span>}
                   <button className="nv-name" onClick={() => go('produto', p.id)}>{p.name}</button>
-                  {p.desc && <span className="nv-desc">{p.desc}</span>}
                   {priceLine(p)}
                 </div>
-                {addControls(p)}
+                <div className="nv-cfoot">{addControls(p)}</div>
               </article>
             );
           })}
@@ -3221,8 +3277,11 @@ function NovaLoja(P) {
     const out = availableStock(p.id) === 0;
     const packs = p.packs || [];
     body = (
-      <div className="nv-wrap nv-narrow">
+      <div className="nv-wrap nv-narrow nv-pdp-wrap">
         <Back title={p.name} />
+        <div className="nv-pdp">
+        <div className={'nv-pdp-pic' + (out ? ' out' : '')} style={out ? { filter: 'brightness(.6)' } : undefined}><NvProdImg p={p} eager ratio="tall" /></div>
+        <div className="nv-pdp-info">
         <section style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 18 }}>
           {p.badge && <span className="nv-tag">{p.badge.replace(/^[^\wÀ-ú]+\s*/, '')}</span>}
           <h1 className="nv-h1" style={{ fontSize: 28 }}>{p.name}</h1>
@@ -3257,6 +3316,8 @@ function NovaLoja(P) {
             try { if (navigator.share) await navigator.share({ title: p.name, url }); else { await navigator.clipboard.writeText(url); alert('Link copiado: ' + url); } } catch {}
           }}>Compartilhar link deste produto</button>
         </section>
+        </div>
+        </div>
       </div>
     );
   }
@@ -3278,6 +3339,7 @@ function NovaLoja(P) {
               const unit = o._packPrice !== undefined ? o._packPrice : effectivePrice(p);
               return (
                 <div key={o.id} className="nv-line">
+                  {p && <span className="nv-thumb"><NvProdImg p={p} /></span>}
                   <span style={{ flex: 1, minWidth: 0 }}>{p ? p.name : 'Produto'}{o._packName ? ` · ${o._packName}` : ''}<br /><span style={{ fontFamily: "'Space Mono',monospace", fontSize: 12, color: 'var(--mu)' }}>{nvFmt(unit)} cada</span></span>
                   {o._packId
                     ? <button className="nv-ico" style={{ width: 36, height: 36 }} onClick={() => removeFromCart(o.id)} aria-label="Remover"><NvIcon d={NV_ICONS.x} size={18} /></button>
