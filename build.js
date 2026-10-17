@@ -199,6 +199,7 @@ Allow: /
 Sitemap: ${SITE}/sitemap.xml
 `);
   buildProductPages(dist);
+  copyPwa(dist);
 
   // Copiar páginas estáticas adicionais (landing de atacado servida em /atacado)
   const extraStatic = ['atacado/index.html'];
@@ -229,6 +230,23 @@ Sitemap: ${SITE}/sitemap.xml
   process.exit(1);
 });
 
+
+// ── PWA: manifest, ícones e service worker na raiz do dist ────────────────
+// BUILD_ID = hash do conteúdo do app + arquivos do PWA → nome do cache muda a cada deploy.
+function copyPwa(dist) {
+  const crypto = require('crypto');
+  const PWA_DIR = path.join(__dirname, 'pwa');
+  const files = ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'apple-touch-icon.png'];
+  const h = crypto.createHash('sha1').update(dist);
+  const swSrc = fs.readFileSync(path.join(PWA_DIR, 'sw.js'), 'utf-8');
+  h.update(swSrc);
+  files.forEach(f => h.update(fs.readFileSync(path.join(PWA_DIR, f))));
+  const buildId = h.digest('hex').slice(0, 10);
+  if (!swSrc.includes('__BUILD_ID__')) { console.error('❌ pwa/sw.js sem __BUILD_ID__'); process.exit(1); }
+  files.forEach(f => fs.copyFileSync(path.join(PWA_DIR, f), path.join(DIST_DIR, f)));
+  fs.writeFileSync(path.join(DIST_DIR, 'sw.js'), swSrc.replace('__BUILD_ID__', buildId));
+  console.log(`📱 PWA: manifest + ${files.length - 1} ícones + sw.js (build ${buildId})`);
+}
 
 // ── Páginas por produto: /p/<código> ───────────────────────────────────────
 // Mesmo app, com título e prévia (Open Graph) do produto para links no WhatsApp.

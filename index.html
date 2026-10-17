@@ -16,6 +16,19 @@
 <meta property="og:image:width" content="1200"/>
 <meta property="og:image:height" content="630"/>
 <meta property="og:locale" content="pt_BR"/>
+<link rel="manifest" href="/manifest.webmanifest"/>
+<meta name="theme-color" content="#050a0e"/>
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Vanguard"/>
+<script>
+// PWA: guarda o evento de instalação (Android/Chrome) antes do app carregar
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__vgInstallEvt=e;window.dispatchEvent(new Event('vg-install-ready'));});
+window.addEventListener('appinstalled',function(){window.__vgInstallEvt=null;window.dispatchEvent(new Event('vg-install-ready'));});
+</script>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" integrity="sha384-tMH8h3BGESGckSAVGZ82T9n90ztNXxvdwvdM6UoR56cYcf+0iGXBliJ29D+wZ/x8" crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" integrity="sha384-bm7MnzvK++ykSwVJ2tynSE5TRdN+xL418osEVF2DE/L/gfWHj91J2Sphe582B1Bh" crossorigin="anonymous"></script>
@@ -2551,6 +2564,11 @@ const NOVO_CSS = `
 .nv-step i b.on{background:var(--ac);border-color:var(--ac)}
 .nv-step i u{width:2px;height:34px;background:rgba(0,229,195,.2)}
 .nv-faq button{width:100%;min-height:56px;padding:14px 0;border:none;background:none;color:var(--tx);display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;font-size:15px;font-weight:600;cursor:pointer}
+.nv-pwa{display:flex;align-items:center;gap:10px;margin:12px auto 0;max-width:1068px;padding:10px 12px;border-radius:12px;background:var(--bg2);border:1px solid var(--ln);font-size:13px;color:var(--mu);line-height:1.4}
+.nv-pwa b{color:var(--tx)}
+.nv-pwa .nv-pwa-t{flex:1;min-width:0}
+.nv-pwa button{height:34px;padding:0 12px;border-radius:9px;border:1px solid rgba(0,229,195,.3);background:transparent;color:var(--ac);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+.nv-pwa button.nv-pwa-x{width:34px;padding:0;color:var(--mu);border-color:transparent;font-size:18px}
 .nv-foot{border-top:1px solid var(--ln);margin-top:40px;padding:24px 0 140px;font-size:13px;color:var(--mu)}
 .nv-h2{margin:0;font-family:'Syne',sans-serif;font-weight:700;font-size:20px}
 .nv-combos{display:flex;gap:12px;overflow-x:auto;margin:0 -16px;padding:0 16px 6px;scroll-snap-type:x mandatory;scrollbar-width:none}
@@ -2812,6 +2830,37 @@ const NV_ICONS = {
   chev: <path d="M6 9l6 6 6-6" />,
   x: <path d="M6 6l12 12M18 6L6 18" />,
 };
+
+function NvInstallBanner() {
+  const KEY = 'vg-pwa-dismiss';
+  const [evt, setEvt] = React.useState(() => window.__vgInstallEvt || null);
+  const [gone, setGone] = React.useState(() => { try { return !!localStorage.getItem(KEY); } catch (e) { return false; } });
+  React.useEffect(() => {
+    const h = () => setEvt(window.__vgInstallEvt || null);
+    window.addEventListener('vg-install-ready', h);
+    return () => window.removeEventListener('vg-install-ready', h);
+  }, []);
+  let standalone = false, ios = false;
+  try {
+    standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+    const ua = window.navigator.userAgent || '';
+    ios = /iPhone|iPad|iPod/.test(ua) && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+  } catch (e) {}
+  if (gone || standalone || (!evt && !ios)) return null;
+  const dismiss = () => { setGone(true); try { localStorage.setItem(KEY, String(Date.now())); } catch (e) {} };
+  const install = async () => {
+    const e = evt; if (!e) return;
+    try { e.prompt(); await e.userChoice; } catch (err) {}
+    window.__vgInstallEvt = null; setEvt(null); dismiss();
+  };
+  return (
+    <div className="nv-wrap"><div className="nv-pwa" role="region" aria-label="Instalar app">
+      <span className="nv-pwa-t">{evt ? <><b>Instale o app da Vanguard</b> na tela inicial do celular.</> : <><b>Instale o app:</b> toque em Compartilhar e depois em &quot;Adicionar à Tela de Início&quot;.</>}</span>
+      {evt && <button onClick={install}>Instalar app</button>}
+      <button className="nv-pwa-x" onClick={dismiss} aria-label="Dispensar">×</button>
+    </div></div>
+  );
+}
 
 function NovaLoja(P) {
   const { products, categories, effectivePrice, availableStock, myOrders, myTotal, cartCount,
@@ -3419,6 +3468,7 @@ function NovaLoja(P) {
     <div className="nv">
       <style>{NOVO_CSS}</style>
       {header}
+      {screen === 'loja' && <NvInstallBanner />}
       {screen === 'loja' && <div className="nv-strip"><span>PIX com <b style={{ color: 'var(--ac)' }}>frete grátis</b></span><span>Envio rápido</span><span>Pureza ≥ 99%</span></div>}
       <div role="main">{body}</div>
       {footer}
@@ -11135,6 +11185,20 @@ _Vanguard Peptides_ 🧬`;
 ReactDOM.createRoot(document.getElementById("root")).render(
   <ErrorBoundary><App /></ErrorBoundary>
 );
+</script>
+<script>
+// PWA: service worker único na raiz (escopo "/"). Fora do /antigo/. Falha em silêncio.
+(function(){
+  try {
+    if (!('serviceWorker' in navigator)) return;
+    if (/^\/antigo(\/|$)/.test(location.pathname)) return;
+    window.addEventListener('load', function(){
+      navigator.serviceWorker.register('/sw.js', { scope: '/', updateViaCache: 'none' }).then(function(r){
+        try { r.update(); } catch (e) {}
+      }).catch(function(){});
+    });
+  } catch (e) {}
+})();
 </script>
 </body>
 </html>

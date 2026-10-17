@@ -69,9 +69,30 @@ Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfV
 - **Próximo passo** (`nvaSteps`): pendente → "Marcar como pago" (+ Cobrar PIX); pago sem etiqueta → "Gerar etiqueta" (+ Marcar como enviado, para motoboy); pago com etiqueta → "Marcar como enviado" (+ Reimprimir etiqueta); enviado → "Marcar como entregue"; entregue/extraviado → "Ver detalhes". Mais "Enviar rastreio" (se tem código), "WhatsApp" (se tem telefone) e "Remover". Tudo chama as funções antigas (`cycleStatus` — com WhatsApp automático e pontos —, `gerarEtiqueta`, modal PIX, `sendTrackingWhatsApp`, `adminRemove`). **Única regra nova de interface**: confirmação (`window.confirm`) antes de avançar status (`nvaAdvance`) e antes de remover (`nvaRemove`); o clique no status do admin antigo continua sem confirmação.
 - Teste: build + cópias `dist/t/novo/` e `dist/t2/` com harness (verify-admin `{ok:true}`, admin-db com 7 pedidos fictícios e escrita simulada, demais POST ao Supabase bloqueados — `increment_stock`, `melhorenvios-proxy` etc. —, `window.open`/`confirm`/`alert`/`prompt` interceptados). Conferido em 1360, 900 e 375px (sem rolagem lateral, console limpo): avançar status (cancelar = nada acontece; confirmar = update + WhatsApp + pontos simulados), etiqueta (abre o fluxo antigo), PIX, remover, busca, Etiquetas, agrupar por cliente, e o admin em `/` igual (14 abas, tabela antiga). Harness em `scratchpad` da sessão (não versionado).
 
+## PWA — site instalável (out/2026)
+
+- **Arquivos** (fonte em `pwa/`, copiados para a raiz do `dist/` pelo `copyPwa()` do `build.js`): `manifest.webmanifest`, `icon-192.png`, `icon-512.png`, `icon-maskable-512.png`, `apple-touch-icon.png` (180) e `sw.js`. Não existia logo no repo: os ícones são "VG" (#00e5c3 sobre #050a0e) gerados sem dependências por `node pwa/gen-icons.js` (PNGs versionados; para trocar pela marca real, substituir os PNGs e/ou o script).
+- **Metas** no `<head>` do `index.html` (herdadas por `/`, `/p/<sku>`, `/antigo/` e 404): manifest, `theme-color`, ícones, `apple-mobile-web-app-*`. O registro do SW é um `<script>` no fim do `<body>`: escopo `/`, `updateViaCache:'none'`, **não registra em `/antigo/`**, falha em silêncio.
+- **Service worker** (`pwa/sw.js`, `__BUILD_ID__` = hash sha1 do app + arquivos do PWA, trocado no build): `skipWaiting` + `clients.claim`; `activate` apaga caches de outros builds (`vg-static-<hash>`). **Navegação = só rede** (`cache:'no-cache'`, passa por cima do cache HTTP de 10 min do GitHub Pages); se estiver offline mostra uma página "Sem conexão" (HTML dentro do próprio sw.js, status 503, botão "Tentar de novo"). **O HTML nunca é guardado em cache** (o app depende de React/Supabase de CDN, que o SW não guarda; cachear o HTML só mostraria app quebrado). Assets do PWA (ícones/manifest) = stale-while-revalidate. **Não intercepta** não-GET, nada de outro domínio (Supabase, CDNs, câmbio), `/functions|rest|auth|storage/v1/` nem `/rpc/`, nem qualquer outro arquivo (sitemap, og-image): vão direto para a rede. 404 do GitHub Pages nunca entra em cache.
+- **Aviso "Instalar app"** (`NvInstallBanner`, só na home da loja nova): Android/Chrome usa `beforeinstallprompt` (capturado cedo no `<head>`); iOS Safari mostra a dica Compartilhar → Adicionar à Tela de Início; some no app já instalado (`display-mode: standalone`); botão × grava `vg-pwa-dismiss` no localStorage (try/catch). Não aparece no checkout, admin nem telas internas.
+- **Emergência — desativar/limpar o SW** (cliente preso ou bug): publicar um `sw.js` que se auto-desregistra. Trocar o conteúdo de `pwa/sw.js` por:
+
+```js
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (e) => e.waitUntil((async () => {
+  for (const k of await caches.keys()) await caches.delete(k);
+  await self.registration.unregister();
+  for (const c of await self.clients.matchAll({ type: 'window' })) c.navigate(c.url);
+})()));
+```
+
+  (o build exige `__BUILD_ID__` no arquivo: deixe um comentário `// __BUILD_ID__`), commit + push. Os navegadores buscam o `sw.js` novo ao abrir o site (sem cache HTTP) e se desinstalam sozinhos. Para só invalidar o cache sem desativar: qualquer commit já gera build novo e apaga os caches antigos. Remover de vez: tirar o `<script>` de registro do `index.html` **depois** de publicar o sw.js de desregistro.
+- **Limitações**: iOS não tem prompt nativo (só a dica) e o ícone vem do `apple-touch-icon`; sem modo offline de verdade (loja precisa de internet: estoque/preço); `orientation:"portrait"` vale só para o app instalado no Android.
+- **Teste**: build + `dist` em `localhost:8765` — manifest e 3 ícones carregam (192/512/512), SW `activated` com escopo `/`, só os 5 assets do PWA no cache, HTML novo aparece no reload (network-first, marca injetada no `dist/index.html`), `/p/tz15` (301 para `/p/tz15/`) navega pelo SW, servidor parado → "Sem conexão" em `/?pedido=x`, banner aparece com `beforeinstallprompt` simulado, dispensa persiste. Nenhuma ação de escrita (checkout, rpc, create-order) foi disparada.
+
 ## Build e deploy
 
-- `npm run build` (build.js) → `dist/index.html`, `dist/novo/index.html`, `dist/404.html` e `dist/p/<sku>/index.html` (uma página por produto, com Open Graph; busca os produtos no Supabase na hora do build).
+- `npm run build` (build.js) → `dist/index.html`, `dist/sw.js` + manifest + ícones (PWA), `dist/novo/index.html`, `dist/404.html` e `dist/p/<sku>/index.html` (uma página por produto, com Open Graph; busca os produtos no Supabase na hora do build).
 - Push na `main` → GitHub Actions publica `dist/` no GitHub Pages (vanguardpep.com).
 - Teste local: `.claude/launch.json` (config `dist`, `python -m http.server 8765 --directory dist`).
 - Em teste no navegador, **bloquear chamadas reais** antes de clicar: `rpc/decrement_stock`, `functions/v1/create-order` e `window.open` (WhatsApp) — senão mexe no estoque/pedidos de produção.
