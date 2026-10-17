@@ -3200,17 +3200,37 @@ function NovaLoja(P) {
     body = (
       <div className="nv-wrap">
         {activeNotices.map(n => <div key={n.id} style={{ marginTop: 14, padding: '12px 14px', borderRadius: 12, background: 'rgba(255,196,107,.08)', border: '1px solid rgba(255,196,107,.3)', fontSize: 14 }}>{n.text}</div>)}
-        <section style={{ padding: '22px 0 8px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <h1 className="nv-h1">Peptídeos de pesquisa, sem complicação.</h1>
-          <p className="nv-sub">Escolha, pague e acompanhe o envio pelo código do pedido.</p>
-        </section>
-        <div style={{ paddingTop: 12 }}>
+        <div style={{ paddingTop: 14 }}>
           <label htmlFor="nv-busca" style={{ position: 'absolute', left: -9999 }}>Buscar produto</label>
           <div className="nv-search"><NvIcon d={NV_ICONS.search} size={18} w={2} /><input id="nv-busca" placeholder="Buscar: tirzepatida, GHK-Cu..." value={q} onChange={e => setQ(e.target.value)} /></div>
         </div>
         <div role="navigation" className="nv-chips" aria-label="Categorias">
           {categories.map(c => <button key={c.id} className={'nv-chip' + (cat === c.id ? ' on' : '')} aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>{c.id === 'all' ? 'Todos' : c.name}</button>)}
         </div>
+        {cat === 'all' && !q.trim() && hot.length > 0 && (
+          <section className="nv-sec nv-hotsec" style={{ marginTop: 4, marginBottom: 20 }} aria-label="Mais vendidos">
+            <h2 className="nv-h2">Mais vendidos</h2>
+            <div className="nv-hotrow">
+              {hot.map((p, idx) => {
+                const out = availableStock(p.id) === 0;
+                return (
+                  <div key={p.id} className="nv-hot">
+                    <article className={'nv-hotin' + (out ? ' out' : '')}>
+                      <span className="nv-hotbadge">🔥 Mais vendido</span>
+                      <button className="nv-pic" onClick={() => go('produto', p.id)} aria-label={'Ver ' + p.name} tabIndex={-1}><NvProdImg p={p} eager={idx < 3} /></button>
+                      <div className="nv-cbody" style={{ padding: '0 12px' }}>
+                        {out && <span className="nv-tag" style={{ color: 'var(--warn)' }}>Lote esgotado</span>}
+                        <button className="nv-name nv-hotname" onClick={() => go('produto', p.id)}>{p.name}</button>
+                        {priceLine(p)}
+                      </div>
+                      <div className="nv-cfoot" style={{ padding: '0 12px' }}>{addControls(p)}</div>
+                    </article>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
         {cat === 'all' && !q.trim() && combos.length > 0 && (
           <section className="nv-sec" style={{ marginTop: 4, marginBottom: 18 }} aria-label="Combos">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
@@ -3233,30 +3253,6 @@ function NovaLoja(P) {
                     : <button className="nv-btn" style={{ height: 46, fontSize: 14, marginTop: 'auto' }} onClick={() => addBundleToCart(b)}>Adicionar combo</button>}
                 </article>
               ))}
-            </div>
-          </section>
-        )}
-        {cat === 'all' && !q.trim() && hot.length > 0 && (
-          <section className="nv-sec nv-hotsec" style={{ marginTop: 4, marginBottom: 20 }} aria-label="Mais vendidos">
-            <h2 className="nv-h2">Mais vendidos</h2>
-            <div className="nv-hotrow">
-              {hot.map((p, idx) => {
-                const out = availableStock(p.id) === 0;
-                return (
-                  <div key={p.id} className="nv-hot">
-                    <article className={'nv-hotin' + (out ? ' out' : '')}>
-                      <span className="nv-hotbadge">🔥 Mais vendido</span>
-                      <button className="nv-pic" onClick={() => go('produto', p.id)} aria-label={'Ver ' + p.name} tabIndex={-1}><NvProdImg p={p} eager={idx < 3} /></button>
-                      <div className="nv-cbody" style={{ padding: '0 12px' }}>
-                        {out && <span className="nv-tag" style={{ color: 'var(--warn)' }}>Lote esgotado</span>}
-                        <button className="nv-name nv-hotname" onClick={() => go('produto', p.id)}>{p.name}</button>
-                        {priceLine(p)}
-                      </div>
-                      <div className="nv-cfoot" style={{ padding: '0 12px' }}>{addControls(p)}</div>
-                    </article>
-                  </div>
-                );
-              })}
             </div>
           </section>
         )}
