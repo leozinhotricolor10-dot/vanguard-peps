@@ -4747,16 +4747,52 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
     showToast('Dados do cliente preenchidos ✓','success');
   }
 
+  // Pedidos manuais (admin e link "Formulário de Pedido") não passam pelo carrinho, então reservam
+  // aqui, com a mesma RPC do carrinho (decrement_stock: nunca deixa o saldo negativo, devolve -1).
+  // Só produtos com controle de estoque (linha em stock). Se faltar algum, devolve o que já reservou.
+  async function releaseOrderStock(reserved) {
+    if (!sb || !reserved || !reserved.length) return;
+    for (const r of reserved) {
+      try {
+        const { data: back, error } = await sb.rpc('increment_stock', { p_product_id: r.pid, p_qty: r.qty });
+        if (error) { console.warn('[Estoque] devolução falhou:', r.pid, error.message); continue; }
+        if (back != null) setStock(prev => { const s = { ...prev, [r.pid]: back }; try { localStorage.setItem('vg-stock', JSON.stringify(s)); } catch {} return s; });
+      } catch (e) { console.warn('[Estoque] devolução falhou:', r.pid, e && e.message); }
+    }
+  }
+  async function reserveOrderStock(items) {
+    const agg = {};
+    (items || []).forEach(it => { const q = Math.max(0, parseInt(it.qty, 10) || 0); if (it.peptideId && q) agg[it.peptideId] = (agg[it.peptideId] || 0) + q; });
+    const reserved = [];
+    for (const [pid, qty] of Object.entries(agg)) {
+      if (!sb || stock[pid] == null) continue; // sem controle de estoque
+      let nq = null, error = null;
+      try { ({ data: nq, error } = await sb.rpc('decrement_stock', { p_product_id: pid, p_qty: qty })); } catch (e) { error = e; }
+      if (error || nq === -1) {
+        await releaseOrderStock(reserved);
+        const p = products.find(x => x.id === pid);
+        return { ok: false, reserved: [], error: error ? 'Não foi possível reservar o estoque. Tente de novo.' : `Estoque insuficiente de ${p ? p.name : pid}` };
+      }
+      reserved.push({ pid, qty });
+      if (nq != null) setStock(prev => { const s = { ...prev, [pid]: nq }; try { localStorage.setItem('vg-stock', JSON.stringify(s)); } catch {} return s; });
+    }
+    return { ok: true, reserved };
+  }
+
   async function createManualOrder() {
     if (manualOrderSubmitting) return;
     if (!manualOrder.name.trim()) { showToast('Informe o nome do cliente','error'); return; }
     if (!manualOrder.items.length) { showToast('Adicione pelo menos um produto','error'); return; }
     setManualOrderSubmitting(true);
+    let resv = null;
     try {
       const orderItems = manualOrder.items.map(it => {
         const p = products.find(x=>x.id===it.peptideId);
         return { peptideId: it.peptideId, name: p?p.name:it.peptideId, qty: it.qty||1, _packId: it._packId||null };
       });
+      // Baixa o estoque antes de criar (o create-order recusa só saldo negativo, então passa)
+      resv = await reserveOrderStock(orderItems);
+      if (!resv.ok) { showToast(resv.error, 'error'); resv = null; return; }
       const res = await fetch('https://aumubzvdhzvtnqfzqeqd.supabase.co/functions/v1/create-order', {
         method: 'POST',
         headers: { 'Content-Type':'application/json', 'apikey': SUPABASE_KEY },
@@ -4773,7 +4809,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
         }),
       });
       const data = await res.json();
-      if (!data.ok) { showToast('Erro ao criar pedido: ' + (data.error||'tente novamente'),'error'); return; }
+      if (!data.ok) { await releaseOrderStock(resv.reserved); resv = null; showToast('Erro ao criar pedido: ' + (data.error||'tente novamente'),'error'); return; }
+      resv = null; // pedido gravado: a reserva fica com ele (remover o pedido devolve o estoque)
       showToast('Pedido manual criado ✓ ' + data.code,'success');
       setManualOrderModal(false);
       setManualOrder(MANUAL_ORDER_EMPTY);
@@ -4781,6 +4818,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
       setManualAddItemId('');
       fetchOrdersFromSupabase();
     } catch {
+      if (resv) { await releaseOrderStock(resv.reserved); resv = null; }
       showToast('Erro de conexão ao criar pedido','error');
     } finally {
       setManualOrderSubmitting(false);
@@ -5778,9 +5816,14 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
           if (manualItems.length === 0) errs.items = true;
           setManualErrors(errs);
           if (Object.keys(errs).length > 0) { showToast('Preencha todos os campos obrigatórios', 'error'); return; }
+          if (manualSubmitting) return;
           setManualSubmitting(true);
+          let resv = null;
           try {
             const orderItems = manualItems.map(item => ({ peptideId: item.peptideId, name: (products.find(x=>x.id===item.peptideId)||{}).name||item.peptideId, qty: item.qty }));
+            // Reserva o estoque como o carrinho faz; devolve se o pedido não for gravado
+            resv = await reserveOrderStock(orderItems);
+            if (!resv.ok) { showToast(resv.error, 'error'); resv = null; setManualSubmitting(false); return; }
             const res = await fetch('https://aumubzvdhzvtnqfzqeqd.supabase.co/functions/v1/create-order', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
@@ -5796,9 +5839,13 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
               }),
             });
             const data = await res.json();
-            if (!data.ok) { showToast('Erro ao registrar pedido: ' + (data.error||'tente novamente'), 'error'); setManualSubmitting(false); return; }
+            if (!data.ok) { await releaseOrderStock(resv.reserved); resv = null; showToast('Erro ao registrar pedido: ' + (data.error||'tente novamente'), 'error'); setManualSubmitting(false); return; }
+            resv = null;
             setManualSuccess({ code: data.code, total: data.validatedTotal });
-          } catch { showToast('Erro de conexão. Tente novamente.', 'error'); setManualSubmitting(false); }
+          } catch {
+            if (resv) { await releaseOrderStock(resv.reserved); resv = null; }
+            showToast('Erro de conexão. Tente novamente.', 'error'); setManualSubmitting(false);
+          }
         }
 
         const inputStyle = (err) => ({ width:'100%', background:'rgba(255,255,255,0.04)', border:`1px solid ${err?'#ff6b35':'rgba(0,229,195,0.15)'}`, borderRadius:8, padding:'10px 14px', color:'var(--text)', fontSize:'0.88rem', fontFamily:"'DM Sans',sans-serif", outline:'none' });
