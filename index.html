@@ -5002,16 +5002,6 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
     }
   }
 
-  async function redeemPoints(cpf, pts) {
-    const clean = (cpf||'').replace(/\D/g,'');
-    if (!clean || pts <= 0) return;
-    if (sb) {
-      const r = await publicApi('redeem', { cpf: clean, pts });
-      if (!r.ok) { console.warn('[Points] redeem error:', r.error); return; }
-    }
-    persistCustomers(customers.map(c=>c.cpf===clean?{...c,points:Math.max(0,(c.points||0)-pts)}:c));
-  }
-
   async function applyCouponCode() {
     const code = couponInput.trim().toUpperCase();
     if (!code) return;

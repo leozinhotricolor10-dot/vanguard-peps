@@ -74,15 +74,8 @@ Deno.serve(async (req: Request) => {
         return json({ points: data?.points ?? 0 });
       }
 
-      case "redeem": {
-        const cpf = cleanCpf(b.cpf);
-        const pts = Math.floor(Number(b.pts) || 0);
-        if (cpf.length !== 11 || pts <= 0) return json({ ok: false });
-        const { data } = await supabase.from("customers").select("points").eq("cpf", cpf).maybeSingle();
-        if (!data || (data.points || 0) < pts) return json({ ok: false, error: "Pontos insuficientes" });
-        await supabase.from("customers").update({ points: (data.points || 0) - pts }).eq("cpf", cpf);
-        return json({ ok: true });
-      }
+      // "redeem" removido (out/2026): deixava gastar pontos de qualquer CPF. Os pontos agora
+      // são conferidos e debitados só no create-order (com trava otimista e estorno).
 
       case "coupon": {
         const code = str(b.code, 40).trim().toUpperCase();
