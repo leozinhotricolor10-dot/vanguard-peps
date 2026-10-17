@@ -4828,6 +4828,63 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
     return { ok: true, reserved };
   }
 
+  // Editar itens de um pedido do admin: ajusta o estoque só pela diferença (antes × depois).
+  // Aumentos baixam (decrement_stock, via reserveOrderStock) ANTES de gravar e voltam se a gravação
+  // falhar; reduções/remoções devolvem (increment_stock) só DEPOIS de gravar. Só produtos com linha em stock.
+  const itemsSavingRef = React.useRef(false);
+  function stockDiffOfEdit(oldItems, newItems) {
+    const sum = list => (list || []).reduce((m, it) => { const q = parseInt(it.qty, 10) || 0; if (it.peptideId && q > 0) m[it.peptideId] = (m[it.peptideId] || 0) + q; return m; }, {});
+    const a = sum(oldItems), b = sum(newItems);
+    const add = [], back = [];
+    new Set([...Object.keys(a), ...Object.keys(b)]).forEach(pid => {
+      if (stock[pid] == null) return; // sem controle de estoque
+      const d = (b[pid] || 0) - (a[pid] || 0);
+      if (d > 0) add.push({ peptideId: pid, qty: d });
+      else if (d < 0) back.push({ pid, qty: -d });
+    });
+    return { add, back };
+  }
+  async function saveOrderItemsEdit() {
+    if (itemsSavingRef.current) return; // evita baixar duas vezes com clique duplo
+    if (editItems.length === 0) { showToast('Pedido precisa de ao menos 1 item', 'error'); return; }
+    const od = orderDetail;
+    const oldItems = od._items && od._items.length ? od._items : [{ peptideId: od.peptideId, qty: od.qty || 1 }];
+    const { add, back } = od._supabase ? stockDiffOfEdit(oldItems, editItems) : { add: [], back: [] };
+    if (add.length || back.length) {
+      const nm = pid => (products.find(p => p.id === pid) || {}).name || pid;
+      const lines = [
+        ...add.map(x => `− baixar ${x.qty} de ${nm(x.peptideId)}`),
+        ...back.map(x => `+ devolver ${x.qty} de ${nm(x.pid)}`),
+      ];
+      if (!window.confirm(`Salvar itens do pedido ${od._code || '#' + od.id}?\n\nAjuste de estoque:\n${lines.join('\n')}`)) return;
+    }
+    itemsSavingRef.current = true;
+    try {
+      const newSubtotal = editItems.reduce((s, it) => { const p2 = products.find(x => x.id === it.peptideId); return s + (it.price || (p2 ? p2.price : 0)) * (it.qty || 1); }, 0);
+      const isPix = (od._payment || '').toLowerCase().includes('pix');
+      const newFreight = isPix ? 0 : (od._freight ?? 60);
+      const newTotal = orderTotalWith(newSubtotal, newFreight, od._discounts, od._discounts && od._discounts.manual);
+      const resv = await reserveOrderStock(add);
+      if (!resv.ok) { showToast(resv.error + ' — pedido não alterado', 'error'); return; }
+      if (sb) {
+        let error = null;
+        try { ({ error } = await sb.from('orders').update({ items: editItems, subtotal: newSubtotal, freight: newFreight, total: newTotal }).eq('id', od.id)); } catch (e) { error = e; }
+        if (error) {
+          await releaseOrderStock(resv.reserved);
+          showToast('Erro ao salvar no servidor: ' + (error.message || error) + ' — estoque não alterado', 'error');
+          return;
+        }
+      }
+      await releaseOrderStock(back);
+      const updated = { ...od, _items: editItems, _subtotal: newSubtotal, _freight: newFreight, _total: newTotal,
+        qty: editItems.reduce((s, it) => s + (parseInt(it.qty, 10) || 0), 0), peptideId: editItems[0].peptideId };
+      persistOrders(orders.map(o => o.id === od.id ? updated : o));
+      setOrderDetail(updated);
+      setEditItemsMode(false);
+      showToast('Pedido atualizado ✓' + (add.length || back.length ? ' (estoque ajustado)' : ''), 'success');
+    } finally { itemsSavingRef.current = false; }
+  }
+
   async function createManualOrder() {
     if (manualOrderSubmitting) return;
     if (!manualOrder.name.trim()) { showToast('Informe o nome do cliente','error'); return; }
@@ -10179,26 +10236,18 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                       <div style={{display:'flex',justifyContent:'space-between',color:'var(--muted)',marginBottom:3}}><span>Subtotal</span><span style={{fontFamily:"'Space Mono',monospace"}}>R$ {newSubtotal.toLocaleString('pt-BR')}</span></div>
                       <div style={{display:'flex',justifyContent:'space-between',color:'var(--muted)',marginBottom:6}}><span>Frete</span><span style={{fontFamily:"'Space Mono',monospace"}}>{newFreight===0?'GRÁTIS':'R$ '+newFreight.toLocaleString('pt-BR')}</span></div>
                       <div style={{display:'flex',justifyContent:'space-between',fontWeight:700}}><span>Novo Total</span><span style={{fontFamily:"'Space Mono',monospace",color:'var(--accent)'}}>R$ {newTotal.toLocaleString('pt-BR')}</span></div>
+                      {orderDetail._supabase && (() => { const { add, back } = stockDiffOfEdit(orderDetail._items && orderDetail._items.length ? orderDetail._items : [{ peptideId: orderDetail.peptideId, qty: orderDetail.qty || 1 }], editItems);
+                        const nm = pid => (products.find(p => p.id === pid) || {}).name || pid;
+                        const parts = [...add.map(x => `−${x.qty} ${nm(x.peptideId)}`), ...back.map(x => `+${x.qty} ${nm(x.pid)}`)];
+                        return parts.length ? <div style={{marginTop:6,color:'#ffaa00',fontSize:'0.72rem'}}>Estoque ao salvar: {parts.join(' · ')}</div> : null; })()}
                     </div>
                   );
                 })()}
                 <div style={{display:'flex',gap:8,marginTop:10}}>
                   <button onClick={()=>setEditItemsMode(false)}
                     style={{flex:1,padding:'8px',background:'none',border:'1px solid var(--border)',borderRadius:8,color:'var(--muted)',fontSize:'0.75rem',cursor:'pointer'}}>Cancelar</button>
-                  <button onClick={async ()=>{
-                    if(editItems.length===0){ showToast('Pedido precisa de ao menos 1 item','error'); return; }
-                    const newSubtotal = editItems.reduce((s,it)=>{ const p2=products.find(x=>x.id===it.peptideId); return s+(it.price||(p2?p2.price:0))*(it.qty||1); },0);
-                    const isPix = (orderDetail._payment||'').toLowerCase().includes('pix');
-                    const newFreight = isPix ? 0 : (orderDetail._freight ?? 60);
-                    const newTotal = orderTotalWith(newSubtotal, newFreight, orderDetail._discounts, orderDetail._discounts && orderDetail._discounts.manual);
-                    const updated = {...orderDetail, _items: editItems, _subtotal: newSubtotal, _freight: newFreight, _total: newTotal};
-                    if(sb) { const { error } = await sb.from('orders').update({ items: editItems, subtotal: newSubtotal, freight: newFreight, total: newTotal }).eq('id', orderDetail.id);
-                      if (error) { showToast('Erro ao salvar no servidor: ' + error.message, 'error'); return; } }
-                    persistOrders(orders.map(o=>o.id===orderDetail.id?updated:o));
-                    setOrderDetail(updated);
-                    setEditItemsMode(false);
-                    showToast('Pedido atualizado ✓','success');
-                  }} style={{flex:2,padding:'8px',background:'rgba(0,229,195,0.12)',border:'1px solid rgba(0,229,195,0.35)',borderRadius:8,color:'var(--accent)',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>SALVAR ALTERAÇÕES</button>
+                  <button onClick={saveOrderItemsEdit}
+                    style={{flex:2,padding:'8px',background:'rgba(0,229,195,0.12)',border:'1px solid rgba(0,229,195,0.35)',borderRadius:8,color:'var(--accent)',fontWeight:700,fontSize:'0.75rem',cursor:'pointer',fontFamily:"'Space Mono',monospace"}}>SALVAR ALTERAÇÕES</button>
                 </div>
               </>) : (<>
                 {(orderDetail._items||[{peptideId:orderDetail.peptideId,qty:orderDetail.qty}]).map((it,i)=>{
