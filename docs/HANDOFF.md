@@ -12,6 +12,14 @@ Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.d9d684b
 
 Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfVHSX
 
+## Site principal no layout novo + ROLLBACK (out/2026)
+
+- `vanguardpep.com/` agora serve o **layout novo** (loja + admin da casca nova). `/novo` continua funcionando (mesma página, canonical aponta para `/`); `/p/<código>` igual. O **layout antigo** fica em **`/antigo/`** (noindex), loja e admin antigos completos.
+- Controle: constante `NOVO_NO_INICIO` no `index.html` (perto de `IS_NOVO`). `IS_ANTIGO` = caminho começa com `/antigo`. `IS_NOVO = !IS_ANTIGO && (NOVO_NO_INICIO || /novo || /p/)`. Telas internas da loja nova voltam para `NV_HOME` (`/` ou `/novo/`).
+- **Rollback rápido (voltar o `/` ao antigo):** no `index.html` trocar `const NOVO_NO_INICIO = true;` para `false`, commit + push na `main` (o GitHub Actions publica em ~1 min). `/novo` e `/p/<código>` continuam no novo; `/antigo/` continua no antigo. O build mostra `🧭 Layout em /: ANTIGO`. Emergência sem build: o `/antigo/` já está no ar e pode ser divulgado na hora.
+- Links antigos: `#/produto/<id>` abre o produto na loja nova; `#/faq`, `#/calcular`, `#/blog`, `#/carrinho` abrem a tela equivalente; `#/frete` (simulador, não existe no novo) e `#/admin` sem login caem no layout antigo. `?preorder=<token>` (portal) e `?pedido` (Formulário de Pedido) seguem com as telas antigas em qualquer caminho; "Concluir compra" do portal leva ao checkout da loja nova (no `/antigo/` abre o modal antigo — antes dava erro `setCheckout is not defined`). Rastreio por código (`VG-XXXXXX`) na tela "Rastrear pedido" da loja nova.
+- build.js: `dist/index.html` (canonical `/`), `dist/novo/index.html` (canonical `/`), `dist/antigo/index.html` (noindex, título "versão anterior"), `dist/404.html`, `dist/p/<sku>/index.html` (canonical próprio), `dist/sitemap.xml` (`/` + produtos) e `dist/robots.txt`.
+
 ## Como o novo layout funciona
 
 - `index.html` → componente `function NovaLoja(P)` (antes de `function App()`), CSS em `NOVO_CSS` (classes `nv-*`).

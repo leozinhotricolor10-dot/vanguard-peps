@@ -2229,7 +2229,7 @@ function CalcView() {
 
 // Senha admin verificada server-side via Edge Function (hash nunca exposto no código)
 
-function PortalView({ po, preorders, persistPreorders, cancelPreorderByToken, showToast, setPortalToken, setView, orders, stock, persistOrders, saveStock, setStock, setCheckoutOpen, setMyName }) {
+function PortalView({ po, preorders, persistPreorders, cancelPreorderByToken, showToast, setPortalToken, setView, orders, stock, persistOrders, saveStock, setStock, setCheckoutOpen, setCheckout, setMyName }) {
   const statusInfo = {
     pending:   {icon:'⏳', label:'Aguardando estoque',  color:'#ffaa00'},
     notified:  {icon:'🔔', label:'Produto disponível!', color:'#00b4d8'},
@@ -2361,7 +2361,8 @@ function PortalView({ po, preorders, persistPreorders, cancelPreorderByToken, sh
                 window.history.replaceState({},'',window.location.pathname);
                 // Ir para carrinho e abrir checkout
                 setView('cart');
-                setTimeout(()=>{ setCheckout(c=>({...c, nomeCompleto: po.name})); setCheckoutOpen(true); }, 100);
+                // Layout novo: o #/carrinho abre a tela de checkout da loja nova (o modal antigo fica fechado)
+                setTimeout(()=>{ if (setCheckout) setCheckout(c=>({...c, nomeCompleto: c.nomeCompleto || po.name})); if (!IS_NOVO) setCheckoutOpen(true); }, 100);
                 showToast('Produto adicionado! Preencha seus dados para finalizar 🛒','success');
               }}
                 style={{padding:'14px',background:'linear-gradient(135deg,var(--accent),#00c896)',border:'none',borderRadius:10,color:'#000',fontWeight:800,fontSize:'1rem',cursor:'pointer',letterSpacing:'0.03em'}}>
@@ -2408,11 +2409,23 @@ class ErrorBoundary extends React.Component {
 // ── NOVO LAYOUT (vanguardpep.com/novo) ──────────────────────────────────────
 // Mesma lógica do site (carrinho, estoque, cupom, pedido), só a aparência muda.
 const NV_SLUG = (window.location.pathname.match(/^\/p\/([^/]+)/) || [])[1] ? decodeURIComponent(window.location.pathname.match(/^\/p\/([^/]+)/)[1]).toLowerCase() : null;
-// Loja nova em /novo e nas páginas de produto /p/<código> (links curtos para o WhatsApp)
-const IS_NOVO = /\/novo\/?$/.test(window.location.pathname) || !!NV_SLUG;
+// ROLLBACK: trocar NOVO_NO_INICIO para false (e dar push) faz "/" voltar ao layout antigo;
+// /novo e /p/<código> continuam no novo. O layout antigo fica sempre em /antigo/ (rota de segurança).
+const NOVO_NO_INICIO = true;
+const IS_ANTIGO = /^\/antigo(\/|$)/.test(window.location.pathname);
+// Loja nova em "/" (com NOVO_NO_INICIO), em /novo e nas páginas de produto /p/<código>
+const IS_NOVO = !IS_ANTIGO && (NOVO_NO_INICIO || /\/novo\/?$/.test(window.location.pathname) || !!NV_SLUG);
+const NV_HOME = NOVO_NO_INICIO ? '/' : '/novo/';
 const nvSlugOf = p => String(p.sku || p.id).toLowerCase();
-const nvStateFromUrl = () => /^\/p\//.test(window.location.pathname)
-  ? { s: 'produto', pid: decodeURIComponent(window.location.pathname.split('/')[2] || '').toLowerCase() } : {};
+// Links antigos com hash (#/produto/<id>, #/faq, #/carrinho...) abrem a tela equivalente do layout novo
+const NV_HASH_SCREENS = { faq: 'faq', calcular: 'calc', calc: 'calc', blog: 'artigos', artigos: 'artigos', carrinho: 'checkout', cart: 'checkout', rastrear: 'rastrear', pedido: 'rastrear' };
+const nvStateFromUrl = () => {
+  if (/^\/p\//.test(window.location.pathname))
+    return { s: 'produto', pid: decodeURIComponent(window.location.pathname.split('/')[2] || '').toLowerCase() };
+  const h = window.location.hash.replace(/^#\/?/, '');
+  if (h.startsWith('produto/')) return { s: 'produto', pid: decodeURIComponent(h.slice(8)) };
+  return NV_HASH_SCREENS[h] ? { s: NV_HASH_SCREENS[h] } : {};
+};
 
 // Combos (BUNDLES): o preço "cheio" é a soma dos preços atuais; o desconto do combo
 // só vale enquanto todos os itens estiverem no carrinho (1 de cada por combo aplicado).
@@ -2562,7 +2575,7 @@ const NOVO_CSS = `
 // ── ADMIN NO /novo ───────────────────────────────────────────────────────────
 // Casca nova (menu lateral em 4 grupos / abas embaixo no celular) por cima das
 // abas antigas do admin: a lógica de cada aba é a mesma do site antigo.
-// Só vale com IS_NOVO (classe .novo-admin no root); o admin em / não muda.
+// Só vale com IS_NOVO (classe .novo-admin no root); o admin em /antigo/ segue o antigo.
 const NVA_GROUPS = [
   { id: 'vendas', label: 'Vendas', icon: <><path d="M5 4h14v16H5z" /><path d="M9 9h6M9 13h6" /></>, items: [
     { id: 'pedidos', label: 'Pedidos', tab: 'pedidos' },
@@ -2818,9 +2831,9 @@ function NovaLoja(P) {
 
   function go(s, id) {
     const depth = ((window.history.state && window.history.state.nv && window.history.state.nv.d) || 0) + 1;
-    // Produto ganha endereço próprio (/p/<código>); o resto fica em /novo/
+    // Produto ganha endereço próprio (/p/<código>); o resto fica na home da loja nova
     const prod = s === 'produto' && products.find(p => p.id === id);
-    const url = prod ? '/p/' + nvSlugOf(prod) : '/novo/';
+    const url = prod ? '/p/' + nvSlugOf(prod) : NV_HOME;
     window.history.pushState({ nv: { s, pid: id || null, d: depth } }, '', url);
     setScreen(s); setPid(id || null); window.scrollTo(0, 0);
   }
@@ -2904,7 +2917,7 @@ function NovaLoja(P) {
           <a href="#" onClick={e => { e.preventDefault(); go('artigos'); }}>Artigos</a>
           <a href="#" onClick={e => { e.preventDefault(); go('faq'); }}>Dúvidas</a>
           <a href="https://wa.me/447418333521" target="_blank" rel="noreferrer">WhatsApp</a>
-          <a href="/">Versão anterior do site</a>
+          <a href={NOVO_NO_INICIO ? '/antigo/' : '/'}>Versão anterior do site</a>
           <span onClick={onVersionTap} style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, opacity: .6, userSelect: 'none' }}>{versionTag}</span>
         </span>
       </div>
@@ -5650,8 +5663,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
     return () => clearInterval(id);
   }, []);
 
-  const novoActive = IS_NOVO && view !== 'admin' && !portalToken && !manualOrderView;
-  // Admin dentro do /novo: casca nova por cima das abas antigas (o admin em / não muda)
+  // #/frete (simulador de frete) não existe no layout novo: esse link cai no layout antigo
+  const novoActive = IS_NOVO && view !== 'admin' && view !== 'frete' && !portalToken && !manualOrderView;
+  // Admin dentro do /novo: casca nova por cima das abas antigas (o admin em /antigo/ segue o antigo)
   const novoAdmin = IS_NOVO && view === 'admin' && adminUnlocked && !portalToken && !manualOrderView;
   const nvaActive = nvaActiveItem(adminTab, nvaSec, adminStatusFilter);
   const nvaBadges = novoAdmin ? {
@@ -5755,7 +5769,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
             <button onClick={()=>{setPortalToken(null);window.history.replaceState({},'',window.location.pathname);}} style={{padding:"10px 24px",background:"var(--accent)",border:"none",borderRadius:8,color:"#000",fontWeight:700,cursor:"pointer"}}>Voltar à loja</button>
           </div>
         );
-        return <PortalView po={po} preorders={preorders} persistPreorders={persistPreorders} cancelPreorderByToken={cancelPreorderByToken} showToast={showToast} setPortalToken={setPortalToken} setView={setView} orders={orders} stock={stock} persistOrders={persistOrders} saveStock={saveStock} setStock={setStock} setCheckoutOpen={setCheckoutOpen} setMyName={setMyName} />;
+        return <PortalView po={po} preorders={preorders} persistPreorders={persistPreorders} cancelPreorderByToken={cancelPreorderByToken} showToast={showToast} setPortalToken={setPortalToken} setView={setView} orders={orders} stock={stock} persistOrders={persistOrders} saveStock={saveStock} setStock={setStock} setCheckoutOpen={setCheckoutOpen} setCheckout={setCheckout} setMyName={setMyName} />;
       })()}
 
 

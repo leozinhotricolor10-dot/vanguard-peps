@@ -151,16 +151,33 @@ esbuild.transform(jsxCode, {
   );
 
   // 4) Escrever dist/
+  // O mesmo app serve todas as rotas; o layout é escolhido pelo caminho (ver NOVO_NO_INICIO no index.html):
+  //   /            → layout novo (ou antigo, se NOVO_NO_INICIO = false — rollback)
+  //   /novo        → layout novo (mantido para links antigos; canonical aponta para /)
+  //   /p/<código>  → layout novo, página do produto (Open Graph próprio)
+  //   /antigo/     → layout antigo, rota de segurança (noindex)
   if (!fs.existsSync(DIST_DIR)) fs.mkdirSync(DIST_DIR);
-  fs.writeFileSync(DIST, dist);
+  const novoNoInicio = /const NOVO_NO_INICIO = true;/.test(html);
+  console.log(`🧭 Layout em /: ${novoNoInicio ? 'NOVO' : 'ANTIGO'} (NOVO_NO_INICIO = ${novoNoInicio})`);
+  fs.writeFileSync(DIST, withHead(dist, { canonical: SITE + '/' }));
 
-  // Novo layout em teste: mesma página servida em /novo (o app detecta o caminho)
   fs.mkdirSync(path.join(DIST_DIR, 'novo'), { recursive: true });
-  fs.writeFileSync(path.join(DIST_DIR, 'novo', 'index.html'), dist);
+  fs.writeFileSync(path.join(DIST_DIR, 'novo', 'index.html'), withHead(dist, { canonical: SITE + (novoNoInicio ? '/' : '/novo') }));
   console.log('📄 Gerado: novo/index.html');
+
+  fs.mkdirSync(path.join(DIST_DIR, 'antigo'), { recursive: true });
+  fs.writeFileSync(path.join(DIST_DIR, 'antigo', 'index.html'), withHead(dist, {
+    canonical: SITE + '/', noindex: true, title: 'Vanguard Peptides — versão anterior',
+  }));
+  console.log('📄 Gerado: antigo/index.html (layout antigo, noindex)');
 
   // Endereços desconhecidos (ex.: produto cadastrado depois do deploy) também abrem o app
   fs.writeFileSync(path.join(DIST_DIR, '404.html'), dist);
+  fs.writeFileSync(path.join(DIST_DIR, 'robots.txt'), `User-agent: *
+Allow: /
+
+Sitemap: ${SITE}/sitemap.xml
+`);
   buildProductPages(dist);
 
   // Copiar páginas estáticas adicionais (landing de atacado servida em /atacado)
@@ -199,6 +216,22 @@ const SITE = 'https://vanguardpep.com';
 const PRODUCTS_URL = 'https://aumubzvdhzvtnqfzqeqd.supabase.co/rest/v1/products?select=id,sku,name,description,image_url&order=sort_order';
 const PUBLIC_KEY = 'sb_publishable_crfA-iUkVR2mnibsWQ2ZDA_wpwOBBY_';
 
+// Canonical / noindex / título por página (inserido logo após o og:url)
+function withHead(page, { canonical, noindex, title } = {}) {
+  let out = page;
+  if (title) out = out.replace(/<title>[\s\S]*?<\/title>/, `<title>${escAttr(title)}</title>`);
+  const tags = [canonical ? `<link rel="canonical" href="${canonical}"/>` : '', noindex ? '<meta name="robots" content="noindex"/>' : ''].filter(Boolean).join('\n');
+  if (tags) out = out.replace(/(<meta property="og:url"[^>]*>)/, (m) => m + '\n' + tags);
+  return out;
+}
+function writeSitemap(slugs) {
+  const urls = ['/', ...slugs.map(s => '/p/' + s)];
+  const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    + urls.map(u => `  <url><loc>${SITE}${u}</loc></url>`).join('\n') + '\n</urlset>\n';
+  fs.writeFileSync(path.join(DIST_DIR, 'sitemap.xml'), xml);
+  console.log(`📄 sitemap.xml: ${urls.length} endereços`);
+}
+
 const escAttr = v => String(v || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 async function buildProductPages(dist) {
@@ -209,6 +242,7 @@ async function buildProductPages(dist) {
     if (!Array.isArray(products)) throw new Error(JSON.stringify(products).slice(0, 120));
   } catch (e) {
     console.warn('⚠️  Páginas de produto não geradas (sem acesso aos produtos):', e.message);
+    writeSitemap([]);
     return;
   }
   const slugs = [];
@@ -218,7 +252,7 @@ async function buildProductPages(dist) {
     const title = `${p.name} — Vanguard Peptides`;
     const desc = p.description || 'Peptídeos de alta pureza. Pague no PIX com frete grátis.';
     const url = `${SITE}/p/${slug}`;
-    let page = dist
+    let page = withHead(dist, { canonical: url })
       .replace(/<title>[\s\S]*?<\/title>/, `<title>${escAttr(title)}</title>`)
       .replace(/(<meta name="description" content=")[^"]*(")/, `$1${escAttr(desc)}$2`)
       .replace(/(<meta property="og:url" content=")[^"]*(")/, `$1${url}$2`)
@@ -234,5 +268,6 @@ async function buildProductPages(dist) {
     fs.writeFileSync(path.join(dir, 'index.html'), page);
     slugs.push(slug);
   }
+  writeSitemap(slugs);
   console.log(`📄 Páginas de produto: ${slugs.length} (/p/${slugs.slice(0, 4).join(', /p/')}...)`);
 }
