@@ -2416,6 +2416,10 @@ const IS_ANTIGO = /^\/antigo(\/|$)/.test(window.location.pathname);
 // Loja nova em "/" (com NOVO_NO_INICIO), em /novo e nas páginas de produto /p/<código>
 const IS_NOVO = !IS_ANTIGO && (NOVO_NO_INICIO || /\/novo\/?$/.test(window.location.pathname) || !!NV_SLUG);
 const NV_HOME = NOVO_NO_INICIO ? '/' : '/novo/';
+// /novo virou o site principal: dist/novo/index.html já redireciona; isto cobre cópias em cache
+if (NOVO_NO_INICIO && /^\/novo\/?$/.test(window.location.pathname)) {
+  try { window.history.replaceState(window.history.state, '', '/' + window.location.search + window.location.hash); } catch {}
+}
 const nvSlugOf = p => String(p.sku || p.id).toLowerCase();
 // Links antigos com hash (#/produto/<id>, #/faq, #/carrinho...) abrem a tela equivalente do layout novo
 const NV_HASH_SCREENS = { faq: 'faq', calcular: 'calc', calc: 'calc', blog: 'artigos', artigos: 'artigos', carrinho: 'checkout', cart: 'checkout', rastrear: 'rastrear', pedido: 'rastrear' };

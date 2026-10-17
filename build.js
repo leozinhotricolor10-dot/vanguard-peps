@@ -153,7 +153,7 @@ esbuild.transform(jsxCode, {
   // 4) Escrever dist/
   // O mesmo app serve todas as rotas; o layout é escolhido pelo caminho (ver NOVO_NO_INICIO no index.html):
   //   /            → layout novo (ou antigo, se NOVO_NO_INICIO = false — rollback)
-  //   /novo        → layout novo (mantido para links antigos; canonical aponta para /)
+  //   /novo        → redireciona para / (com ?query e #hash); se NOVO_NO_INICIO = false, layout novo
   //   /p/<código>  → layout novo, página do produto (Open Graph próprio)
   //   /antigo/     → layout antigo, rota de segurança (noindex)
   if (!fs.existsSync(DIST_DIR)) fs.mkdirSync(DIST_DIR);
@@ -162,8 +162,28 @@ esbuild.transform(jsxCode, {
   fs.writeFileSync(DIST, withHead(dist, { canonical: SITE + '/' }));
 
   fs.mkdirSync(path.join(DIST_DIR, 'novo'), { recursive: true });
-  fs.writeFileSync(path.join(DIST_DIR, 'novo', 'index.html'), withHead(dist, { canonical: SITE + (novoNoInicio ? '/' : '/novo') }));
-  console.log('📄 Gerado: novo/index.html');
+  if (novoNoInicio) {
+    // /novo virou o site principal: redireciona na hora para "/" mantendo ?query e #hash
+    // (GitHub Pages não tem redirect de servidor; script + meta refresh como reserva sem JS)
+    const og = (dist.match(/<meta property="og:[^>]*>/g) || []).join('\n');
+    fs.writeFileSync(path.join(DIST_DIR, 'novo', 'index.html'), `<!DOCTYPE html>
+<html lang="pt-BR"><head>
+<meta charset="UTF-8"/>
+<title>Vanguard Peptides</title>
+<link rel="canonical" href="${SITE}/"/>
+<meta name="robots" content="noindex"/>
+${og}
+<script>location.replace('/' + location.search + location.hash);</script>
+<meta http-equiv="refresh" content="0; url=/"/>
+</head><body style="background:#050a0e;color:#e2eaf0;font-family:sans-serif;padding:24px">
+<a href="/" style="color:#00e5c3">Abrir vanguardpep.com</a>
+</body></html>
+`);
+    console.log('📄 Gerado: novo/index.html (redireciona para /)');
+  } else {
+    fs.writeFileSync(path.join(DIST_DIR, 'novo', 'index.html'), withHead(dist, { canonical: SITE + '/novo' }));
+    console.log('📄 Gerado: novo/index.html');
+  }
 
   fs.mkdirSync(path.join(DIST_DIR, 'antigo'), { recursive: true });
   fs.writeFileSync(path.join(DIST_DIR, 'antigo', 'index.html'), withHead(dist, {
