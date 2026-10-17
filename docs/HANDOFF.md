@@ -1,6 +1,6 @@
 # Handoff — Vanguard Peptides (17/10/2026)
 
-Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.816c391** (site principal no layout novo; desconto manual; pedidos manuais baixam estoque; redeem removido no código).
+Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.1308361** (site principal no layout novo; /novo redireciona; Simular frete na loja nova; desconto manual; pedidos manuais e edição de itens ajustam estoque; redeem removido no código).
 
 ## Rodada de 17/10/2026 (aprovada pelo dono) — o que mudou
 
