@@ -2545,6 +2545,137 @@ const NOVO_CSS = `
   .nv-narrow{max-width:640px;margin:0 auto}
 }`;
 
+// ── ADMIN NO /novo ───────────────────────────────────────────────────────────
+// Casca nova (menu lateral em 4 grupos / abas embaixo no celular) por cima das
+// abas antigas do admin: a lógica de cada aba é a mesma do site antigo.
+// Só vale com IS_NOVO (classe .novo-admin no root); o admin em / não muda.
+const NVA_GROUPS = [
+  { id: 'vendas', label: 'Vendas', icon: <><path d="M5 4h14v16H5z" /><path d="M9 9h6M9 13h6" /></>, items: [
+    { id: 'pedidos', label: 'Pedidos', tab: 'pedidos' },
+    { id: 'preorders', label: 'Pré-orders', tab: 'preorders' },
+    { id: 'clientes', label: 'Clientes', tab: 'clientes' },
+    { id: 'cupons', label: 'Cupons', tab: 'cupons' },
+  ] },
+  { id: 'envios', label: 'Envios', icon: <><path d="M3 7l9-4 9 4-9 4-9-4z" /><path d="M3 7v10l9 4 9-4V7" /></>, items: [
+    { id: 'etiquetas', label: 'Etiquetas', tab: 'pedidos' }, // pedidos pagos (botão Etiqueta)
+    { id: 'remetentes', label: 'Remetentes', action: 'senders' }, // abre o mesmo modal do botão 📮
+    { id: 'mapa', label: 'Mapa', tab: 'mapa' },
+  ] },
+  { id: 'catalogo', label: 'Catálogo', icon: <path d="M9 3h6v4l4 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2l4-12z" />, items: [
+    { id: 'produtos', label: 'Produtos', tab: 'produtos' },
+    { id: 'estoque', label: 'Estoque', tab: 'estoque' },
+    { id: 'importacao', label: 'Importações', tab: 'importacao' },
+    { id: 'combos', label: 'Combos', tab: 'combos' },
+    { id: 'artigos', label: 'Artigos', tab: 'artigos' },
+    { id: 'avisos', label: 'Avisos', tab: 'avisos' },
+  ] },
+  { id: 'gestao', label: 'Gestão', icon: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></>, items: [
+    { id: 'financeiro', label: 'Financeiro', tab: 'financeiro' },
+    { id: 'config', label: 'Config', tab: 'config' },
+  ] },
+];
+const NVA_ITEMS = NVA_GROUPS.flatMap(g => g.items.map(i => ({ ...i, group: g.id })));
+// Item ativo: "Etiquetas" é a aba Pedidos filtrada em "pago"
+function nvaActiveItem(adminTab, sec, statusFilter) {
+  if (adminTab === 'pedidos' && sec === 'etiquetas' && statusFilter === 'pago') return 'etiquetas';
+  const it = NVA_ITEMS.find(i => i.tab === adminTab);
+  return it ? it.id : 'pedidos';
+}
+
+const NOVO_ADMIN_CSS = `
+.novo-admin{--muted:#8fa9b6;--card:#0a1219;--border:rgba(0,229,195,.12)}
+.novo-admin>nav,.novo-admin>.hero-banner,.novo-admin>.site-footer,.novo-admin>.mobile-bottom-nav,.novo-admin>.app>aside{display:none!important}
+.novo-admin>.app{display:block;padding:0 0 0 232px;max-width:none;margin:0;min-height:100vh}
+.novo-admin>.app>main{max-width:1180px;padding:24px 28px 48px;margin:0;min-width:0}
+.novo-admin .admin-tabs,.novo-admin .view .page-tag{display:none!important}
+.novo-admin .page-title{font-size:26px;letter-spacing:-.3px;background:none;-webkit-text-fill-color:#e2eaf0;color:#e2eaf0;margin:0}
+.nva-side{position:fixed;top:0;left:0;bottom:0;width:232px;z-index:60;overflow-y:auto;padding:20px 14px;background:#0a1219;border-right:1px solid rgba(0,229,195,.1);display:flex;flex-direction:column;gap:18px;font-family:'DM Sans',sans-serif;scrollbar-width:thin;scrollbar-color:rgba(0,229,195,.2) transparent}
+.nva-brand{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;padding:0 8px;color:#e2eaf0}
+.nva-brand span{font-family:'Space Mono',monospace;font-size:10px;font-weight:400;color:#7d9aa8;margin-left:4px}
+.nva-grp{display:flex;flex-direction:column;gap:2px}
+.nva-gl{padding:0 8px 6px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#7d9aa8}
+.nva-it{display:flex;justify-content:space-between;align-items:center;width:100%;height:40px;padding:0 10px;border-radius:10px;border:none;background:none;color:#c7d6de;font-family:inherit;font-size:14px;text-align:left;cursor:pointer}
+.nva-it:hover{background:rgba(0,229,195,.05)}
+.nva-it.on{background:rgba(0,229,195,.1);color:#00e5c3;font-weight:600}
+.nva-it b,.nva-tabs b,.nva-sub b{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:#ffb38f}
+.nva-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding:0 8px}
+.nva-foot button,.nva-exit{height:40px;padding:0 12px;border-radius:10px;border:1px solid rgba(0,229,195,.3);background:transparent;color:#00e5c3;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer}
+.nva-foot span{font-family:'Space Mono',monospace;font-size:10px;color:#5a7a8a}
+.nva-tabs,.nva-sub,.nva-exit{display:none}
+.novo-admin .admin-stat{background:#0a1219;border-radius:14px;padding:14px 16px}
+.novo-admin .admin-stat-label{font-family:'DM Sans',sans-serif;font-size:12px;letter-spacing:0;text-transform:none;color:#a9bfcb}
+.novo-admin .admin-stat-value{font-family:'Space Mono',monospace;font-size:22px;font-weight:700;color:#e2eaf0}
+.novo-admin .admin-action-btn{font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;min-height:40px;padding:8px 14px;border-radius:10px;border-color:rgba(0,229,195,.2);color:#c7d6de}
+.novo-admin .admin-action-btn:hover{border-color:rgba(0,229,195,.45);color:#00e5c3}
+.novo-admin .admin-table{background:#0a1219;border-radius:14px;border-color:rgba(0,229,195,.1)}
+.novo-admin .admin-table-header{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;color:#a9bfcb;background:#0a1219}
+@media (max-width:759px){
+  .nva-side{display:none}
+  .novo-admin>.app{padding:0}
+  .novo-admin>.app>main{padding:14px 16px 96px;width:100%;max-width:100%}
+  .nva-tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:60;padding:6px 8px calc(10px + env(safe-area-inset-bottom));background:#0a1219;border-top:1px solid rgba(0,229,195,.12)}
+  .nva-tabs button{position:relative;height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;color:#a9bfcb;font-family:'DM Sans',sans-serif;font-size:11px;cursor:pointer}
+  .nva-tabs button.on{color:#00e5c3;font-weight:700}
+  .nva-tabs b{position:absolute;top:2px;left:calc(50% + 8px);font-size:10px}
+  .nva-sub{display:flex;gap:8px;overflow-x:auto;margin:12px -16px 14px;padding:0 16px;scrollbar-width:none}
+  .nva-sub button{flex-shrink:0;height:38px;padding:0 14px;border-radius:19px;border:1px solid rgba(0,229,195,.2);background:transparent;color:#c7d6de;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer}
+  .nva-sub button.on{background:#00e5c3;color:#04110e;border-color:#00e5c3}
+  .nva-sub button.on b{color:#04110e}
+  .nva-exit{display:inline-flex;align-items:center}
+  .novo-admin .page-title{font-size:22px}
+  /* abas antigas com grade fixa que estouravam a 375px */
+  .novo-admin .notice-editor-row{grid-template-columns:1fr!important}
+  .novo-admin .fin-cards{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .novo-admin .nva-wrapgrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .novo-admin .nva-scrollx{overflow-x:auto}
+  .novo-admin .nva-scrollx>*{min-width:680px}
+}`;
+
+function NovaAdminShell({ active, onPick, badges, onExit, versionTag }) {
+  const grp = NVA_GROUPS.find(g => g.items.some(i => i.id === active)) || NVA_GROUPS[0];
+  const groupBadge = g => g.items.reduce((s, i) => s + (badges[i.id] || 0), 0);
+  return <>
+    <div className="nva-side" role="navigation" aria-label="Admin">
+      <div className="nva-brand">VANGUARD<span>admin</span></div>
+      {NVA_GROUPS.map(g => (
+        <div className="nva-grp" key={g.id}>
+          <span className="nva-gl">{g.label}</span>
+          {g.items.map(it => (
+            <button key={it.id} className={'nva-it' + (it.id === active ? ' on' : '')} aria-current={it.id === active ? 'page' : undefined} onClick={() => onPick(it)}>
+              {it.label}{badges[it.id] > 0 && <b>{badges[it.id]}</b>}
+            </button>
+          ))}
+        </div>
+      ))}
+      <div className="nva-foot">
+        <button onClick={onExit}>← Ver loja</button>
+        <span>{versionTag}</span>
+      </div>
+    </div>
+    <div className="nva-tabs" role="navigation" aria-label="Seções do admin">
+      {NVA_GROUPS.map(g => (
+        <button key={g.id} className={g.id === grp.id ? 'on' : ''} aria-current={g.id === grp.id ? 'page' : undefined} onClick={() => { if (g.id !== grp.id) onPick(g.items[0]); }}>
+          <NvIcon d={g.icon} />{g.label}{groupBadge(g) > 0 && <b>{groupBadge(g)}</b>}
+        </button>
+      ))}
+    </div>
+  </>;
+}
+
+// Sub-abas do grupo atual (só no celular; no desktop o menu lateral já mostra tudo)
+function NovaAdminSub({ active, onPick, badges }) {
+  const grp = NVA_GROUPS.find(g => g.items.some(i => i.id === active)) || NVA_GROUPS[0];
+  return (
+    <div className="nva-sub" role="navigation" aria-label={grp.label}>
+      {grp.items.map(it => (
+        <button key={it.id} className={it.id === active ? 'on' : ''} aria-pressed={it.id === active} onClick={() => onPick(it)}>
+          {it.label}{badges[it.id] > 0 && <> <b>{badges[it.id]}</b></>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 const nvFmt = v => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function NvIcon({ d, size = 22, w = 1.9 }) {
@@ -3482,6 +3613,7 @@ function App() {
   const [cfgRedeem, setCfgRedeem] = useState(() => String(JSON.parse(localStorage.getItem('vg-points-config')||'null')?.redeem || 5));
   const [disclaimer, setDisclaimer] = useState(false);
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
+  const [nvaSec, setNvaSec] = useState('pedidos'); // item do menu do admin no /novo (Etiquetas = Pedidos filtrado)
   const [adminSearch, setAdminSearch] = useState('');
   const [adminPage, setAdminPage] = useState(1);
   const [groupByClient, setGroupByClient] = useState(false);
@@ -5217,6 +5349,12 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
     showToast("Item removido", "info");
   }
 
+  // Abre o modal da pool de remetentes (botão 📮 REMETENTES e menu Envios › Remetentes no /novo)
+  function openSenderPool() {
+    setEtiquetaModal({ _poolOnly: true }); setEtiquetaStep('settings');
+    setMeForm({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' });
+  }
+
   function handleAdminUnlock() {
     const lock = adminLockRef.current;
     if (Date.now() < lock.until) {
@@ -5370,9 +5508,27 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
   }, []);
 
   const novoActive = IS_NOVO && view !== 'admin' && !portalToken && !manualOrderView;
+  // Admin dentro do /novo: casca nova por cima das abas antigas (o admin em / não muda)
+  const novoAdmin = IS_NOVO && view === 'admin' && adminUnlocked && !portalToken && !manualOrderView;
+  const nvaActive = nvaActiveItem(adminTab, nvaSec, adminStatusFilter);
+  const nvaBadges = novoAdmin ? {
+    pedidos: orders.filter(o => o._supabase && (o.status || 'pendente') === 'pendente').length,
+    etiquetas: orders.filter(o => o._supabase && o.status === 'pago' && !o.label_url).length,
+  } : {};
+  function nvaPick(it) {
+    if (it.action === 'senders') { openSenderPool(); return; }
+    if (it.id === 'etiquetas') setAdminStatusFilter('pago');
+    else if (it.id === 'pedidos' && nvaActive !== 'pedidos') setAdminStatusFilter('all'); // vindo de outra seção, sem o filtro de Etiquetas
+    setNvaSec(it.id);
+    setAdminTab(it.tab);
+    window.scrollTo(0, 0);
+  }
   return (
-    <div className={novoActive ? 'novo-mode' : ''}>
+    <div className={novoActive ? 'novo-mode' : novoAdmin ? 'novo-admin' : ''}>
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
+
+      {novoAdmin && <style>{NOVO_ADMIN_CSS}</style>}
+      {novoAdmin && <NovaAdminShell active={nvaActive} onPick={nvaPick} badges={nvaBadges} onExit={() => { setView('catalog'); window.scrollTo(0, 0); }} versionTag="v2.833cea5" />}
 
       {novoActive && <NovaLoja
         products={products} categories={CATEGORIES} effectivePrice={effectivePrice} availableStock={availableStock}
@@ -6677,10 +6833,11 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
             <div style={{display:'flex',alignItems:'flex-start',justifyContent:'space-between',marginBottom:0}}>
               <div>
                 <div className="page-tag">▸ ADMINISTRADOR</div>
-                <div className="page-title">Painel Admin</div>
+                <div className="page-title">{novoAdmin ? (NVA_ITEMS.find(i => i.id === nvaActive) || {}).label : 'Painel Admin'}</div>
               </div>
               {/* 🔔 Bell icon */}
-              <div style={{position:'relative',marginTop:8}}>
+              <div style={{position:'relative',marginTop:novoAdmin?0:8,display:'flex',gap:8,alignItems:'center'}}>
+                {novoAdmin && <button className="nva-exit" onClick={()=>{ setView('catalog'); window.scrollTo(0,0); }}>← Loja</button>}
                 <button
                   onClick={() => { setNotifOpen(o => { if (!o) markAllRead(); return !o; }); }}
                   style={{background:'var(--card)',border:'1px solid var(--border)',borderRadius:10,padding:'8px 13px',cursor:'pointer',color:'var(--text)',fontSize:'1.1rem',position:'relative',lineHeight:1}}>
@@ -6720,12 +6877,13 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
               </div>
             </div>
 
-            <div className="admin-grid" style={{marginBottom:24}}>
+            {novoAdmin && <NovaAdminSub active={nvaActive} onPick={nvaPick} badges={nvaBadges} />}
+            {(!novoAdmin || adminTab === 'pedidos') && <div className="admin-grid" style={{marginBottom:24,marginTop:novoAdmin?16:0}}>
               <div className="admin-stat"><div className="admin-stat-label">Compradores</div><div className="admin-stat-value">{totalBuyers}</div></div>
               <div className="admin-stat"><div className="admin-stat-label">Total unidades</div><div className="admin-stat-value">{totalUnits}</div></div>
               <div className="admin-stat"><div className="admin-stat-label">Receita bruta</div><div className="admin-stat-value">R$ {totalRevenue.toLocaleString("pt-BR")}</div></div>
               <div className="admin-stat"><div className="admin-stat-label">Produtos</div><div className="admin-stat-value">{products.length}</div></div>
-            </div>
+            </div>}
 
             {/* TABS */}
             <div className="admin-tabs">
@@ -6741,7 +6899,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
   <button className={`admin-tab ${adminTab==="cupons"?"active":""}`} onClick={()=>setAdminTab("cupons")}>🏷️ CUPONS</button>
               <button className={`admin-tab ${adminTab==="clientes"?"active":""}`} onClick={()=>setAdminTab("clientes")}>👥 CLIENTES</button>
               <button className={`admin-tab ${adminTab==="mapa"?"active":""}`} onClick={()=>setAdminTab("mapa")}>🗺️ MAPA</button>
-              <button className="admin-tab" onClick={()=>{ setEtiquetaModal({ _poolOnly: true }); setEtiquetaStep('settings'); setMeForm({ name:'', phone:'', email:'', document:'', address:'', number:'', complement:'', district:'', city:'', state:'', postal_code:'' }); }}>📮 REMETENTES</button>
+              <button className="admin-tab" onClick={openSenderPool}>📮 REMETENTES</button>
               <button className={`admin-tab ${adminTab==="config"?"active":""}`} onClick={()=>setAdminTab("config")}>⚙️ CONFIG</button>
             </div>
 
@@ -8213,7 +8371,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                   {/* ── DESPESAS MANUAIS ── */}
                   <div style={{marginBottom:20}}>
                     <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--muted)',letterSpacing:'1.5px',marginBottom:10}}>📌 LANÇAR DESPESA</div>
-                    <div style={{display:'grid',gridTemplateColumns:'1fr 110px 130px 90px auto',gap:8,alignItems:'flex-end',marginBottom:8}}>
+                    <div className="nva-wrapgrid" style={{display:'grid',gridTemplateColumns:'1fr 110px 130px 90px auto',gap:8,alignItems:'flex-end',marginBottom:8}}>
                       <div>
                         <div style={{fontSize:'0.6rem',color:'var(--muted)',marginBottom:3}}>Descrição</div>
                         <input style={{background:'var(--bg2)',border:'1px solid var(--border)',borderRadius:6,padding:'7px 10px',color:'var(--text)',fontSize:'0.8rem',width:'100%'}}
@@ -8826,7 +8984,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                 </div>
 
                 {/* ITENS */}
-                <div style={{marginBottom:14}}>
+                <div className="nva-scrollx" style={{marginBottom:14}}>
                   <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px',marginBottom:10}}>📦 PRODUTOS DO PEDIDO</div>
                   <div style={{display:'grid',gridTemplateColumns:'90px 1fr 60px 70px 80px 90px 90px 32px',gap:6,marginBottom:6,paddingBottom:6,borderBottom:'1px solid var(--border)'}}>
                     {['SKU','Nome','Spec','Caixas','$/cx','Custo/vial','Preço sug.',''].map((h,i)=>(
@@ -9988,7 +10146,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
       })()}
 
       {/* SUCESSO — CÓDIGO DO PEDIDO */}
-      {orderSuccessCode && !novoActive && (
+      {orderSuccessCode && !novoActive && !novoAdmin && (
         <div className="modal-overlay" onClick={()=>setOrderSuccessCode(null)}>
           <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:400,textAlign:'center'}}>
             <div style={{fontSize:'2.5rem',marginBottom:12}}>🎉</div>
@@ -10525,7 +10683,7 @@ _Vanguard Peptides_ 🧬`;
       )}
 
       {/* ── WELCOME MODAL (primeira visita) ── */}
-      {showWelcome && !novoActive && (
+      {showWelcome && !novoActive && !novoAdmin && (
         <div className="welcome-overlay">
           <div className="welcome-modal">
             <div className="welcome-logo">💊 Vanguard Peptides</div>
@@ -10546,7 +10704,7 @@ _Vanguard Peptides_ 🧬`;
       )}
 
       {/* ── NAME MODAL (mobile sem nome) ── */}
-      {showNameModal && !novoActive && (
+      {showNameModal && !novoActive && !novoAdmin && (
         <div className="welcome-overlay" onClick={()=>setShowNameModal(false)}>
           <div className="welcome-modal" onClick={e=>e.stopPropagation()}>
             <div className="welcome-logo">👤 Identificação</div>
