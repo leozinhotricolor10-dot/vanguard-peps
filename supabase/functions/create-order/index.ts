@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { calcBundles, calcFreight, parseBundles, parseRedeem, planPoints, unitPrice, type PricedItem } from "./pricing.ts";
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
@@ -11,33 +12,33 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "content-type, apikey, authorization",
 };
+const reply = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: CORS_HEADERS });
 
-function calcFreight(estado: string, subtotal: number, isPix: boolean): number {
-  if (isPix) return 0;
-  if (subtotal >= 1000) return 0;
-  if (estado === "SP" && subtotal >= 600) return 0;
-  return 60;
+// Devolve pontos debitados quando o pedido não chega a ser gravado
+async function refundPoints(cpf: string, pts: number) {
+  for (let i = 0; i < 3; i++) {
+    const { data } = await supabase.from("customers").select("points").eq("cpf", cpf).maybeSingle();
+    if (!data) return;
+    const cur = data.points || 0;
+    const { data: upd } = await supabase.from("customers").update({ points: cur + pts })
+      .eq("cpf", cpf).eq("points", cur).select("cpf");
+    if (upd?.length) return;
+  }
+  console.error("[create-order] Falha ao estornar pontos", cpf.slice(0, 3) + "***", pts);
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: CORS_HEADERS });
   }
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ ok: false, error: "Method not allowed" }), {
-      status: 405,
-      headers: CORS_HEADERS,
-    });
-  }
+  if (req.method !== "POST") return reply({ ok: false, error: "Method not allowed" }, 405);
 
   let body: Record<string, unknown>;
   try {
     body = await req.json();
   } catch {
-    return new Response(JSON.stringify({ ok: false, error: "Invalid JSON" }), {
-      status: 400,
-      headers: CORS_HEADERS,
-    });
+    return reply({ ok: false, error: "Invalid JSON" }, 400);
   }
 
   const order = body as {
@@ -50,49 +51,37 @@ Deno.serve(async (req: Request) => {
     payment: string;
     coupon_code?: string;
     notes?: string;
+    bundles?: unknown; // ids dos combos aplicados no carrinho
+    points?: unknown; // pontos VG que o cliente quer resgatar
   };
 
-  if (!order.items?.length || !order.buyer_name || !order.payment || !order.address) {
-    return new Response(JSON.stringify({ ok: false, error: "Missing required fields" }), {
-      status: 400,
-      headers: CORS_HEADERS,
-    });
+  if (!Array.isArray(order.items) || !order.items.length || !order.buyer_name || !order.payment || !order.address) {
+    return reply({ ok: false, error: "Missing required fields" }, 400);
+  }
+  // Quantidade inteira e positiva (quantidade negativa baixaria o total); aceita "2" como 2
+  order.items = order.items.map((i) => ({ ...i, qty: Number(i?.qty) }));
+  if (order.items.some((i) => !Number.isInteger(i.qty) || i.qty < 1 || i.qty > 999)) {
+    return reply({ ok: false, error: "Quantidade inválida" }, 400);
   }
 
-  // Fetch current prices from DB — source of truth
+  // Preços, combos e regra de pontos vêm do banco — fonte da verdade
   const productIds = [...new Set(order.items.map((i) => i.peptideId))];
-  const { data: dbProducts, error: prodErr } = await supabase
-    .from("products")
-    .select("id, price, packs, promo")
-    .in("id", productIds);
+  const [{ data: dbProducts, error: prodErr }, { data: cfgRows }] = await Promise.all([
+    supabase.from("products").select("id, price, packs, promo").in("id", productIds),
+    supabase.from("site_config").select("key, value").in("key", ["bundles", "points_config"]),
+  ]);
 
-  if (prodErr || !dbProducts) {
-    return new Response(JSON.stringify({ ok: false, error: "Failed to fetch products" }), {
-      status: 500,
-      headers: CORS_HEADERS,
-    });
-  }
+  if (prodErr || !dbProducts) return reply({ ok: false, error: "Failed to fetch products" }, 500);
+  const cfg = (k: string) => (cfgRows || []).find((r) => r.key === k)?.value;
 
   // Validate each item price against DB
   let validatedSubtotal = 0;
   const validatedItems = order.items.map((item) => {
     const dbProd = dbProducts.find((p) => p.id === item.peptideId);
     if (!dbProd) return { ...item, unit_price: 0, validated: false };
-
-    let unitPrice: number;
-    if (item._packId) {
-      const pack = (dbProd.packs || []).find((pk: { id: string; discount: number }) => pk.id === item._packId);
-      unitPrice = pack
-        ? Math.round(dbProd.price * (1 - pack.discount / 100))
-        : dbProd.price;
-    } else {
-      // Use DB promo if set, otherwise base price (ignores client-side promo overrides)
-      const promo = Number(dbProd.promo) || 0;
-      unitPrice = promo > 0 ? Math.round(dbProd.price * (1 - promo / 100)) : dbProd.price;
-    }
-
-    validatedSubtotal += (item.qty || 0) * unitPrice;
-    return { ...item, unit_price: unitPrice, price: unitPrice, validated: true };
+    const price = unitPrice(dbProd, item._packId);
+    validatedSubtotal += item.qty * price;
+    return { ...item, unit_price: price, price, validated: true };
   });
 
   // Validate coupon server-side
@@ -102,7 +91,7 @@ Deno.serve(async (req: Request) => {
     const { data: coupon } = await supabase
       .from("coupons")
       .select("*")
-      .eq("code", order.coupon_code.toUpperCase())
+      .eq("code", String(order.coupon_code).toUpperCase())
       .eq("active", true)
       .maybeSingle();
 
@@ -119,8 +108,35 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // Combos: só os cadastrados, com os itens no pedido, preço do servidor
+  const bundleCalc = calcBundles(validatedItems as PricedItem[], order.bundles, parseBundles(cfg("bundles")));
+  const bundleDiscount = bundleCalc.total;
+
+  // Frete pela mesma regra de antes (subtotal dos itens; PIX = grátis)
   const freight = calcFreight(order.address.estado, validatedSubtotal, order.payment === "pix");
-  const validatedTotal = validatedSubtotal - couponDiscount + freight;
+  const itemsAfterDiscounts = Math.max(0, validatedSubtotal - couponDiscount - bundleDiscount);
+
+  // Pontos: saldo conferido no servidor e debitado aqui (o site não chama mais o "redeem" depois)
+  const cpfClean = String(order.cpf ?? "").replace(/\D/g, "");
+  let pointsUsed = 0;
+  let pointsDiscount = 0;
+  if (Math.floor(Number(order.points) || 0) > 0) {
+    if (cpfClean.length !== 11) return reply({ ok: false, error: "Informe o CPF para usar pontos" }, 400);
+    const { data: cust } = await supabase.from("customers").select("points").eq("cpf", cpfClean).maybeSingle();
+    const balance = cust?.points || 0;
+    const plan = planPoints(order.points, balance, parseRedeem(cfg("points_config")), itemsAfterDiscounts);
+    if (plan.error) return reply({ ok: false, error: plan.error }, 400);
+    if (plan.used > 0) {
+      // Trava otimista: só debita se o saldo ainda for o que foi lido
+      const { data: upd } = await supabase.from("customers").update({ points: balance - plan.used })
+        .eq("cpf", cpfClean).eq("points", balance).select("cpf");
+      if (!upd?.length) return reply({ ok: false, error: "Saldo de pontos mudou, tente novamente" }, 409);
+      pointsUsed = plan.used;
+      pointsDiscount = plan.discount;
+    }
+  }
+
+  const validatedTotal = itemsAfterDiscounts - pointsDiscount + freight;
 
   // Generate secure order code server-side
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -147,6 +163,10 @@ Deno.serve(async (req: Request) => {
     freight,
     coupon_code: couponCode,
     coupon_discount: couponDiscount,
+    bundle_discount: bundleDiscount,
+    bundles: bundleCalc.applied.length ? bundleCalc.applied : null,
+    points_used: pointsUsed,
+    points_discount: pointsDiscount,
     total: validatedTotal,
     payment: order.payment,
     notes: order.notes || null,
@@ -155,14 +175,12 @@ Deno.serve(async (req: Request) => {
 
   if (insertErr) {
     console.error("[create-order] Insert error:", insertErr.message);
-    return new Response(JSON.stringify({ ok: false, error: insertErr.message }), {
-      status: 500,
-      headers: CORS_HEADERS,
-    });
+    if (pointsUsed > 0) await refundPoints(cpfClean, pointsUsed);
+    return reply({ ok: false, error: insertErr.message }, 500);
   }
 
-  return new Response(
-    JSON.stringify({ ok: true, code, orderId, validatedTotal, validatedSubtotal, freight }),
-    { headers: CORS_HEADERS },
-  );
+  return reply({
+    ok: true, code, orderId, validatedTotal, validatedSubtotal, freight,
+    couponDiscount, bundleDiscount, bundlesApplied: bundleCalc.applied, pointsUsed, pointsDiscount,
+  });
 });
