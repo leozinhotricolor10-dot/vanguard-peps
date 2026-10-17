@@ -1,14 +1,14 @@
 # Handoff — Vanguard Peptides (17/10/2026)
 
-Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.7bdb422** (commit `7bdb422`).
+Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.b1e0e61** (commit `b1e0e61`, admin no `/novo`).
 
 ## Tarefa em andamento (pedida pelo dono)
 
 **Migrar todas as telas para o novo layout em `/novo`**, para ele ver como fica. Plano combinado:
 
 1. ~~**Loja `/novo`** — completar o que falta: combos, artigos, resgate de pontos.~~ **FEITO** (commits `ca27a12`, `07e04c9`, `d944235`). Detalhes em "Loja /novo — combos, artigos e pontos" abaixo.
-2. **(PRÓXIMO PASSO) Admin dentro do `/novo`** — casca nova do mockup: menu lateral em 4 grupos (Vendas: Pedidos, Pré-orders, Clientes, Cupons · Envios: Etiquetas, Remetentes, Mapa · Catálogo: Produtos/estoque, Importações, Artigos/avisos · Gestão: Financeiro, Config) e abas embaixo no celular, com visual novo aplicado **por cima das abas existentes** (mesma lógica, sem reescrever cada aba).
-3. **Site principal** (`vanguardpep.com`) continua no layout antigo até o dono aprovar.
+2. ~~**Admin dentro do `/novo`** — casca nova do mockup, por cima das abas existentes.~~ **FEITO** (commit `b1e0e61`). Detalhes em "Admin no /novo (Passo 2)" abaixo.
+3. **(PRÓXIMO PASSO) Site principal** (`vanguardpep.com`) continua no layout antigo até o dono aprovar o `/novo` (loja + admin). Depois, se ele quiser, refinar telas do admin uma a uma no visual do mockup (hoje só a casca e os componentes comuns foram restilizados).
 
 Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfVHSX
 
@@ -18,7 +18,7 @@ Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfV
 - `IS_NOVO` é verdadeiro em `/novo` e em `/p/<código>`. No `App`: `novoActive = IS_NOVO && view !== 'admin' && !portalToken && !manualOrderView`. Com ele, o root ganha a classe `novo-mode`, que esconde nav/hero/.app/footer/bottom-nav antigos.
 - Telas internas (`screen`): loja, produto, checkout, done, rastrear, calc, faq, artigos, artigo. Navegação com `history.pushState` (`state.nv = {s, pid, d}`); produto vira `/p/<sku minúsculo>`, o resto `/novo/`.
 - Reaproveita a lógica do App via props: `quickAdd` (novo, adiciona 1 sem modal), `updateQtyInCart`, `removeFromCart`, `addPackToCart`, `savePreorder`, `sendToWhatsApp`, `applyCouponCode`, `searchOrders` etc.
-- Admin: 5 toques no texto da versão no rodapé do `/novo` → senha → abre o admin **antigo** (view `admin`).
+- Admin: 5 toques no texto da versão no rodapé do `/novo` → senha → abre o admin (view `admin`) com a casca nova (ver "Admin no /novo").
 - **Cuidado:** o CSS antigo tem regras globais para `nav`, `main` e `footer`. No NovaLoja use `<div role="navigation|main|contentinfo">`.
 - Campos com input dentro do NovaLoja são chamados como função (`Field({...})`), não `<Field/>`, para não perder o foco ao digitar.
 - Fotos de produto foram removidas do novo layout (pedido do dono). Só a prévia do WhatsApp nas páginas `/p/` usa foto.
@@ -31,6 +31,18 @@ Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfV
 - **Artigos**: telas `artigos` (lista) e `artigo` (leitura), link no menu e rodapé, bloco com 3 artigos na home. Fonte: `articles` do App (localStorage `vg-articles`, padrão `DEFAULT_ARTICLES`; artigos editados no admin só existem no navegador do admin). Corpo renderizado por `nvArticleBody` com lista branca de tags (sem `innerHTML`).
 - **Pontos VG**: saldo via `checkPoints` ao digitar o CPF (e ao abrir o checkout com CPF salvo); opções 100/200/500/usar tudo; pontos aplicados zeram se o CPF mudar. Resgate (`redeemPoints`) acontece no `sendToWhatsApp` depois do `create-order`, como no site antigo.
 - **Teste local usado** (repetido para combos/pontos, numa cópia `dist/t/novo/index.html` apagada depois, com `validarCPF` desligado na cópia para não digitar CPF; `verify-admin`/`admin-db` simulados para testar a aba COMBOS): harness que intercepta `fetch` antes do app carregar (injetado só na cópia local de `dist/novo/index.html`): bloqueia `rpc/decrement_stock`/`increment_stock`, `functions/v1/create-order`, `public-api` `redeem`/`points` e `window.open`, e devolve estoque alto para testar produtos esgotados.
+
+## Admin no /novo (Passo 2, feito)
+
+- `novoAdmin = IS_NOVO && view === 'admin' && adminUnlocked && !portalToken && !manualOrderView` (no `App`, ao lado de `novoActive`). Com ele o root ganha a classe `novo-admin` e é injetado `NOVO_ADMIN_CSS` (só nesse caso). Sem login (`adminUnlocked` falso) continua a tela de cadeado antiga.
+- `.novo-admin` esconde nav/hero/footer/bottom-nav antigos e o `aside` do `.app`, e remapeia `--muted/--card/--border`; restiliza `.admin-stat`, `.admin-action-btn`, `.admin-table`, `.page-title`; esconde `.admin-tabs` e o `.page-tag`. As abas continuam sendo o JSX antigo (`adminTab`).
+- Menu: `NVA_GROUPS` (Vendas: Pedidos, Pré-orders, Clientes, Cupons · Envios: Etiquetas, Remetentes, Mapa · Catálogo: Produtos, Estoque, Importações, Combos, Artigos, Avisos · Gestão: Financeiro, Config). `NovaAdminShell` = menu lateral (`div role=navigation`, desktop ≥760px) + abas dos 4 grupos embaixo (celular). `NovaAdminSub` = chips do grupo atual no topo (só celular). Produtos/Estoque e Artigos/Avisos ficaram como itens separados porque são abas separadas.
+- **Etiquetas** = aba Pedidos com `adminStatusFilter = 'pago'` (estado `nvaSec` diz qual item está ativo; `nvaActiveItem`). Voltar para Pedidos vindo de outra seção zera o filtro. **Remetentes** abre o mesmo modal do botão 📮 (função `openSenderPool`, também usada no admin antigo).
+- Badges: Pedidos = pedidos `pendente`; Etiquetas = `pago` sem `label_url`.
+- Cards de resumo (Compradores/Receita…) só aparecem em Pedidos no `/novo`. Botão "← Loja" (celular) / "← Ver loja" (menu) volta para a loja nova; 5 toques na versão voltam ao admin.
+- Ajustes de celular só no `/novo`: `.notice-editor-row` e `.fin-cards` viram 1/2 colunas; o formulário de despesa (`nva-wrapgrid`) quebra em 2 colunas; a tabela de itens da importação (`nva-scrollx`) rola dentro da caixa.
+- Modais antigos de boas-vindas/nome/sucesso não aparecem com `novoAdmin`.
+- Teste feito: build + cópias locais `dist/t/novo/` e `dist/t2/` (apagadas depois) com o harness do Passo 1 ampliado: `verify-admin` → `{ok:true}`, `admin-db` `list` devolve pedidos fictícios e toda escrita é simulada, qualquer outra chamada não-GET ao Supabase (rpc, create-order, me-senders, melhorenvios-proxy, storage) bloqueada, `window.open`/`confirm`/`alert` desligados. Navegado por todos os itens em 1360px e 375px (sem rolagem lateral, sem erro no console) e conferido que o admin em `/` segue igual (14 abas, sem menu novo).
 
 ## Build e deploy
 
