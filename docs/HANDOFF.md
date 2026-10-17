@@ -1,13 +1,13 @@
 # Handoff — Vanguard Peptides (17/10/2026)
 
-Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.d944235** (commit `bd0d6c6`).
+Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.d944235** (commit `d944235`).
 
-## Próxima tarefa (pedida pelo dono, ainda não iniciada)
+## Tarefa em andamento (pedida pelo dono)
 
 **Migrar todas as telas para o novo layout em `/novo`**, para ele ver como fica. Plano combinado:
 
-1. **Loja `/novo`** — completar o que falta: combos (`BUNDLES`), artigos (`articles` / view `article`), resgate de pontos no checkout (`checkPoints` / `appliedPoints` / `redeemPoints`).
-2. **Admin dentro do `/novo`** — casca nova do mockup: menu lateral em 4 grupos (Vendas: Pedidos, Pré-orders, Clientes, Cupons · Envios: Etiquetas, Remetentes, Mapa · Catálogo: Produtos/estoque, Importações, Artigos/avisos · Gestão: Financeiro, Config) e abas embaixo no celular, com visual novo aplicado **por cima das abas existentes** (mesma lógica, sem reescrever cada aba).
+1. ~~**Loja `/novo`** — completar o que falta: combos, artigos, resgate de pontos.~~ **FEITO** (commits `ca27a12`, `07e04c9`, `d944235`). Detalhes em "Loja /novo — combos, artigos e pontos" abaixo.
+2. **(PRÓXIMO PASSO) Admin dentro do `/novo`** — casca nova do mockup: menu lateral em 4 grupos (Vendas: Pedidos, Pré-orders, Clientes, Cupons · Envios: Etiquetas, Remetentes, Mapa · Catálogo: Produtos/estoque, Importações, Artigos/avisos · Gestão: Financeiro, Config) e abas embaixo no celular, com visual novo aplicado **por cima das abas existentes** (mesma lógica, sem reescrever cada aba).
 3. **Site principal** (`vanguardpep.com`) continua no layout antigo até o dono aprovar.
 
 Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfVHSX
@@ -16,12 +16,20 @@ Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfV
 
 - `index.html` → componente `function NovaLoja(P)` (antes de `function App()`), CSS em `NOVO_CSS` (classes `nv-*`).
 - `IS_NOVO` é verdadeiro em `/novo` e em `/p/<código>`. No `App`: `novoActive = IS_NOVO && view !== 'admin' && !portalToken && !manualOrderView`. Com ele, o root ganha a classe `novo-mode`, que esconde nav/hero/.app/footer/bottom-nav antigos.
-- Telas internas (`screen`): loja, produto, checkout, done, rastrear, calc, faq. Navegação com `history.pushState` (`state.nv = {s, pid, d}`); produto vira `/p/<sku minúsculo>`, o resto `/novo/`.
+- Telas internas (`screen`): loja, produto, checkout, done, rastrear, calc, faq, artigos, artigo. Navegação com `history.pushState` (`state.nv = {s, pid, d}`); produto vira `/p/<sku minúsculo>`, o resto `/novo/`.
 - Reaproveita a lógica do App via props: `quickAdd` (novo, adiciona 1 sem modal), `updateQtyInCart`, `removeFromCart`, `addPackToCart`, `savePreorder`, `sendToWhatsApp`, `applyCouponCode`, `searchOrders` etc.
 - Admin: 5 toques no texto da versão no rodapé do `/novo` → senha → abre o admin **antigo** (view `admin`).
 - **Cuidado:** o CSS antigo tem regras globais para `nav`, `main` e `footer`. No NovaLoja use `<div role="navigation|main|contentinfo">`.
 - Campos com input dentro do NovaLoja são chamados como função (`Field({...})`), não `<Field/>`, para não perder o foco ao digitar.
 - Fotos de produto foram removidas do novo layout (pedido do dono). Só a prévia do WhatsApp nas páginas `/p/` usa foto.
+
+## Loja /novo — combos, artigos e pontos (Passo 1, feito)
+
+- **Combos (`BUNDLES`)**: o site antigo nunca exibiu os combos (a constante existia sem uso). No `/novo` aparecem na home (rolagem lateral) só se todos os itens existem no catálogo e o preço do combo é menor que a soma dos preços atuais (`nvBundleFull`). `addBundleToCart` (App) reserva 1 de cada item numa única gravação. Ids aplicados ficam em `cartBundles` (localStorage `vg-cart-bundles`); `calcBundleDiscount` só conta um combo enquanto os itens estão no carrinho (tirou um item, o combo cai e não volta sozinho). Desconto entra no total do checkout, na barra do carrinho, na mensagem do WhatsApp e nas observações (`notes`) do pedido. Só vale com `IS_NOVO`; o site antigo não muda.
+- **Limite conhecido**: a Edge Function `create-order` não conhece combos (nem pontos) — o `total` gravado no banco é o preço cheio; o desconto fica só na mensagem do WhatsApp e em `notes`. Mesmo comportamento que os pontos já tinham.
+- **Artigos**: telas `artigos` (lista) e `artigo` (leitura), link no menu e rodapé, bloco com 3 artigos na home. Fonte: `articles` do App (localStorage `vg-articles`, padrão `DEFAULT_ARTICLES`; artigos editados no admin só existem no navegador do admin). Corpo renderizado por `nvArticleBody` com lista branca de tags (sem `innerHTML`).
+- **Pontos VG**: saldo via `checkPoints` ao digitar o CPF (e ao abrir o checkout com CPF salvo); opções 100/200/500/usar tudo; pontos aplicados zeram se o CPF mudar. Resgate (`redeemPoints`) acontece no `sendToWhatsApp` depois do `create-order`, como no site antigo.
+- **Teste local usado**: harness que intercepta `fetch` antes do app carregar (injetado só na cópia local de `dist/novo/index.html`): bloqueia `rpc/decrement_stock`/`increment_stock`, `functions/v1/create-order`, `public-api` `redeem`/`points` e `window.open`, e devolve estoque alto para testar produtos esgotados.
 
 ## Build e deploy
 
