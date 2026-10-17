@@ -2408,8 +2408,6 @@ const NOVO_CSS = `
 .nv-grid{display:grid;grid-template-columns:1fr;gap:10px;padding-bottom:130px}
 .nv-card{display:flex;align-items:center;gap:14px;padding:12px;border-radius:16px;background:var(--bg2);border:1px solid rgba(0,229,195,.1)}
 .nv-card.out{border-style:dashed;border-color:rgba(169,191,203,.3)}
-.nv-thumb{width:64px;height:64px;flex-shrink:0;border-radius:12px;background:var(--bg3);display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--ac);overflow:hidden;border:none;padding:0;cursor:pointer}
-.nv-thumb img{width:100%;height:100%;object-fit:cover}
 .nv-cbody{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
 .nv-tag{align-self:flex-start;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:#ffb38f}
 .nv-name{margin:0;font-size:15px;font-weight:600;line-height:1.25;background:none;border:none;color:var(--tx);padding:0;text-align:left;cursor:pointer}
@@ -2462,8 +2460,6 @@ const NOVO_CSS = `
 .nv-foot{border-top:1px solid var(--ln);margin-top:40px;padding:24px 0 140px;font-size:13px;color:var(--mu)}
 .nv-sheet{position:fixed;inset:0;z-index:40;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center}
 .nv-sheet>div{width:100%;max-width:520px;max-height:92vh;overflow:auto;background:var(--bg);border-radius:22px 22px 0 0;border:1px solid var(--ln);padding:20px 16px 24px;display:flex;flex-direction:column;gap:14px}
-.nv-pimg{height:260px;border-radius:20px;background:var(--bg3);border:1px solid rgba(0,229,195,.1);display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:'Space Mono',monospace;font-size:32px;font-weight:700;color:var(--ac)}
-.nv-pimg img{width:100%;height:100%;object-fit:contain}
 @media (min-width:760px){
   .nv-links{display:flex}
   .nv-h1{font-size:44px}
@@ -2536,11 +2532,6 @@ function NovaLoja(P) {
   const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round(myTotal * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal)) : 0;
   const totalFinal = myTotal - couponDiscount + freight.value;
 
-  const Thumb = ({ p, big }) => (
-    <button className={big ? 'nv-pimg' : 'nv-thumb'} onClick={big ? undefined : () => go('produto', p.id)} aria-label={'Ver ' + p.name} style={big ? { width: '100%', border: 'none' } : null}>
-      {p.image_url ? <img src={p.image_url} alt="" loading="lazy" /> : (p.sku || p.name.slice(0, 4))}
-    </button>
-  );
   const Back = ({ title, to = 'loja' }) => (
     <div className="nv-back">
       <button className="nv-ico" onClick={() => (window.history.state && window.history.state.nv && window.history.state.nv.d) ? window.history.back() : go(to)} aria-label="Voltar"><NvIcon d={NV_ICONS.back} /></button>
@@ -2648,7 +2639,6 @@ function NovaLoja(P) {
             const out = availableStock(p.id) === 0;
             return (
               <article key={p.id} className={'nv-card' + (out ? ' out' : '')}>
-                <Thumb p={p} />
                 <div className="nv-cbody">
                   {out ? <span className="nv-tag" style={{ color: 'var(--warn)' }}>Lote esgotado</span> : p.badge && <span className="nv-tag">{p.badge.replace(/^[^\wÀ-ú]+\s*/, '')}</span>}
                   <button className="nv-name" onClick={() => go('produto', p.id)}>{p.name}</button>
@@ -2671,7 +2661,6 @@ function NovaLoja(P) {
     body = (
       <div className="nv-wrap nv-narrow">
         <Back title={p.name} />
-        <Thumb p={p} big />
         <section style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 18 }}>
           {p.badge && <span className="nv-tag">{p.badge.replace(/^[^\wÀ-ú]+\s*/, '')}</span>}
           <h1 className="nv-h1" style={{ fontSize: 28 }}>{p.name}</h1>
