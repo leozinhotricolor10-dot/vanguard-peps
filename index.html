@@ -1183,6 +1183,31 @@ function loadBundlesCache() {
   try { const s = localStorage.getItem('vg-bundles'); return s ? parseBundlesCfg(s) : DEFAULT_BUNDLES; } catch { return DEFAULT_BUNDLES; }
 }
 
+// Mais vendidos: site_config.bestsellers = texto JSON com lista de SKUs (ou ids) em ordem.
+// Vazio/ausente/invalido -> BESTSELLERS_DEFAULT. Aceita SKU (sem diferenciar maiusculas) ou id do produto.
+const BESTSELLERS_DEFAULT = ['TZ15', 'RT15', 'CU50'];
+const BESTSELLERS_MAX = 4;
+function parseBestsellersCfg(raw) {
+  try {
+    const v = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (!Array.isArray(v)) return [];
+    return v.filter(x => typeof x === 'string' && x.trim()).map(x => x.trim()).slice(0, BESTSELLERS_MAX);
+  } catch { return []; }
+}
+function loadBestsellersCache() {
+  try { const s = localStorage.getItem('vg-bestsellers'); return s ? parseBestsellersCfg(s) : []; } catch { return []; }
+}
+function resolveBestsellers(keys, products) {
+  const list = keys && keys.length ? keys : BESTSELLERS_DEFAULT;
+  const seen = new Set(); const out = [];
+  list.forEach(k => {
+    const key = String(k).toLowerCase();
+    const p = (products || []).find(x => String(x.sku || '').toLowerCase() === key || String(x.id).toLowerCase() === key);
+    if (p && !seen.has(p.id)) { seen.add(p.id); out.push(p); }
+  });
+  return out.slice(0, BESTSELLERS_MAX);
+}
+
 function validarCPF(cpf) {
   const d = cpf.replace(/\D/g, '');
   if (d.length !== 11 || /^(\d)\1{10}$/.test(d)) return false;
@@ -2637,6 +2662,23 @@ const NOVO_CSS = `
 .nv-art strong{color:var(--tx)}
 .nv-art blockquote{margin:0;padding-left:14px;border-left:2px solid var(--ln);color:var(--mu)}
 .nv-kick{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--ac)}
+@property --nv-a{syntax:'<angle>';initial-value:0deg;inherits:false}
+.nv-hotrow{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;padding:6px 2px 14px;margin:0 -2px;scrollbar-width:none}
+.nv-hotrow::-webkit-scrollbar{display:none}
+.nv-hot{flex:0 0 74%;max-width:300px;scroll-snap-align:start;padding:2px;border-radius:20px;position:relative;
+  background:conic-gradient(from var(--nv-a),#00e5c3,#00a8ff,#7c5cff,#00e5c3 55%,#00e5c3 75%,#00a8ff);
+  box-shadow:0 0 18px rgba(0,229,195,.22);animation:nv-spin 5s linear infinite}
+.nv-hotin{position:relative;display:flex;flex-direction:column;gap:10px;height:100%;padding:0 0 12px;border-radius:18px;background:var(--bg2);overflow:hidden;min-width:0}
+.nv-hotin.out .nv-pic .nv-img,.nv-hotin.out .nv-pic .nv-ph{filter:brightness(.62) saturate(.7)}
+.nv-hotbadge{position:absolute;top:10px;left:10px;z-index:2;padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.3px;color:#04110e;background:linear-gradient(90deg,#00e5c3,#7ff5e0);box-shadow:0 2px 10px rgba(0,0,0,.4)}
+.nv-hotname{font-size:17px;font-weight:700}
+@keyframes nv-spin{to{--nv-a:360deg}}
+@media (prefers-reduced-motion:reduce){.nv-hot{animation:none}}
+@media (min-width:760px){
+  .nv-hotrow{overflow:visible;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));padding-bottom:6px}
+  .nv-hot{flex:none;max-width:none}
+  .nv-hotname{font-size:19px}
+}
 .nv-alist{display:flex;flex-direction:column}
 .nv-alist button{display:flex;flex-direction:column;gap:4px;padding:14px 0;border:none;border-top:1px solid var(--ln);background:none;color:var(--tx);text-align:left;cursor:pointer;width:100%}
 .nv-alist button:last-child{border-bottom:1px solid var(--ln)}
@@ -2676,7 +2718,7 @@ const NVA_GROUPS = [
     // Itens com `tabs` juntam abas antigas: a casca mostra sub-abas internas (NovaAdminInnerTabs)
     { id: 'produtos', label: 'Produtos e estoque', tab: 'produtos', tabs: [{ tab: 'produtos', label: 'Produtos' }, { tab: 'estoque', label: 'Estoque' }] },
     { id: 'importacao', label: 'Importações', tab: 'importacao' },
-    { id: 'combos', label: 'Combos', tab: 'combos' },
+    { id: 'combos', label: 'Combos e destaques', tab: 'combos' },
     { id: 'artigos', label: 'Artigos e avisos', tab: 'artigos', tabs: [{ tab: 'artigos', label: 'Artigos' }, { tab: 'avisos', label: 'Avisos' }] },
   ] },
   { id: 'gestao', label: 'Gestão', icon: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></>, items: [
@@ -2990,7 +3032,7 @@ function NvSorteio({ products, go }) {
 function NovaLoja(P) {
   const { products, categories, effectivePrice, availableStock, myOrders, myTotal, cartCount,
     quickAdd, updateQtyInCart, removeFromCart, addPackToCart, savePreorder,
-    addBundleToCart, bundleInfo, bundles, articles,
+    addBundleToCart, bundleInfo, bundles, bestsellers, articles,
     pointsBalance, setPointsBalance, appliedPoints, setAppliedPoints, pointsConfig, checkPoints,
     checkout, updateCheckout, fetchCep, checkoutErrors, calcFreight,
     couponInput, setCouponInput, appliedCoupon, setAppliedCoupon, applyCouponCode,
@@ -3030,6 +3072,7 @@ function NovaLoja(P) {
   const lineOf = id => myOrders.find(o => o.peptideId === id && !o._packId);
   const visible = products.filter(p => (cat === 'all' || p.category === cat) &&
     (!q.trim() || (p.name + ' ' + (p.desc || '') + ' ' + (p.sku || '')).toLowerCase().includes(q.trim().toLowerCase())));
+  const hot = resolveBestsellers(bestsellers, products);
   const product = pid ? products.find(p => p.id === pid || nvSlugOf(p) === String(pid).toLowerCase()) : null;
 
   const isPix = checkout.pagamento === 'pix';
@@ -3190,6 +3233,30 @@ function NovaLoja(P) {
                     : <button className="nv-btn" style={{ height: 46, fontSize: 14, marginTop: 'auto' }} onClick={() => addBundleToCart(b)}>Adicionar combo</button>}
                 </article>
               ))}
+            </div>
+          </section>
+        )}
+        {cat === 'all' && !q.trim() && hot.length > 0 && (
+          <section className="nv-sec nv-hotsec" style={{ marginTop: 4, marginBottom: 20 }} aria-label="Mais vendidos">
+            <h2 className="nv-h2">Mais vendidos</h2>
+            <div className="nv-hotrow">
+              {hot.map((p, idx) => {
+                const out = availableStock(p.id) === 0;
+                return (
+                  <div key={p.id} className="nv-hot">
+                    <article className={'nv-hotin' + (out ? ' out' : '')}>
+                      <span className="nv-hotbadge">🔥 Mais vendido</span>
+                      <button className="nv-pic" onClick={() => go('produto', p.id)} aria-label={'Ver ' + p.name} tabIndex={-1}><NvProdImg p={p} eager={idx < 3} /></button>
+                      <div className="nv-cbody" style={{ padding: '0 12px' }}>
+                        {out && <span className="nv-tag" style={{ color: 'var(--warn)' }}>Lote esgotado</span>}
+                        <button className="nv-name nv-hotname" onClick={() => go('produto', p.id)}>{p.name}</button>
+                        {priceLine(p)}
+                      </div>
+                      <div className="nv-cfoot" style={{ padding: '0 12px' }}>{addControls(p)}</div>
+                    </article>
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}
@@ -3934,6 +4001,7 @@ function App() {
   const [appliedPoints, setAppliedPoints] = useState(0);
   // Combos cadastrados (site_config.bundles; cache local + seed DEFAULT_BUNDLES)
   const [bundles, setBundles] = useState(loadBundlesCache);
+  const [bestsellers, setBestsellers] = useState(loadBestsellersCache); // site_config.bestsellers (SKUs/ids em ordem)
   const [bundleForm, setBundleForm] = useState(null); // admin: combo em edição
   // Combos adicionados pelo /novo (ids de bundles); desconto calculado em bundleInfo
   const [cartBundles, setCartBundlesState] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-cart-bundles') || '[]'); } catch { return []; } });
@@ -4126,9 +4194,11 @@ function App() {
     sb.from('site_config').select('value').eq('key','origin_cep').single()
       .then(({ data }) => { if (data?.value) setFreteOriginCep(data.value); });
     // Combos e regra de pontos: mesma fonte que a Edge Function create-order usa
-    sb.from('site_config').select('key,value').in('key', ['bundles', 'points_config'])
+    sb.from('site_config').select('key,value').in('key', ['bundles', 'points_config', 'bestsellers'])
       .then(({ data, error }) => {
         if (error || !Array.isArray(data)) return;
+        const bs = data.find(r => r.key === 'bestsellers');
+        if (bs) { const l = parseBestsellersCfg(bs.value); setBestsellers(l); try { localStorage.setItem('vg-bestsellers', JSON.stringify(l)); } catch {} }
         const b = data.find(r => r.key === 'bundles');
         if (b) { const list = parseBundlesCfg(b.value); setBundles(list); try { localStorage.setItem('vg-bundles', JSON.stringify(list)); } catch {} }
         const pc = data.find(r => r.key === 'points_config');
@@ -6014,7 +6084,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
         products={products} categories={CATEGORIES} effectivePrice={effectivePrice} availableStock={availableStock}
         myOrders={myOrders} myTotal={myTotal} cartCount={cartCount}
         quickAdd={quickAdd} updateQtyInCart={updateQtyInCart} removeFromCart={removeFromCart} addPackToCart={addPackToCart} savePreorder={savePreorder}
-        addBundleToCart={addBundleToCart} bundleInfo={bundleInfo} bundles={bundles} articles={articles}
+        addBundleToCart={addBundleToCart} bundleInfo={bundleInfo} bundles={bundles} bestsellers={bestsellers} articles={articles}
         pointsBalance={pointsBalance} setPointsBalance={setPointsBalance} appliedPoints={appliedPoints} setAppliedPoints={setAppliedPoints} pointsConfig={pointsConfig} checkPoints={checkPoints}
         checkout={checkout} updateCheckout={updateCheckout} fetchCep={fetchCep} checkoutErrors={checkoutErrors} calcFreight={calcFreight}
         couponInput={couponInput} setCouponInput={setCouponInput} appliedCoupon={appliedCoupon} setAppliedCoupon={setAppliedCoupon} applyCouponCode={applyCouponCode}
@@ -9972,7 +10042,48 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                 if (await persistBundles(list, editing ? 'Combo atualizado ✓' : 'Combo criado ✓')) setBundleForm(null);
               }
 
+              // Mais vendidos: site_config.bestsellers (lista de SKUs/ids em ordem; vazio = padrao TZ15, RT15, CU50)
+              const keyOf = p => p.sku || p.id;
+              const bsSel = resolveBestsellers(bestsellers, products);
+              const bsUsingDefault = !(bestsellers && bestsellers.length);
+              async function persistBestsellers(keys, okMsg) {
+                if (!sb) { showToast('Sem conexão com o banco', 'error'); return; }
+                const list = keys.slice(0, BESTSELLERS_MAX);
+                const { error } = await sb.from('site_config').upsert({ key: 'bestsellers', value: JSON.stringify(list) });
+                if (error) { showToast('Erro ao salvar mais vendidos: ' + error.message, 'error'); return; }
+                setBestsellers(list);
+                try { localStorage.setItem('vg-bestsellers', JSON.stringify(list)); } catch {}
+                showToast(okMsg, 'success');
+              }
+              const bsKeys = bsSel.map(keyOf);
+              const bsMove = (i, d) => { const k = [...bsKeys]; const j = i + d; if (j < 0 || j >= k.length) return; [k[i], k[j]] = [k[j], k[i]]; persistBestsellers(k, 'Ordem salva ✓'); };
+              const btnS = { background:'none', border:'1px solid var(--border)', borderRadius:6, color:'var(--muted)', cursor:'pointer', fontSize:'0.7rem', padding:'3px 8px' };
+
               return <>
+                <div style={{background:'rgba(0,229,195,0.04)',border:'1px solid rgba(0,229,195,0.2)',borderRadius:12,padding:'16px',marginBottom:24}}>
+                  <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px',marginBottom:6}}>🔥 MAIS VENDIDOS (destaque no topo da loja)</div>
+                  <div style={{fontSize:'0.75rem',color:'var(--muted)',marginBottom:12,lineHeight:1.5}}>Até {BESTSELLERS_MAX} produtos, na ordem abaixo. Eles aparecem em destaque no topo da loja e continuam na lista normal. {bsUsingDefault ? 'Hoje está no padrão (TZ15, RT15, CU50) porque nada foi escolhido.' : 'Remova todos para voltar ao padrão.'}</div>
+                  {bsSel.map((p, i) => (
+                    <div key={p.id} style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',background:'var(--card)',border:'1px solid var(--border)',borderRadius:8,marginBottom:6}}>
+                      <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.7rem',color:'var(--accent)',width:18}}>{i+1}</span>
+                      <span style={{flex:1,fontSize:'0.82rem'}}>{p.name} <span style={{color:'var(--muted)',fontSize:'0.7rem'}}>{p.sku||p.id}</span></span>
+                      <button type="button" disabled={i===0} onClick={()=>bsMove(i,-1)} style={{...btnS,opacity:i===0?0.35:1}} aria-label="Subir">▲</button>
+                      <button type="button" disabled={i===bsSel.length-1} onClick={()=>bsMove(i,1)} style={{...btnS,opacity:i===bsSel.length-1?0.35:1}} aria-label="Descer">▼</button>
+                      <button type="button" onClick={()=>persistBestsellers(bsKeys.filter((_,x)=>x!==i), 'Removido ✓')} style={{...btnS,border:'none'}} aria-label="Remover">✕</button>
+                    </div>
+                  ))}
+                  {bsSel.length < BESTSELLERS_MAX && (
+                    <>
+                      <div style={{fontSize:'0.65rem',color:'var(--muted)',margin:'10px 0 6px'}}>Adicionar produto</div>
+                      <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+                        {products.filter(p => !bsSel.some(x => x.id === p.id)).map(p => (
+                          <button key={p.id} type="button" onClick={()=>persistBestsellers([...bsKeys, keyOf(p)], 'Adicionado ✓')}
+                            style={{padding:'5px 10px',borderRadius:14,fontSize:'0.72rem',cursor:'pointer',background:'transparent',border:'1px solid var(--border)',color:'var(--muted)'}}>＋ {p.name}</button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
                 <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
                   <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:'var(--accent)',letterSpacing:'1.5px'}}>🎁 COMBOS (loja /novo)</div>
                   <button onClick={()=>setBundleForm({ name:'', desc:'', items:[], price:'', badge:'', active:true })} style={{padding:'7px 14px',background:'rgba(0,229,195,0.1)',border:'1px solid rgba(0,229,195,0.3)',borderRadius:8,color:'var(--accent)',fontSize:'0.72rem',cursor:'pointer',fontFamily:"'Space Mono',monospace",fontWeight:700}}>＋ Novo Combo</button>
