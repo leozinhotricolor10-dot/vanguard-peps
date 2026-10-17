@@ -2422,7 +2422,7 @@ if (NOVO_NO_INICIO && /^\/novo\/?$/.test(window.location.pathname)) {
 }
 const nvSlugOf = p => String(p.sku || p.id).toLowerCase();
 // Links antigos com hash (#/produto/<id>, #/faq, #/carrinho...) abrem a tela equivalente do layout novo
-const NV_HASH_SCREENS = { faq: 'faq', calcular: 'calc', calc: 'calc', blog: 'artigos', artigos: 'artigos', carrinho: 'checkout', cart: 'checkout', rastrear: 'rastrear', pedido: 'rastrear' };
+const NV_HASH_SCREENS = { faq: 'faq', calcular: 'calc', calc: 'calc', blog: 'artigos', artigos: 'artigos', carrinho: 'checkout', cart: 'checkout', frete: 'frete', rastrear: 'rastrear', pedido: 'rastrear' };
 const nvStateFromUrl = () => {
   if (/^\/p\//.test(window.location.pathname))
     return { s: 'produto', pid: decodeURIComponent(window.location.pathname.split('/')[2] || '').toLowerCase() };
@@ -2822,6 +2822,7 @@ function NovaLoja(P) {
     couponInput, setCouponInput, appliedCoupon, setAppliedCoupon, applyCouponCode,
     disclaimer, setDisclaimer, isSubmitting, submitOrder, orderSuccessCode, setOrderSuccessCode,
     trackQuery, setTrackQuery, searchOrders, trackResults, trackLoading, statusLabel,
+    freteDestCep, setFreteDestCep, freteResults, freteLoading, freteError, calcularFrete,
     notices, onVersionTap, versionTag } = P;
 
   const initial = (window.history.state && window.history.state.nv) || nvStateFromUrl();
@@ -2920,6 +2921,7 @@ function NovaLoja(P) {
         <span style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
           <a href="#" onClick={e => { e.preventDefault(); go('artigos'); }}>Artigos</a>
           <a href="#" onClick={e => { e.preventDefault(); go('faq'); }}>Dúvidas</a>
+          <a href="#" onClick={e => { e.preventDefault(); go('frete'); }}>Simular frete</a>
           <a href="https://wa.me/447418333521" target="_blank" rel="noreferrer">WhatsApp</a>
           <a href={NOVO_NO_INICIO ? '/antigo/' : '/'}>Versão anterior do site</a>
           <span onClick={onVersionTap} style={{ fontFamily: "'Space Mono',monospace", fontSize: 11, opacity: .6, userSelect: 'none' }}>{versionTag}</span>
@@ -3342,6 +3344,36 @@ function NovaLoja(P) {
             </section>
           );
         })}
+      </div>
+    );
+  }
+
+  if (screen === 'frete') {
+    // Simulador de frete (o mesmo do #/frete antigo: Melhor Envios, cotação pública, mostra o pior prazo + 5 dias)
+    const maxDays = freteResults && freteResults.length ? Math.max(...freteResults.map(s => s.delivery_time || 0)) : 0;
+    body = (
+      <div className="nv-wrap nv-narrow" style={{ paddingBottom: 30 }}>
+        <Back title="Simular frete" />
+        <p className="nv-sub" style={{ margin: '0 0 14px' }}>Consulte o prazo de entrega para o seu CEP. No PIX o frete é grátis.</p>
+        <div className="nv-f">
+          <label htmlFor="nv-frete-cep">CEP de entrega</label>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input id="nv-frete-cep" inputMode="numeric" value={freteDestCep} placeholder="00000-000"
+              onChange={e => setFreteDestCep(e.target.value.replace(/[^\d-]/g, '').slice(0, 9))}
+              onKeyDown={e => e.key === 'Enter' && calcularFrete()} style={{ fontFamily: "'Space Mono',monospace", letterSpacing: 1, minWidth: 0 }} />
+            <button onClick={() => calcularFrete()} disabled={freteLoading} style={{ height: 50, padding: '0 18px', borderRadius: 12, border: 'none', background: 'var(--ac)', color: '#04110e', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>{freteLoading ? '...' : 'Calcular'}</button>
+          </div>
+        </div>
+        {freteError && <div className="nv-box" role="alert" style={{ marginTop: 16, color: '#ff8a8a', borderColor: 'rgba(255,80,80,.3)' }}>{freteError}</div>}
+        {freteResults && freteResults.length > 0 && (
+          <section className="nv-box" style={{ marginTop: 16, textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: .6, textTransform: 'uppercase', color: 'var(--mu2)' }}>Estimativa de entrega</span>
+            <b style={{ fontSize: 40, lineHeight: 1.1, color: 'var(--ac)' }}>até {maxDays + 5}</b>
+            <span style={{ fontFamily: "'Space Mono',monospace", fontSize: 13, color: 'var(--mu)' }}>dias úteis após o envio</span>
+            <span style={{ fontSize: 14, lineHeight: 1.5, color: 'var(--mu)', marginTop: 6 }}>Na maioria dos casos chega antes. Este é o prazo máximo, no pior cenário para a sua região.</span>
+          </section>
+        )}
+        <button className="nv-btn2" style={{ marginTop: 18, width: '100%' }} onClick={() => go('loja')}>Ver produtos</button>
       </div>
     );
   }
@@ -5657,8 +5689,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
     return () => clearInterval(id);
   }, []);
 
-  // #/frete (simulador de frete) não existe no layout novo: esse link cai no layout antigo
-  const novoActive = IS_NOVO && view !== 'admin' && view !== 'frete' && !portalToken && !manualOrderView;
+  const novoActive = IS_NOVO && view !== 'admin' && !portalToken && !manualOrderView;
   // Admin dentro do /novo: casca nova por cima das abas antigas (o admin em /antigo/ segue o antigo)
   const novoAdmin = IS_NOVO && view === 'admin' && adminUnlocked && !portalToken && !manualOrderView;
   const nvaActive = nvaActiveItem(adminTab, nvaSec, adminStatusFilter);
@@ -5750,6 +5781,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
         disclaimer={disclaimer} setDisclaimer={setDisclaimer} isSubmitting={isSubmitting} submitOrder={sendToWhatsApp}
         orderSuccessCode={orderSuccessCode} setOrderSuccessCode={setOrderSuccessCode}
         trackQuery={trackQuery} setTrackQuery={setTrackQuery} searchOrders={searchOrders} trackResults={trackResults} trackLoading={trackLoading} statusLabel={statusLabel}
+        freteDestCep={freteDestCep} setFreteDestCep={setFreteDestCep} freteResults={freteResults} freteLoading={freteLoading} freteError={freteError} calcularFrete={calcularFrete}
         notices={notices.filter(n => !dismissedNotices.includes(n.id))} onVersionTap={versionTap} versionTag="v2.96b96a1"
       />}
 
