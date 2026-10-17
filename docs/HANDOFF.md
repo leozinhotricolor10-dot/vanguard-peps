@@ -71,7 +71,44 @@ Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfV
 - Admin usa **`admin-db`** (ações fixas list/get/insert/update/upsert/delete por tabela e coluna-chave, exige senha). Em `index.html`, `sb.from(t)` é roteado para a admin-db quando `ADMIN_PW` está definido (login).
 - Uma admin-db genérica que repetia qualquer consulta foi **recusada pelo classificador** como superfície de RCE — manter restrita.
 - `melhorenvios-proxy`: lista de rotas permitidas + senha (exceto cotação pública). Chamada sem senha não conta como tentativa de login.
-- Riscos conhecidos ainda abertos: anon pode chamar `increment_stock`/`decrement_stock`; upload anônimo no bucket `product-images`; a ação `redeem` da `public-api` ainda existe e aceita qualquer CPF (o site novo não usa mais; dá para remover depois que o cache dos clientes renovar — falta o dono aprovar); `create-order` não tem rate limit nem confere estoque (o estoque é reservado pelo navegador via RPC).
+- Riscos conhecidos ainda abertos: anon pode chamar `increment_stock`/`decrement_stock`; upload anônimo no bucket `product-images`; a ação `redeem` da `public-api` ainda existe e aceita qualquer CPF (o site novo não usa mais; dá para remover depois que o cache dos clientes renovar — falta o dono aprovar); `create-order` **no ar** ainda não tem rate limit nem confere estoque — a versão com as duas travas está pronta no repo, **não publicada** (ver "Pronto e NÃO publicado" abaixo).
+
+## Pronto e NÃO publicado: rate limit + estoque no `create-order` (17/10/2026)
+
+Aprovado pelo dono; código, SQL e testes prontos no repo e na pasta de trabalho (`C:\Users\leona\supabase\functions\create-order`, já sincronizada). **Nada foi publicado nem aplicado em produção.**
+
+Arquivos: `supabase/functions/create-order/guards.ts` (novo, lógica pura), `index.ts` (usa o guards), `sql/create_order_guards.sql` (novo), `tests/create-order.test.ts` e `tests/create-order.handler.test.mjs` (novos).
+
+**Rate limit** (antes de ler/gravar qualquer coisa, depois da validação básica do corpo):
+- Janela fixa por chave, contada no banco pela função `order_rate_hit(jsonb)` (atômica: `INSERT … ON CONFLICT`, sem corrida). Tabela nova `order_rate_limits` com RLS ligado e sem políticas; `EXECUTE` só para `service_role`. Não reaproveitei a `admin_rate_limits` porque ela guarda tentativas de senha (attempts/locked_until) e o padrão dela é ler-e-gravar (não atômico); a ideia (chave por IP, upsert, 429) é a mesma.
+- Limites: IP 15 por 10 min e 60 por dia (IP de celular é compartilhado, por isso folgado); CPF e telefone 6 por 10 min e 20 por dia cada; teto geral 120 pedidos por hora. CPF só conta com 11 dígitos e telefone com 10+ (pedido manual sem esses campos não é barrado por eles). Ajustar em `RATE_LIMITS` no `guards.ts`.
+- Chaves vão para o banco só como HMAC-SHA256 (segredo `RATE_LIMIT_SECRET`, se existir; senão a service role key) — sem CPF/telefone/IP em claro. Linhas com mais de 2 dias são apagadas sozinhas.
+- Resposta: **429** `{ ok:false, error:"Muitos pedidos em pouco tempo. Aguarde N minuto(s) e tente de novo, ou fale com a gente no WhatsApp.", retry_after }` + cabeçalho `Retry-After`. O site já mostra `"Erro ao salvar pedido: " + error`, sem mudar nada no `index.html`.
+- IP: usa `cf-connecting-ip`, depois `x-real-ip`, depois o 1º do `x-forwarded-for` (este último pode ser forjado pelo cliente; CPF/telefone e o teto geral cobrem esse caso).
+- **Se a função SQL não existir ou o banco falhar, o pedido passa** (só um aviso no log). Assim a ordem SQL/deploy não importa e uma falha no rate limit não derruba vendas.
+- O 429 acontece antes de debitar pontos.
+
+**Estoque — por que a checagem é "só o que é errado em qualquer fluxo":**
+- No carrinho o navegador **já reservou** com `rpc decrement_stock` (quickAdd, addPackToCart, addBundleToCart, updateQtyInCart, modal antigo, portal de pré-order) antes de chamar o `create-order`. `decrement_stock` devolve -1 e não deixa o saldo ficar negativo. Então, no servidor, `stock.quantity` já é o saldo **depois** da reserva deste cliente: exigir `quantity >= qty` recusaria quem levou as últimas unidades.
+- Dois fluxos chamam o `create-order` **sem reservar nada**: o pedido manual do admin (`createManualOrder`, notas `[PEDIDO MANUAL]`) e o link "Formulário de Pedido" do cliente (`manualOrderView`). O servidor não tem como distinguir esses fluxos do carrinho (nenhum sinal no corpo que não possa ser forjado).
+- Por isso o servidor recusa só: (1) **produto que não existe** em `products` → 400 "Produto indisponível: X. Remova do carrinho e tente de novo." (antes entrava no pedido com preço 0); (2) **produto com controle de estoque e saldo negativo** → 409 "Sem estoque de X no momento. Remova do carrinho ou use \"Reservar\"." Produto sem linha em `stock` (ou `quantity` null) = sem controle, igual ao site. Packs já vêm com `qty` em unidades; combos são linhas normais por item. Erro ao ler `stock` não bloqueia o pedido (aviso no log).
+- A checagem roda antes de cupom/pontos: recusa não debita pontos. Limite novo de 50 linhas por pedido (o catálogo tem ~19 produtos).
+- Limite honesto: isso **não impede** alguém que chame a API direto, sem reservar, de pedir produto com saldo > 0 (o estoque não baixa). Fechar isso exige mudança no site (ver perguntas abaixo).
+
+**Travas que continuam iguais:** preço do banco, packs, promo do banco, combos, cupom, frete, pontos com trava otimista e estorno se o insert falhar, validação de quantidade, versão antiga do site (sem `bundles`/`points`) — coberto nos testes.
+
+**Testes locais (sem rede):** `node --test tests/create-order.test.ts tests/create-order.handler.test.mjs` → 23 testes passando. O segundo empacota o `index.ts` real com esbuild trocando os imports `jsr:` por um Supabase falso em memória (carrinho com saldo 0 passa, saldo negativo recusa sem debitar pontos, produto inexistente, 429 por CPF e por IP, sem a função SQL o pedido passa, estorno de pontos). O SQL **não** foi executado localmente (não há Postgres na máquina) — revisar a saída da conferência no fim do script ao aplicar.
+
+**Para publicar (dono decide):**
+1. SQL Editor do Supabase → colar `sql/create_order_guards.sql` → Run. A conferência no fim deve mostrar `rls = true`, `politicas = 0`, `anon_executa = false`.
+2. (Opcional) segredo próprio para o HMAC: `supabase secrets set RATE_LIMIT_SECRET=<texto aleatório longo> --project-ref aumubzvdhzvtnqfzqeqd`
+3. Em `C:\Users\leona`: `supabase functions deploy create-order --project-ref aumubzvdhzvtnqfzqeqd --no-verify-jwt --use-api`
+4. Depois: fazer um pedido real pelo site; nos logs da função não deve aparecer `rate limit indisponível`; conferir que `order_rate_limits` ganhou linhas.
+
+**Perguntas ao dono:**
+- Os dois formulários de pedido manual (admin e link do cliente) **não baixam estoque** hoje. Quer que passem a baixar? (precisa de um campo novo no `index.html` + o servidor reservar.)
+- Para barrar de verdade pedido sem reserva: reserva com "token do carrinho" (o site manda um `cart_id` no `decrement_stock`/`increment_stock`, o banco guarda quanto cada carrinho reservou, e o `create-order` só aceita o que o carrinho reservou). Exige mudar o `index.html` e as RPCs de estoque; pode ser a próxima rodada.
+- Os limites acima estão bons?
 - Desconto manual no detalhe do pedido grava a coluna `discount`, que **não existe** em `orders` (bug antigo; o total muda só localmente) e recalcula o total sem os descontos de combo/pontos.
 
 ## Edge Functions (Supabase `aumubzvdhzvtnqfzqeqd`)
@@ -82,7 +119,7 @@ Cópia do código em `supabase/functions/` neste repo; a pasta de trabalho é `C
 supabase functions deploy <nome> --project-ref aumubzvdhzvtnqfzqeqd --no-verify-jwt --use-api
 ```
 
-`admin-db`, `public-api`, `me-senders` (pool de remetentes em bucket privado), `melhorenvios-proxy` (aceita `env: "sandbox"`), `verify-admin`, `create-order` (`index.ts` + `pricing.ts`; a lógica de preço roda no Node 24 para teste: `node arquivo.test.ts` importando o `pricing.ts`).
+`admin-db`, `public-api`, `me-senders` (pool de remetentes em bucket privado), `melhorenvios-proxy` (aceita `env: "sandbox"`), `verify-admin`, `create-order` (`index.ts` + `pricing.ts` + `guards.ts`; testes em `tests/`: `node --test tests/create-order.test.ts tests/create-order.handler.test.mjs`).
 
 ## Pendências (fora a tarefa acima)
 

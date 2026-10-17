@@ -1,19 +1,35 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import { calcBundles, calcFreight, parseBundles, parseRedeem, planPoints, unitPrice, type PricedItem } from "./pricing.ts";
+import { checkStock, clientIp, rateLimitMessage, rateRules, type StockRow } from "./guards.ts";
 
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-);
+const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const supabase = createClient(Deno.env.get("SUPABASE_URL")!, SERVICE_KEY);
+// Segredo do HMAC das chaves de rate limit (sem CPF/IP em claro na tabela)
+const RL_SECRET = Deno.env.get("RATE_LIMIT_SECRET") || SERVICE_KEY;
 
 const CORS_HEADERS = {
   "Content-Type": "application/json",
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "content-type, apikey, authorization",
 };
-const reply = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: CORS_HEADERS });
+const reply = (body: unknown, status = 200, extra: Record<string, string> = {}) =>
+  new Response(JSON.stringify(body), { status, headers: { ...CORS_HEADERS, ...extra } });
+
+// Rate limit atômico no banco (sql/create_order_guards.sql). Se a função SQL não existir
+// ou o banco falhar, deixa passar (não derruba vendas) e registra no log.
+async function rateLimited(req: Request, cpf: unknown, phone: unknown): Promise<number | null> {
+  try {
+    const rules = await rateRules(clientIp((h) => req.headers.get(h)), cpf, phone, RL_SECRET);
+    const { data, error } = await supabase.rpc("order_rate_hit", { p_rules: rules });
+    if (error) { console.warn("[create-order] rate limit indisponível:", error.message); return null; }
+    if (data && data.ok === false) return Number(data.retry_after) || 60;
+    return null;
+  } catch (e) {
+    console.warn("[create-order] rate limit falhou:", (e as Error)?.message);
+    return null;
+  }
+}
 
 // Devolve pontos debitados quando o pedido não chega a ser gravado
 async function refundPoints(cpf: string, pts: number) {
@@ -64,15 +80,31 @@ Deno.serve(async (req: Request) => {
     return reply({ ok: false, error: "Quantidade inválida" }, 400);
   }
 
-  // Preços, combos e regra de pontos vêm do banco — fonte da verdade
-  const productIds = [...new Set(order.items.map((i) => i.peptideId))];
-  const [{ data: dbProducts, error: prodErr }, { data: cfgRows }] = await Promise.all([
+  if (order.items.length > 50) return reply({ ok: false, error: "Pedido com itens demais" }, 400);
+
+  // Rate limit por IP, CPF e telefone (antes de qualquer leitura/escrita pesada)
+  const retryAfter = await rateLimited(req, order.cpf, order.phone);
+  if (retryAfter !== null) {
+    return reply({ ok: false, error: rateLimitMessage(retryAfter), retry_after: retryAfter }, 429,
+      { "Retry-After": String(retryAfter) });
+  }
+
+  // Preços, combos, regra de pontos e estoque vêm do banco — fonte da verdade
+  const productIds = [...new Set(order.items.map((i) => String(i.peptideId)))];
+  const [{ data: dbProducts, error: prodErr }, { data: cfgRows }, { data: stockRows, error: stockErr }] = await Promise.all([
     supabase.from("products").select("id, price, packs, promo").in("id", productIds),
     supabase.from("site_config").select("key, value").in("key", ["bundles", "points_config"]),
+    supabase.from("stock").select("product_id, quantity").in("product_id", productIds),
   ]);
 
   if (prodErr || !dbProducts) return reply({ ok: false, error: "Failed to fetch products" }, 500);
   const cfg = (k: string) => (cfgRows || []).find((r) => r.key === k)?.value;
+
+  // Estoque: o carrinho já reservou no navegador, então só recusa produto inexistente ou
+  // saldo negativo (detalhes em guards.ts). Falha ao ler o estoque não bloqueia o pedido.
+  if (stockErr) console.warn("[create-order] estoque não lido:", stockErr.message);
+  const stockCheck = checkStock(order.items, dbProducts.map((p) => p.id), stockErr ? [] : (stockRows || []) as StockRow[]);
+  if (!stockCheck.ok) return reply({ ok: false, error: stockCheck.error }, stockCheck.status);
 
   // Validate each item price against DB
   let validatedSubtotal = 0;
