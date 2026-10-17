@@ -1,6 +1,14 @@
 # Handoff — Vanguard Peptides (17/10/2026)
 
-Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.d9d684b** (commit `d9d684b`, Pedidos novos no admin do `/novo`).
+Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.816c391** (site principal no layout novo; desconto manual; pedidos manuais baixam estoque; redeem removido no código).
+
+## Rodada de 17/10/2026 (aprovada pelo dono) — o que mudou
+
+- **A) Desconto manual** (`a3facab`): grava em `orders.manual_discount` (coluna NOVA — **SQL a aplicar: `sql/orders_manual_discount.sql`**). Antes gravava em `discount`, que não existe. Total = subtotal − cupom − combo − pontos − desconto manual + frete (`orderTotalWith`, também ao editar itens). Sem a coluna, o admin mostra "Falta aplicar o SQL…" e não muda nada. `orderDiscounts()` lê `manual`; painel do /novo e detalhe mostram a linha.
+- **B) Pedidos manuais baixam estoque** (`324d63f`): `reserveOrderStock`/`releaseOrderStock` no App (mesma RPC `decrement_stock` do carrinho, agregado por produto, só produtos com linha em `stock`). Usado em `createManualOrder` (admin) e no `?pedido` (cliente). Se faltar estoque de um item, devolve o que já reservou e não chama o create-order; se o create-order falhar (ou erro de rede), devolve com `increment_stock`. Como `decrement_stock` nunca deixa negativo, o `guards.ts` (recusa só saldo negativo) aceita. Remover pedido no admin já devolvia o estoque. Limite: erro de rede depois do servidor gravar = estoque devolvido sem querer (igual ao comportamento antigo).
+- **C) Site principal no layout novo** (`9331c8e`): ver "Site principal no layout novo + ROLLBACK" abaixo.
+- **D) `redeem` removido da `public-api`** (`816c391`): no repo e em `C:Usersleonasupabaseunctionspublic-api` (idênticos). `redeemPoints` (sem uso) saiu do `index.html`; grep não acha mais chamada a `redeem`. **NÃO publicado** — o dono publica: `supabase functions deploy public-api --project-ref aumubzvdhzvtnqfzqeqd --no-verify-jwt --use-api` (em `C:Usersleona`). Depois conferir que `{action:"redeem"}` responde `Unknown action`.
+- Teste: build + harness injetado só no `dist/` local (verify-admin/admin-db simulados, rpc de estoque simulada, create-order simulado com opção de falha, public-api só leitura real — `snapshot/points/coupon/preorder_get` —, track simulado, me-senders/melhorenvios/qualquer outra escrita bloqueada, `window.open/confirm/alert/prompt` interceptados). Conferido em 1360 e 375px sem rolagem lateral: `/`, `/novo`, `/p/tz15`, `/p/cu50`, `/antigo/` (+ admin antigo com 14 abas), `/#/produto/<id>`, `/#/faq`, `/#/carrinho`, `/#/frete`, `/#/admin`, rastreio VG-…, portal `?preorder` (encontrado/não encontrado/concluir compra), `?pedido` (sucesso, falha, sem estoque), pedido manual do admin (sucesso/falha), desconto manual (com e sem coluna), checkout da loja nova até o WhatsApp (sem `redeem`). 23 testes do create-order passando.
 
 ## Tarefa em andamento (pedida pelo dono)
 
@@ -8,7 +16,7 @@ Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.d9d684b
 
 1. ~~**Loja `/novo`** — completar o que falta: combos, artigos, resgate de pontos.~~ **FEITO** (commits `ca27a12`, `07e04c9`, `d944235`). Detalhes em "Loja /novo — combos, artigos e pontos" abaixo.
 2. ~~**Admin dentro do `/novo`** — casca nova do mockup, por cima das abas existentes.~~ **FEITO** (commit `b1e0e61`). Detalhes em "Admin no /novo (Passo 2)" abaixo.
-3. **(PRÓXIMO PASSO) Site principal** (`vanguardpep.com`) continua no layout antigo até o dono aprovar o `/novo` (loja + admin). Refino das telas do admin no visual do mockup, uma a uma: **feitos** o menu (Produtos e estoque / Artigos e avisos com abas internas, `cc84afc`) e a tela de **Pedidos** (`d9d684b`) — ver "Admin no /novo (refinos)". Próximas candidatas: Etiquetas/Envios, Produtos e estoque, Financeiro.
+3. ~~Site principal~~ **FEITO** (`9331c8e`): `vanguardpep.com/` está no layout novo; antigo em `/antigo/`. Refino das telas do admin no visual do mockup, uma a uma: **feitos** o menu (Produtos e estoque / Artigos e avisos com abas internas, `cc84afc`) e a tela de **Pedidos** (`d9d684b`) — ver "Admin no /novo (refinos)". Próximas candidatas: Etiquetas/Envios, Produtos e estoque, Financeiro.
 
 Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfVHSX
 
@@ -23,10 +31,10 @@ Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfV
 ## Como o novo layout funciona
 
 - `index.html` → componente `function NovaLoja(P)` (antes de `function App()`), CSS em `NOVO_CSS` (classes `nv-*`).
-- `IS_NOVO` é verdadeiro em `/novo` e em `/p/<código>`. No `App`: `novoActive = IS_NOVO && view !== 'admin' && !portalToken && !manualOrderView`. Com ele, o root ganha a classe `novo-mode`, que esconde nav/hero/.app/footer/bottom-nav antigos.
-- Telas internas (`screen`): loja, produto, checkout, done, rastrear, calc, faq, artigos, artigo. Navegação com `history.pushState` (`state.nv = {s, pid, d}`); produto vira `/p/<sku minúsculo>`, o resto `/novo/`.
+- `IS_NOVO` é verdadeiro em `/` (com `NOVO_NO_INICIO`), `/novo` e `/p/<código>`; falso em `/antigo/`. No `App`: `novoActive = IS_NOVO && view !== 'admin' && !portalToken && !manualOrderView`. Com ele, o root ganha a classe `novo-mode`, que esconde nav/hero/.app/footer/bottom-nav antigos.
+- Telas internas (`screen`): loja, produto, checkout, done, rastrear, calc, faq, artigos, artigo. Navegação com `history.pushState` (`state.nv = {s, pid, d}`); produto vira `/p/<sku minúsculo>`, o resto `NV_HOME` (`/`).
 - Reaproveita a lógica do App via props: `quickAdd` (novo, adiciona 1 sem modal), `updateQtyInCart`, `removeFromCart`, `addPackToCart`, `savePreorder`, `sendToWhatsApp`, `applyCouponCode`, `searchOrders` etc.
-- Admin: 5 toques no texto da versão no rodapé do `/novo` → senha → abre o admin (view `admin`) com a casca nova (ver "Admin no /novo").
+- Admin: 5 toques no texto da versão no rodapé da loja nova (`/` ou `/novo`) → senha → abre o admin (view `admin`) com a casca nova (ver "Admin no /novo").
 - **Cuidado:** o CSS antigo tem regras globais para `nav`, `main` e `footer`. No NovaLoja use `<div role="navigation|main|contentinfo">`.
 - Campos com input dentro do NovaLoja são chamados como função (`Field({...})`), não `<Field/>`, para não perder o foco ao digitar.
 - Fotos de produto foram removidas do novo layout (pedido do dono). Só a prévia do WhatsApp nas páginas `/p/` usa foto.
@@ -79,7 +87,7 @@ Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfV
 - Admin usa **`admin-db`** (ações fixas list/get/insert/update/upsert/delete por tabela e coluna-chave, exige senha). Em `index.html`, `sb.from(t)` é roteado para a admin-db quando `ADMIN_PW` está definido (login).
 - Uma admin-db genérica que repetia qualquer consulta foi **recusada pelo classificador** como superfície de RCE — manter restrita.
 - `melhorenvios-proxy`: lista de rotas permitidas + senha (exceto cotação pública). Chamada sem senha não conta como tentativa de login.
-- Riscos conhecidos ainda abertos: anon pode chamar `increment_stock`/`decrement_stock`; upload anônimo no bucket `product-images`; a ação `redeem` da `public-api` ainda existe e aceita qualquer CPF (o site novo não usa mais; dá para remover depois que o cache dos clientes renovar — falta o dono aprovar); `create-order` agora tem rate limit e checagem de estoque no servidor (ver "PUBLICADO" abaixo); a checagem não cobre quem chama a API direto sem reservar estoque.
+- Riscos conhecidos ainda abertos: anon pode chamar `increment_stock`/`decrement_stock`; upload anônimo no bucket `product-images`; a ação `redeem` da `public-api` foi removida no código (`816c391`) mas **ainda está no ar até o dono publicar a função**; `create-order` agora tem rate limit e checagem de estoque no servidor (ver "PUBLICADO" abaixo); a checagem não cobre quem chama a API direto sem reservar estoque.
 
 ## PUBLICADO: rate limit + estoque no `create-order` (17/10/2026)
 
@@ -114,10 +122,10 @@ Arquivos: `supabase/functions/create-order/guards.ts` (novo, lógica pura), `ind
 4. Depois: fazer um pedido real pelo site; nos logs da função não deve aparecer `rate limit indisponível`; conferir que `order_rate_limits` ganhou linhas.
 
 **Perguntas ao dono:**
-- Os dois formulários de pedido manual (admin e link do cliente) **não baixam estoque** hoje. Quer que passem a baixar? (precisa de um campo novo no `index.html` + o servidor reservar.)
+- ~~Pedidos manuais baixarem estoque~~ feito no navegador (`324d63f`).
 - Para barrar de verdade pedido sem reserva: reserva com "token do carrinho" (o site manda um `cart_id` no `decrement_stock`/`increment_stock`, o banco guarda quanto cada carrinho reservou, e o `create-order` só aceita o que o carrinho reservou). Exige mudar o `index.html` e as RPCs de estoque; pode ser a próxima rodada.
 - Os limites acima estão bons?
-- Desconto manual no detalhe do pedido grava a coluna `discount`, que **não existe** em `orders` (bug antigo; o total muda só localmente) e recalcula o total sem os descontos de combo/pontos.
+- ~~Desconto manual~~ corrigido (`a3facab`), falta aplicar `sql/orders_manual_discount.sql`.
 
 ## Edge Functions (Supabase `aumubzvdhzvtnqfzqeqd`)
 
@@ -131,7 +139,7 @@ supabase functions deploy <nome> --project-ref aumubzvdhzvtnqfzqeqd --no-verify-
 
 ## Pendências (fora a tarefa acima)
 
-1. Dono testar `/novo` com pedido real no celular → depois trocar o site principal.
+1. Dono: aplicar `sql/orders_manual_discount.sql`; publicar a `public-api` sem `redeem`; fazer um pedido real no `/` novo pelo celular.
 2. **Remetente ativo ainda com CPF fictício 18749536273** — dono precisa trocar pelo CPF real em 📮 REMETENTES.
 3. Token do sandbox do Melhor Envios (`MELHORENVIOS_SANDBOX_TOKEN`) para o modo Teste.
 4. Fotos leves / cadastrar fotos (8 de 19 produtos têm foto).
