@@ -1,6 +1,6 @@
 # Handoff — Vanguard Peptides (17/10/2026)
 
-Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.eae4d9c** (commit `bd0d6c6`).
+Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.ca27a12** (commit `bd0d6c6`).
 
 ## Próxima tarefa (pedida pelo dono, ainda não iniciada)
 
