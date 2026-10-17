@@ -2562,12 +2562,11 @@ const NVA_GROUPS = [
     { id: 'mapa', label: 'Mapa', tab: 'mapa' },
   ] },
   { id: 'catalogo', label: 'Catálogo', icon: <path d="M9 3h6v4l4 12a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2l4-12z" />, items: [
-    { id: 'produtos', label: 'Produtos', tab: 'produtos' },
-    { id: 'estoque', label: 'Estoque', tab: 'estoque' },
+    // Itens com `tabs` juntam abas antigas: a casca mostra sub-abas internas (NovaAdminInnerTabs)
+    { id: 'produtos', label: 'Produtos e estoque', tab: 'produtos', tabs: [{ tab: 'produtos', label: 'Produtos' }, { tab: 'estoque', label: 'Estoque' }] },
     { id: 'importacao', label: 'Importações', tab: 'importacao' },
     { id: 'combos', label: 'Combos', tab: 'combos' },
-    { id: 'artigos', label: 'Artigos', tab: 'artigos' },
-    { id: 'avisos', label: 'Avisos', tab: 'avisos' },
+    { id: 'artigos', label: 'Artigos e avisos', tab: 'artigos', tabs: [{ tab: 'artigos', label: 'Artigos' }, { tab: 'avisos', label: 'Avisos' }] },
   ] },
   { id: 'gestao', label: 'Gestão', icon: <><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></>, items: [
     { id: 'financeiro', label: 'Financeiro', tab: 'financeiro' },
@@ -2578,7 +2577,7 @@ const NVA_ITEMS = NVA_GROUPS.flatMap(g => g.items.map(i => ({ ...i, group: g.id 
 // Item ativo: "Etiquetas" é a aba Pedidos filtrada em "pago"
 function nvaActiveItem(adminTab, sec, statusFilter) {
   if (adminTab === 'pedidos' && sec === 'etiquetas' && statusFilter === 'pago') return 'etiquetas';
-  const it = NVA_ITEMS.find(i => i.tab === adminTab);
+  const it = NVA_ITEMS.find(i => i.tab === adminTab || (i.tabs && i.tabs.some(t => t.tab === adminTab)));
   return it ? it.id : 'pedidos';
 }
 
@@ -2609,7 +2608,13 @@ const NOVO_ADMIN_CSS = `
 .novo-admin .admin-action-btn:hover{border-color:rgba(0,229,195,.45);color:#00e5c3}
 .novo-admin .admin-table{background:#0a1219;border-radius:14px;border-color:rgba(0,229,195,.1)}
 .novo-admin .admin-table-header{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:0;text-transform:none;color:#a9bfcb;background:#0a1219}
+.nva-inner{display:flex;gap:4px;margin:16px 0 18px;padding:4px;border-radius:12px;background:#0a1219;border:1px solid rgba(0,229,195,.12);width:max-content;max-width:100%}
+.nva-inner button{height:38px;padding:0 18px;border-radius:9px;border:none;background:transparent;color:#a9bfcb;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
+.nva-inner button:hover{color:#e2eaf0}
+.nva-inner button.on{background:rgba(0,229,195,.14);color:#00e5c3}
 @media (max-width:759px){
+  .nva-inner{width:auto;margin:0 0 14px}
+  .nva-inner button{flex:1}
   .nva-side{display:none}
   .novo-admin>.app{padding:0}
   .novo-admin>.app>main{padding:14px 16px 96px;width:100%;max-width:100%}
@@ -2676,7 +2681,22 @@ function NovaAdminSub({ active, onPick, badges }) {
   );
 }
 
-const nvFmt = v => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+// Abas internas de um item que junta duas abas antigas (Produtos/Estoque, Artigos/Avisos)
+function NovaAdminInnerTabs({ active, adminTab, setAdminTab }) {
+  const it = NVA_ITEMS.find(i => i.id === active);
+  if (!it || !it.tabs) return null;
+  return (
+    <div className="nva-inner" role="tablist" aria-label={it.label}>
+      {it.tabs.map(t => (
+        <button key={t.tab} role="tab" aria-selected={adminTab === t.tab} className={adminTab === t.tab ? 'on' : ''} onClick={() => { if (adminTab !== t.tab) { setAdminTab(t.tab); window.scrollTo(0, 0); } }}>
+          {t.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const nvFmt =v => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function NvIcon({ d, size = 22, w = 1.9 }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={w} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{d}</svg>;
@@ -6878,6 +6898,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
             </div>
 
             {novoAdmin && <NovaAdminSub active={nvaActive} onPick={nvaPick} badges={nvaBadges} />}
+            {novoAdmin && <NovaAdminInnerTabs active={nvaActive} adminTab={adminTab} setAdminTab={setAdminTab} />}
             {(!novoAdmin || adminTab === 'pedidos') && <div className="admin-grid" style={{marginBottom:24,marginTop:novoAdmin?16:0}}>
               <div className="admin-stat"><div className="admin-stat-label">Compradores</div><div className="admin-stat-value">{totalBuyers}</div></div>
               <div className="admin-stat"><div className="admin-stat-label">Total unidades</div><div className="admin-stat-value">{totalUnits}</div></div>
