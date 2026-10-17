@@ -1,6 +1,6 @@
 # Handoff — Vanguard Peptides (17/10/2026)
 
-Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.b1e0e61** (commit `b1e0e61`, admin no `/novo`).
+Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.d9d684b** (commit `d9d684b`, Pedidos novos no admin do `/novo`).
 
 ## Tarefa em andamento (pedida pelo dono)
 
@@ -8,7 +8,7 @@ Estado do projeto e o que fazer na próxima sessão. Versão no ar: **v2.b1e0e61
 
 1. ~~**Loja `/novo`** — completar o que falta: combos, artigos, resgate de pontos.~~ **FEITO** (commits `ca27a12`, `07e04c9`, `d944235`). Detalhes em "Loja /novo — combos, artigos e pontos" abaixo.
 2. ~~**Admin dentro do `/novo`** — casca nova do mockup, por cima das abas existentes.~~ **FEITO** (commit `b1e0e61`). Detalhes em "Admin no /novo (Passo 2)" abaixo.
-3. **(PRÓXIMO PASSO) Site principal** (`vanguardpep.com`) continua no layout antigo até o dono aprovar o `/novo` (loja + admin). Depois, se ele quiser, refinar telas do admin uma a uma no visual do mockup (hoje só a casca e os componentes comuns foram restilizados).
+3. **(PRÓXIMO PASSO) Site principal** (`vanguardpep.com`) continua no layout antigo até o dono aprovar o `/novo` (loja + admin). Refino das telas do admin no visual do mockup, uma a uma: **feitos** o menu (Produtos e estoque / Artigos e avisos com abas internas, `cc84afc`) e a tela de **Pedidos** (`d9d684b`) — ver "Admin no /novo (refinos)". Próximas candidatas: Etiquetas/Envios, Produtos e estoque, Financeiro.
 
 Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfVHSX
 
@@ -36,13 +36,20 @@ Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfV
 
 - `novoAdmin = IS_NOVO && view === 'admin' && adminUnlocked && !portalToken && !manualOrderView` (no `App`, ao lado de `novoActive`). Com ele o root ganha a classe `novo-admin` e é injetado `NOVO_ADMIN_CSS` (só nesse caso). Sem login (`adminUnlocked` falso) continua a tela de cadeado antiga.
 - `.novo-admin` esconde nav/hero/footer/bottom-nav antigos e o `aside` do `.app`, e remapeia `--muted/--card/--border`; restiliza `.admin-stat`, `.admin-action-btn`, `.admin-table`, `.page-title`; esconde `.admin-tabs` e o `.page-tag`. As abas continuam sendo o JSX antigo (`adminTab`).
-- Menu: `NVA_GROUPS` (Vendas: Pedidos, Pré-orders, Clientes, Cupons · Envios: Etiquetas, Remetentes, Mapa · Catálogo: Produtos, Estoque, Importações, Combos, Artigos, Avisos · Gestão: Financeiro, Config). `NovaAdminShell` = menu lateral (`div role=navigation`, desktop ≥760px) + abas dos 4 grupos embaixo (celular). `NovaAdminSub` = chips do grupo atual no topo (só celular). Produtos/Estoque e Artigos/Avisos ficaram como itens separados porque são abas separadas.
+- Menu: `NVA_GROUPS` (Vendas: Pedidos, Pré-orders, Clientes, Cupons · Envios: Etiquetas, Remetentes, Mapa · Catálogo: Produtos e estoque, Importações, Combos, Artigos e avisos · Gestão: Financeiro, Config). `NovaAdminShell` = menu lateral (`div role=navigation`, desktop ≥760px) + abas dos 4 grupos embaixo (celular). `NovaAdminSub` = chips do grupo atual no topo (só celular). Produtos/Estoque e Artigos/Avisos agora são um item com abas internas (ver "refinos").
 - **Etiquetas** = aba Pedidos com `adminStatusFilter = 'pago'` (estado `nvaSec` diz qual item está ativo; `nvaActiveItem`). Voltar para Pedidos vindo de outra seção zera o filtro. **Remetentes** abre o mesmo modal do botão 📮 (função `openSenderPool`, também usada no admin antigo).
 - Badges: Pedidos = pedidos `pendente`; Etiquetas = `pago` sem `label_url`.
 - Cards de resumo (Compradores/Receita…) só aparecem em Pedidos no `/novo`. Botão "← Loja" (celular) / "← Ver loja" (menu) volta para a loja nova; 5 toques na versão voltam ao admin.
 - Ajustes de celular só no `/novo`: `.notice-editor-row` e `.fin-cards` viram 1/2 colunas; o formulário de despesa (`nva-wrapgrid`) quebra em 2 colunas; a tabela de itens da importação (`nva-scrollx`) rola dentro da caixa.
 - Modais antigos de boas-vindas/nome/sucesso não aparecem com `novoAdmin`.
 - Teste feito: build + cópias locais `dist/t/novo/` e `dist/t2/` (apagadas depois) com o harness do Passo 1 ampliado: `verify-admin` → `{ok:true}`, `admin-db` `list` devolve pedidos fictícios e toda escrita é simulada, qualquer outra chamada não-GET ao Supabase (rpc, create-order, me-senders, melhorenvios-proxy, storage) bloqueada, `window.open`/`confirm`/`alert` desligados. Navegado por todos os itens em 1360px e 375px (sem rolagem lateral, sem erro no console) e conferido que o admin em `/` segue igual (14 abas, sem menu novo).
+
+## Admin no /novo (refinos, out/2026)
+
+- **Menu**: no grupo Catálogo, "Produtos e estoque" e "Artigos e avisos" viraram um item só cada (`NVA_GROUPS`, campo `tabs`). `NovaAdminInnerTabs` mostra as abas internas (segmentado no topo, desktop e celular) e só troca o `adminTab` antigo (`produtos`/`estoque`, `artigos`/`avisos`); `nvaActiveItem` acha o item pelo `tab` ou pelos `tabs`.
+- **Pedidos** (só com `novoAdmin`; o admin em `/` segue com a tabela antiga): cards de resumo trocados por Aguardando pagamento / Pagos para enviar / Em trânsito / Receita bruta (`.nvp-kpis`). A visão normal (não agrupada) vira lista `.nvp-row`: card no celular/tablet; acima de 1100px, linha + painel de detalhe fixo à direita (`.nvp-panel`, pedido escolhido em `nvaSelOrder`; abaixo de 1100px tocar no card abre o modal de detalhe antigo `setOrderDetail`). "Agrupar por cliente", busca, filtros de status, paginação e o filtro `pago` de Etiquetas são os mesmos de antes.
+- **Próximo passo** (`nvaSteps`): pendente → "Marcar como pago" (+ Cobrar PIX); pago sem etiqueta → "Gerar etiqueta" (+ Marcar como enviado, para motoboy); pago com etiqueta → "Marcar como enviado" (+ Reimprimir etiqueta); enviado → "Marcar como entregue"; entregue/extraviado → "Ver detalhes". Mais "Enviar rastreio" (se tem código), "WhatsApp" (se tem telefone) e "Remover". Tudo chama as funções antigas (`cycleStatus` — com WhatsApp automático e pontos —, `gerarEtiqueta`, modal PIX, `sendTrackingWhatsApp`, `adminRemove`). **Única regra nova de interface**: confirmação (`window.confirm`) antes de avançar status (`nvaAdvance`) e antes de remover (`nvaRemove`); o clique no status do admin antigo continua sem confirmação.
+- Teste: build + cópias `dist/t/novo/` e `dist/t2/` com harness (verify-admin `{ok:true}`, admin-db com 7 pedidos fictícios e escrita simulada, demais POST ao Supabase bloqueados — `increment_stock`, `melhorenvios-proxy` etc. —, `window.open`/`confirm`/`alert`/`prompt` interceptados). Conferido em 1360, 900 e 375px (sem rolagem lateral, console limpo): avançar status (cancelar = nada acontece; confirmar = update + WhatsApp + pontos simulados), etiqueta (abre o fluxo antigo), PIX, remover, busca, Etiquetas, agrupar por cliente, e o admin em `/` igual (14 abas, tabela antiga). Harness em `scratchpad` da sessão (não versionado).
 
 ## Build e deploy
 
