@@ -35,7 +35,7 @@ let ADMIN_PW = ''; // senha do admin só em memória, definida no login
 // tabela → coluna-chave (igual à admin-db)
 const ADMIN_TABLE_KEYS = {
   orders: 'id', preorders: 'id', customers: 'cpf', coupons: 'id', expenses: 'id', import_history: 'id',
-  purchase_order_caps: 'id', products: 'id', stock: 'product_id', site_config: 'key',
+  purchase_order_caps: 'id', raffles: 'id', products: 'id', stock: 'product_id', site_config: 'key',
 };
 
 async function callAdminDb(payload) {

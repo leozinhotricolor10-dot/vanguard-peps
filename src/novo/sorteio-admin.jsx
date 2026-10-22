@@ -3,9 +3,12 @@
 // Critério de "cliente" (1 chance por cliente no mês): CPF (só dígitos, 11) > e-mail (minúsculo) >
 // telefone (só dígitos, sem 55 inicial) > se o pedido não tem nenhum dos três, conta como cliente próprio.
 // Entram pedidos do mês (fuso de São Paulo) com status pago, enviado ou entregue.
-// Histórico: localStorage `vg-sorteios` (só nome, código do pedido, cidade/UF; sem CPF/telefone/e-mail).
+// Histórico: tabela Supabase `raffles` (via admin-db) com espelho em localStorage `vg-sorteios`; só nome, código do pedido,
+// cidade/UF (sem CPF/telefone/e-mail). Se a tabela não existir, a aba segue só com o localStorage e avisa.
 const SORTEIO_STATUS_OK = ['pago', 'enviado', 'entregue'];
 const SORTEIO_LS = 'vg-sorteios';
+const SORTEIO_LS_MIGRADO = 'vg-sorteios-migrado';
+const SORTEIO_ERRO_TABELA = /raffles|relation|does not exist|schema cache|not allowed/i;
 const SORTEIO_MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 
 // 'YYYY-MM' de uma data no fuso de São Paulo
@@ -48,6 +51,21 @@ function sorteioLoad() {
   try { const v = JSON.parse(localStorage.getItem(SORTEIO_LS) || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; }
 }
 function sorteioSave(h) { try { localStorage.setItem(SORTEIO_LS, JSON.stringify(h)); } catch (e) { /* sem localStorage: segue sem salvar */ } }
+// banco <-> UI
+function sorteioDeLinha(r) {
+  return { id: Number(r.id), mes: r.mes, at: r.sorteado_em, participantes: r.participantes || 0, excluidos: r.excluidos || 0,
+    ganhadores: Array.isArray(r.ganhadores) ? r.ganhadores : [] };
+}
+function sorteioParaLinha(h) {
+  const g = (h.ganhadores || []).map(x => ({ name: x.name, code: x.code, city: x.city || '' })); // só nome/código/cidade
+  return { id: h.id, mes: h.mes, sorteado_em: h.at, participantes: h.participantes || 0, excluidos: h.excluidos || 0, qtd_ganhadores: g.length, ganhadores: g };
+}
+// junta banco + local sem duplicar por id; só-locais ficam marcados; mais recente primeiro
+function sorteioJunta(banco, local) {
+  const ids = new Set(banco.map(h => h.id));
+  const soLocal = local.filter(h => !ids.has(h.id)).map(h => ({ ...h, _local: true }));
+  return [...banco, ...soLocal].sort((a, b) => new Date(b.at) - new Date(a.at));
+}
 const sorteioBRL = v => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 function SorteioAdmin({ orders, showToast, normUF }) {
@@ -58,9 +76,50 @@ function SorteioAdmin({ orders, showToast, normUF }) {
   const [fase, setFase] = React.useState('idle'); // idle | girando | pronto
   const [roleta, setRoleta] = React.useState('');
   const [res, setRes] = React.useState(null); // { mes, ganhadores, total }
-  const [hist, setHist] = React.useState(sorteioLoad);
+  const [hist, setHist] = React.useState(() => sorteioJunta([], sorteioLoad()));
+  const [bancoOk, setBancoOk] = React.useState(false); // true = histórico lido do Supabase
+  const [falta, setFalta] = React.useState(false); // tabela raffles não existe / não permitida
+  const [importando, setImportando] = React.useState(false);
   const timerRef = React.useRef(null);
   React.useEffect(() => () => clearInterval(timerRef.current), []);
+
+  // Carrega o histórico do banco (se falhar, segue só com o localStorage)
+  React.useEffect(() => {
+    let vivo = true;
+    if (!sb) return;
+    (async () => {
+      try {
+        const { data, error } = await sb.from('raffles').select();
+        if (!vivo) return;
+        if (error) {
+          if (SORTEIO_ERRO_TABELA.test(error.message || '')) setFalta(true);
+          else showToast('Não consegui ler o histórico do banco: ' + error.message, 'error');
+          return;
+        }
+        const banco = (data || []).map(sorteioDeLinha);
+        setBancoOk(true); setFalta(false);
+        setHist(sorteioJunta(banco, sorteioLoad()));
+      } catch (e) { if (vivo) setFalta(SORTEIO_ERRO_TABELA.test(e.message || '')); }
+    })();
+    return () => { vivo = false; };
+  }, []);
+
+  const avisoFalta = () => showToast('Falta aplicar o SQL sql/raffles.sql no Supabase — histórico salvo só neste navegador', 'error');
+  const soLocais = hist.filter(h => h._local);
+
+  async function importar() {
+    if (!bancoOk || !soLocais.length || importando) return;
+    setImportando(true);
+    try {
+      const { error } = await sb.from('raffles').upsert(soLocais.map(sorteioParaLinha));
+      if (error) { SORTEIO_ERRO_TABELA.test(error.message || '') ? (setFalta(true), setBancoOk(false), avisoFalta()) : showToast('Erro ao importar: ' + error.message, 'error'); return; }
+      sorteioSave([]);
+      try { localStorage.setItem(SORTEIO_LS_MIGRADO, new Date().toISOString()); } catch (e) { /* ok */ }
+      setHist(h => h.map(x => ({ ...x, _local: false })));
+      showToast(soLocais.length + ' sorteio(s) importado(s) para o banco ✓', 'success');
+    } catch (e) { showToast('Erro ao importar: ' + e.message, 'error'); }
+    finally { setImportando(false); }
+  }
 
   // Mesmo critério da aba Pedidos: com Supabase, só pedidos reais (não os locais do carrinho)
   const base = React.useMemo(() => orders.filter(o => (sb ? o._supabase : true)), [orders]);
@@ -109,11 +168,25 @@ function SorteioAdmin({ orders, showToast, normUF }) {
         clearInterval(timerRef.current);
         const reg = { id: Date.now(), mes, at: new Date().toISOString(), participantes: nMax, excluidos: parts.length - nMax,
           ganhadores: ganhadores.map(g => ({ name: g.name, code: g.code, city: g.city })) };
-        const novo = [reg, ...sorteioLoad()];
-        sorteioSave(novo); setHist(novo);
+        sorteioSave([reg, ...sorteioLoad()]); // espelho local
+        setHist(h => [{ ...reg, _local: true }, ...h.filter(x => x.id !== reg.id)]);
+        if (sb && !falta) salvaBanco(reg);
         setRes({ mes, ganhadores, total: nMax }); setFase('pronto');
       }
     }, 70);
+  }
+
+  async function salvaBanco(reg) {
+    try {
+      const { error } = await sb.from('raffles').insert(sorteioParaLinha(reg));
+      if (error) {
+        if (SORTEIO_ERRO_TABELA.test(error.message || '')) { setFalta(true); setBancoOk(false); avisoFalta(); }
+        else showToast('Sorteio feito, mas não salvou no banco: ' + error.message, 'error');
+        return;
+      }
+      setBancoOk(true);
+      setHist(h => h.map(x => x.id === reg.id ? { ...x, _local: false } : x));
+    } catch (e) { showToast('Sorteio feito, mas não salvou no banco: ' + e.message, 'error'); }
   }
 
   function textoResultado(r) {
@@ -206,16 +279,25 @@ function SorteioAdmin({ orders, showToast, normUF }) {
 
     <div style={card}>
       <div style={lbl}>🗂️ SORTEIOS ANTERIORES</div>
+      {falta && <div style={{ background: 'rgba(255,170,0,0.1)', border: '1px solid rgba(255,170,0,0.4)', borderRadius: 8, padding: '8px 12px', marginBottom: 10, fontSize: '0.75rem', color: 'var(--text)' }}>
+        Falta aplicar o SQL <b>sql/raffles.sql</b> no Supabase — histórico salvo só neste navegador.
+      </div>}
+      {bancoOk && soLocais.length > 0 && <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 10, fontSize: '0.75rem', color: 'var(--muted)' }}>
+        <span>{soLocais.length} sorteio{soLocais.length === 1 ? '' : 's'} só neste navegador.</span>
+        <button onClick={importar} disabled={importando} style={btn}>{importando ? 'Importando...' : `Importar ${soLocais.length} sorteio${soLocais.length === 1 ? '' : 's'} antigo${soLocais.length === 1 ? '' : 's'} para o banco`}</button>
+      </div>}
       {hist.length === 0
-        ? <div style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>Nenhum sorteio realizado ainda. O histórico fica salvo só neste navegador.</div>
+        ? <div style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>Nenhum sorteio realizado ainda. O histórico fica salvo {bancoOk ? 'no banco (Supabase)' : 'só neste navegador'}.</div>
         : hist.map(h => (
           <div key={h.id} style={{ padding: '10px 0', borderTop: '1px solid var(--border)', fontSize: '0.8rem' }}>
             <div style={{ color: 'var(--muted)', fontSize: '0.68rem', fontFamily: "'Space Mono',monospace" }}>
               {sorteioMesLabel(h.mes)} · sorteado em {new Date(h.at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} · {h.participantes} participantes
+              {bancoOk && h._local && <span style={{ color: '#ffaa00' }}> · só neste navegador</span>}
             </div>
             <div>{h.ganhadores.map(g => `${g.name} (${g.code})`).join(', ')}</div>
           </div>
         ))}
+      {hist.length > 0 && <div style={{ fontSize: '0.65rem', color: 'var(--muted)', marginTop: 8 }}>Histórico salvo {bancoOk ? 'no banco (Supabase)' : 'só neste navegador'}.</div>}
     </div>
   </>;
 }
