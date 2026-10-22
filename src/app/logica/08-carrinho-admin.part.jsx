@@ -1,4 +1,4 @@
-// @fragmento do App() — lógica 8/8: carrinho, combos/packs, login admin, totais, helpers do admin novo (nva*). Antes: 07-precos-pontos-preorders.part.jsx | depois: app.jsx (render + createRoot). Não é JS válido sozinho: tools/montar.js junta na ordem de src/manifest.json (esta linha é descartada).
+// @fragmento do App() — lógica 8/8: carrinho, combos/packs, login admin, totais, helpers do admin novo (nva*). Antes: 07-precos-pontos-preorders.part.jsx | depois: render/00-casca-portal-manual.part.jsx. Não é JS válido sozinho: tools/montar.js junta na ordem de src/manifest.json (esta linha é descartada).
   // Cart for current user
   const myOrders = useMemo(() => orders.filter(o => !o._supabase && (o.buyerName || '').toLowerCase() === myName.toLowerCase()), [orders, myName]);
   const myTotal  = useMemo(() => myOrders.reduce((s, o) => { const p = products.find(x => x.id === o.peptideId); const unitPrice = o._packPrice !== undefined ? o._packPrice : effectivePrice(p); return s + (o.qty||0) * unitPrice; }, 0), [myOrders, productPromo]);
