@@ -25,6 +25,7 @@ const ROOT = path.join(__dirname, '..');
 const CASCA = 'index.html';
 const MANIFESTO = 'src/manifest.json';
 const MARCADOR = /^<!-- @inclui (\S+) -->$/;
+const FRAGMENTO = /^\/\/ @fragmento [^\n]*\n/;
 
 const lf = s => s.replace(/\r\n/g, '\n');
 
@@ -64,7 +65,9 @@ function montar(read = lerDisco) {
     const rel = m[1];
     const conteudo = read(rel);
     if (conteudo == null) throw new Error(`arquivo do manifesto não existe: ${rel}`);
-    const c = lf(conteudo);
+    // Fragmentos do App (.part.jsx) começam com 1 linha "// @fragmento ..." só para quem lê o arquivo:
+    // ela é descartada aqui e não entra no texto montado.
+    const c = lf(conteudo).replace(FRAGMENTO, '');
     if (!c.endsWith('\n')) throw new Error(`${rel} precisa terminar com quebra de linha`);
     partes.push(c);
     vistos.push(rel);

@@ -16,6 +16,14 @@
     "src/novo/admin-shell.jsx",
     "src/novo/componentes.jsx",
     "src/novo/loja.jsx",
+    "src/app/logica/01-estado-rotas.part.jsx",
+    "src/app/logica/02-notificacoes-status.part.jsx",
+    "src/app/logica/03-melhor-envios-cambio.part.jsx",
+    "src/app/logica/04-supabase-sync.part.jsx",
+    "src/app/logica/05-checkout.part.jsx",
+    "src/app/logica/06-pedido-manual.part.jsx",
+    "src/app/logica/07-precos-pontos-preorders.part.jsx",
+    "src/app/logica/08-carrinho-admin.part.jsx",
     "src/app/app.jsx"
   ]
 }
