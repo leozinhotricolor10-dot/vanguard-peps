@@ -58,7 +58,7 @@ Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfV
 
 - `vanguardpep.com/` agora serve o **layout novo** (loja + admin da casca nova). `/novo` **redireciona para `/`** mantendo `?query` e `#hash` (`dist/novo/index.html` é uma página mínima com `location.replace` + meta refresh + canonical/OG; o app também troca `/novo` por `/` se abrir de cache); `/p/<código>` igual. O **layout antigo** fica em **`/antigo/`** (noindex), loja e admin antigos completos.
 - Controle: constante `NOVO_NO_INICIO` no `index.html` (perto de `IS_NOVO`). `IS_ANTIGO` = caminho começa com `/antigo`. `IS_NOVO = !IS_ANTIGO && (NOVO_NO_INICIO || /novo || /p/)`. Telas internas da loja nova voltam para `NV_HOME` (`/` ou `/novo/`).
-- **Rollback rápido (voltar o `/` ao antigo):** no `index.html` trocar `const NOVO_NO_INICIO = true;` para `false`, commit + push na `main` (o GitHub Actions publica em ~1 min). `/novo` volta a ser a loja nova (o build detecta a constante) e `/p/<código>` continua no novo; `/antigo/` continua no antigo. O build mostra `🧭 Layout em /: ANTIGO`. Emergência sem build: o `/antigo/` já está no ar e pode ser divulgado na hora.
+- **Rollback rápido (voltar o `/` ao antigo):** em `src/novo/rotas.jsx` (antes da modularização era no `index.html`) trocar `const NOVO_NO_INICIO = true;` para `false`, commit + push na `main` (o GitHub Actions publica em ~1 min). `/novo` volta a ser a loja nova (o build detecta a constante) e `/p/<código>` continua no novo; `/antigo/` continua no antigo. O build mostra `🧭 Layout em /: ANTIGO`. Emergência sem build: o `/antigo/` já está no ar e pode ser divulgado na hora.
 - Links antigos: `#/produto/<id>` abre o produto na loja nova; `#/faq`, `#/calcular`, `#/blog`, `#/carrinho` abrem a tela equivalente; `#/frete` abre a tela nova **Simular frete** (screen `frete`, mesma `calcularFrete`/Melhor Envios do antigo, link no rodapé); `#/admin` sem login cai no cadeado do layout antigo. `?preorder=<token>` (portal) e `?pedido` (Formulário de Pedido) seguem com as telas antigas em qualquer caminho; "Concluir compra" do portal leva ao checkout da loja nova (no `/antigo/` abre o modal antigo — antes dava erro `setCheckout is not defined`). Rastreio por código (`VG-XXXXXX`) na tela "Rastrear pedido" da loja nova.
 - build.js: `dist/index.html` (canonical `/`), `dist/novo/index.html` (redirect para `/`; com `NOVO_NO_INICIO = false` volta a ser o app com canonical `/novo`), `dist/antigo/index.html` (noindex, título "versão anterior"), `dist/404.html`, `dist/p/<sku>/index.html` (canonical próprio), `dist/sitemap.xml` (`/` + produtos) e `dist/robots.txt`.
 
@@ -129,6 +129,23 @@ self.addEventListener('activate', (e) => e.waitUntil((async () => {
 - Push na `main` → GitHub Actions publica `dist/` no GitHub Pages (vanguardpep.com).
 - Teste local: `.claude/launch.json` (config `dist`, `python -m http.server 8765 --directory dist`).
 - Em teste no navegador, **bloquear chamadas reais** antes de clicar: `rpc/decrement_stock`, `functions/v1/create-order` e `window.open` (WhatsApp) — senão mexe no estoque/pedidos de produção.
+
+## Modularização (etapas 0-5 concluídas, 21/10/2026)
+
+Plano completo em `docs/PLANO_MODULARIZACAO.md`. O código só mudou de arquivo; o site gerado é idêntico byte a byte.
+
+- **Estrutura**: `index.html` virou só a **casca** (head, CDNs, `<style>`/`<script>` vazios com marcadores `<!-- @inclui src/... -->`, registro do SW; ~80 linhas). O resto está em `src/`:
+  - `src/styles/antigo-1.css`, `antigo-2.css` — CSS do layout antigo
+  - `src/blobs/product-images.js` (`PRODUCT_IMAGES`), `src/blobs/banner-bg.js` (`BANNER_BG`) — fotos base64 do `/antigo/`. **Não ler** (bloqueado em `.claude/settings.json`)
+  - `src/core/catalogo.jsx` (ADINA_CATALOG, remetentes, CATEGORIES, defaults, validarCPF, load/saveProducts), `supabase.jsx` (DATA_RESET_ID, `sb`, ADMIN_PW, admin-db/public-api, estoque/pedidos locais), `conteudo.jsx` (calculadora, protocolos, guias, alertas, artigos), `faq.jsx` (FAQ_SECTIONS)
+  - `src/views/calc.jsx` (CalcView), `portal.jsx` (PortalView + ErrorBoundary)
+  - `src/novo/rotas.jsx` (**`NOVO_NO_INICIO` = rollback**, IS_NOVO, helpers nv*), `css.jsx` (NOVO_CSS), `admin-shell.jsx` (NVA_GROUPS, NOVO_ADMIN_CSS, NovaAdminShell), `componentes.jsx` (NvIcon, NvProdImg, NvSorteio…), `loja.jsx` (NovaLoja)
+  - `src/app/app.jsx` — `function App()` inteiro + `createRoot` (7.749 linhas; **a tag `v2.xxxxxxx` mora aqui**, 3 ocorrências)
+- **Manifesto**: `src/manifest.json` (`partes`) = ordem exata de montagem. A ordem é o contrato (escopo global único: `const`/TDZ, hoisting). Arquivo novo = marcador na casca + entrada no manifesto, na mesma posição.
+- **Como o build monta**: `build.js` chama `require('./tools/montar').montar()` em vez de ler o `index.html`; `montar()` troca cada linha-marcador pelo arquivo (concatenação pura, CRLF→LF) e aborta se faltar arquivo, sobrar marcador ou a ordem da casca diferir do manifesto. O resto do pipeline é o mesmo. `index.html` não abre mais direto no navegador: testar sempre pelo `dist/`. `.gitattributes` força LF em `index.html`, `src/**` e `tools/*.js` (a máquina tem `core.autocrlf=true`).
+- **Provar equivalência** (em todo recorte): (1) `npm run check` (ou `npm run check -- <commit>`) compara o sha256 do texto montado agora com o montado naquele commit — tem que dar `✅ idêntico`; (2) `node build.js` antes e depois e comparar sha256 de `dist/index.html`, `dist/antigo/index.html`, `dist/novo/index.html`, `dist/404.html` e o `build XXXXXXXXXX` do sw.js. Mudança só de tag muda o dist; por isso a tag vai em commit separado e o baseline é refeito depois dele.
+- **Tag de versão**: `git grep -lE "v2\.[a-f0-9]{7}" -- index.html src ':!src/blobs'` (hoje só `src/app/app.jsx`).
+- **Falta (outra sessão)**: etapa 6 (lógica do `App` em ~8 fragmentos `.part.jsx`), 7 (render: loja antiga, admin 1 aba/arquivo, modais), 8 (`CLAUDE.md` do projeto, `tools/mapa.js` → `docs/MAPA.md`, memória). Fora do plano e ainda pendente: o dist continua baixando o Babel (replaces do `build.js` não casam com as tags com `integrity`).
 
 ## Regras do dono
 

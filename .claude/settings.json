@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./src/blobs/**)",
+      "Read(./src/blobs/product-images.js)",
+      "Read(./src/blobs/banner-bg.js)"
+    ]
+  }
+}
