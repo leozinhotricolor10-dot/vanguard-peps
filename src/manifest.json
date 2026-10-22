@@ -4,8 +4,11 @@
     "src/styles/antigo-1.css",
     "src/styles/antigo-2.css",
     "src/blobs/product-images.js",
-    "src/core/topo.jsx",
+    "src/core/catalogo.jsx",
+    "src/core/supabase.jsx",
+    "src/core/conteudo.jsx",
     "src/blobs/banner-bg.js",
+    "src/core/faq.jsx",
     "src/app/app.jsx"
   ]
 }
