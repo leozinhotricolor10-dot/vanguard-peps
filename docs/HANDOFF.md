@@ -1,6 +1,6 @@
 # Handoff — Vanguard Peptides (17/10/2026)
 
-Estado do projeto e o que fazer na próxima sessão. Versão no ar: ver tag `v2.xxxxxxx` no rodapé do site (última conferida: **v2.d1d85ca**).
+Estado do projeto e o que fazer na próxima sessão. Versão no ar: ver tag `v2.xxxxxxx` no rodapé do site (última conferida: **v2.8f890dd**, 21/10/2026). **Código agora em `src/`** (ver "Modularização"); comece pelo `docs/MAPA.md`.
 
 ## Estado em 17/10/2026 (fim da sessão) — LEIA PRIMEIRO
 
@@ -57,14 +57,14 @@ Mockup de referência (29 telas): https://claude.ai/artifact/J16uYUGKgo7YxJmbKfV
 ## Site principal no layout novo + ROLLBACK (out/2026)
 
 - `vanguardpep.com/` agora serve o **layout novo** (loja + admin da casca nova). `/novo` **redireciona para `/`** mantendo `?query` e `#hash` (`dist/novo/index.html` é uma página mínima com `location.replace` + meta refresh + canonical/OG; o app também troca `/novo` por `/` se abrir de cache); `/p/<código>` igual. O **layout antigo** fica em **`/antigo/`** (noindex), loja e admin antigos completos.
-- Controle: constante `NOVO_NO_INICIO` no `index.html` (perto de `IS_NOVO`). `IS_ANTIGO` = caminho começa com `/antigo`. `IS_NOVO = !IS_ANTIGO && (NOVO_NO_INICIO || /novo || /p/)`. Telas internas da loja nova voltam para `NV_HOME` (`/` ou `/novo/`).
+- Controle: constante `NOVO_NO_INICIO` em `src/novo/rotas.jsx` (perto de `IS_NOVO`). `IS_ANTIGO` = caminho começa com `/antigo`. `IS_NOVO = !IS_ANTIGO && (NOVO_NO_INICIO || /novo || /p/)`. Telas internas da loja nova voltam para `NV_HOME` (`/` ou `/novo/`).
 - **Rollback rápido (voltar o `/` ao antigo):** em `src/novo/rotas.jsx` (antes da modularização era no `index.html`) trocar `const NOVO_NO_INICIO = true;` para `false`, commit + push na `main` (o GitHub Actions publica em ~1 min). `/novo` volta a ser a loja nova (o build detecta a constante) e `/p/<código>` continua no novo; `/antigo/` continua no antigo. O build mostra `🧭 Layout em /: ANTIGO`. Emergência sem build: o `/antigo/` já está no ar e pode ser divulgado na hora.
 - Links antigos: `#/produto/<id>` abre o produto na loja nova; `#/faq`, `#/calcular`, `#/blog`, `#/carrinho` abrem a tela equivalente; `#/frete` abre a tela nova **Simular frete** (screen `frete`, mesma `calcularFrete`/Melhor Envios do antigo, link no rodapé); `#/admin` sem login cai no cadeado do layout antigo. `?preorder=<token>` (portal) e `?pedido` (Formulário de Pedido) seguem com as telas antigas em qualquer caminho; "Concluir compra" do portal leva ao checkout da loja nova (no `/antigo/` abre o modal antigo — antes dava erro `setCheckout is not defined`). Rastreio por código (`VG-XXXXXX`) na tela "Rastrear pedido" da loja nova.
 - build.js: `dist/index.html` (canonical `/`), `dist/novo/index.html` (redirect para `/`; com `NOVO_NO_INICIO = false` volta a ser o app com canonical `/novo`), `dist/antigo/index.html` (noindex, título "versão anterior"), `dist/404.html`, `dist/p/<sku>/index.html` (canonical próprio), `dist/sitemap.xml` (`/` + produtos) e `dist/robots.txt`.
 
 ## Como o novo layout funciona
 
-- `index.html` → componente `function NovaLoja(P)` (antes de `function App()`), CSS em `NOVO_CSS` (classes `nv-*`).
+- `src/novo/loja.jsx` → componente `function NovaLoja(P)` (montado antes de `function App()`), CSS em `NOVO_CSS` (`src/novo/css.jsx`, classes `nv-*`).
 - `IS_NOVO` é verdadeiro em `/` (com `NOVO_NO_INICIO`), `/novo` e `/p/<código>`; falso em `/antigo/`. No `App`: `novoActive = IS_NOVO && view !== 'admin' && !portalToken && !manualOrderView`. Com ele, o root ganha a classe `novo-mode`, que esconde nav/hero/.app/footer/bottom-nav antigos.
 - Telas internas (`screen`): loja, produto, checkout, done, rastrear, frete (simulador de frete), calc (calculadora de dose), faq, artigos, artigo. Navegação com `history.pushState` (`state.nv = {s, pid, d}`); produto vira `/p/<sku minúsculo>`, o resto `NV_HOME` (`/`).
 - Reaproveita a lógica do App via props: `quickAdd` (novo, adiciona 1 sem modal), `updateQtyInCart`, `removeFromCart`, `addPackToCart`, `savePreorder`, `sendToWhatsApp`, `applyCouponCode`, `searchOrders` etc.
@@ -130,22 +130,28 @@ self.addEventListener('activate', (e) => e.waitUntil((async () => {
 - Teste local: `.claude/launch.json` (config `dist`, `python -m http.server 8765 --directory dist`).
 - Em teste no navegador, **bloquear chamadas reais** antes de clicar: `rpc/decrement_stock`, `functions/v1/create-order` e `window.open` (WhatsApp) — senão mexe no estoque/pedidos de produção.
 
-## Modularização (etapas 0-5 concluídas, 21/10/2026)
+## Modularização (etapas 0-8 concluídas, 21/10/2026)
 
-Plano completo em `docs/PLANO_MODULARIZACAO.md`. O código só mudou de arquivo; o site gerado é idêntico byte a byte.
+Plano completo em `docs/PLANO_MODULARIZACAO.md`. O código só mudou de arquivo; o site gerado é idêntico byte a byte (provado com sha256 em cada etapa). **Para se orientar: `docs/MAPA.md`** (gerado por `npm run mapa`: arquivo → linhas → funções/marcos com linha).
 
-- **Estrutura**: `index.html` virou só a **casca** (head, CDNs, `<style>`/`<script>` vazios com marcadores `<!-- @inclui src/... -->`, registro do SW; ~80 linhas). O resto está em `src/`:
+- **Estrutura final** (`index.html` é só a **casca**: head, CDNs, `<style>`/`<script>` com marcadores `<!-- @inclui src/... -->`, registro do SW):
   - `src/styles/antigo-1.css`, `antigo-2.css` — CSS do layout antigo
-  - `src/blobs/product-images.js` (`PRODUCT_IMAGES`), `src/blobs/banner-bg.js` (`BANNER_BG`) — fotos base64 do `/antigo/`. **Não ler** (bloqueado em `.claude/settings.json`)
-  - `src/core/catalogo.jsx` (ADINA_CATALOG, remetentes, CATEGORIES, defaults, validarCPF, load/saveProducts), `supabase.jsx` (DATA_RESET_ID, `sb`, ADMIN_PW, admin-db/public-api, estoque/pedidos locais), `conteudo.jsx` (calculadora, protocolos, guias, alertas, artigos), `faq.jsx` (FAQ_SECTIONS)
-  - `src/views/calc.jsx` (CalcView), `portal.jsx` (PortalView + ErrorBoundary)
-  - `src/novo/rotas.jsx` (**`NOVO_NO_INICIO` = rollback**, IS_NOVO, helpers nv*), `css.jsx` (NOVO_CSS), `admin-shell.jsx` (NVA_GROUPS, NOVO_ADMIN_CSS, NovaAdminShell), `componentes.jsx` (NvIcon, NvProdImg, NvSorteio…), `loja.jsx` (NovaLoja)
-  - `src/app/app.jsx` — `function App()` inteiro + `createRoot` (7.749 linhas; **a tag `v2.xxxxxxx` mora aqui**, 3 ocorrências)
-- **Manifesto**: `src/manifest.json` (`partes`) = ordem exata de montagem. A ordem é o contrato (escopo global único: `const`/TDZ, hoisting). Arquivo novo = marcador na casca + entrada no manifesto, na mesma posição.
-- **Como o build monta**: `build.js` chama `require('./tools/montar').montar()` em vez de ler o `index.html`; `montar()` troca cada linha-marcador pelo arquivo (concatenação pura, CRLF→LF) e aborta se faltar arquivo, sobrar marcador ou a ordem da casca diferir do manifesto. O resto do pipeline é o mesmo. `index.html` não abre mais direto no navegador: testar sempre pelo `dist/`. `.gitattributes` força LF em `index.html`, `src/**` e `tools/*.js` (a máquina tem `core.autocrlf=true`).
-- **Provar equivalência** (em todo recorte): (1) `npm run check` (ou `npm run check -- <commit>`) compara o sha256 do texto montado agora com o montado naquele commit — tem que dar `✅ idêntico`; (2) `node build.js` antes e depois e comparar sha256 de `dist/index.html`, `dist/antigo/index.html`, `dist/novo/index.html`, `dist/404.html` e o `build XXXXXXXXXX` do sw.js. Mudança só de tag muda o dist; por isso a tag vai em commit separado e o baseline é refeito depois dele.
-- **Tag de versão**: `git grep -lE "v2\.[a-f0-9]{7}" -- index.html src ':!src/blobs'` (hoje só `src/app/app.jsx`).
-- **Falta (outra sessão)**: etapa 6 (lógica do `App` em ~8 fragmentos `.part.jsx`), 7 (render: loja antiga, admin 1 aba/arquivo, modais), 8 (`CLAUDE.md` do projeto, `tools/mapa.js` → `docs/MAPA.md`, memória). Fora do plano e ainda pendente: o dist continua baixando o Babel (replaces do `build.js` não casam com as tags com `integrity`).
+  - `src/blobs/product-images.js`, `banner-bg.js` — fotos base64 do `/antigo/`. **Não ler** (bloqueado em `.claude/settings.json`)
+  - `src/core/` — `catalogo.jsx` (ADINA_CATALOG, CATEGORIES, defaults, validarCPF), `supabase.jsx` (DATA_RESET_ID, `sb`, ADMIN_PW, admin-db/public-api), `conteudo.jsx` (calculadora, protocolos, guias, artigos), `faq.jsx`
+  - `src/views/` — `calc.jsx` (CalcView), `portal.jsx` (PortalView + ErrorBoundary)
+  - `src/novo/` — `rotas.jsx` (**`NOVO_NO_INICIO` = rollback**, IS_NOVO, nv*), `css.jsx`, `admin-shell.jsx` (NVA_GROUPS, NovaAdminShell), `componentes.jsx`, `loja.jsx` (NovaLoja)
+  - `src/app/logica/01..08-*.part.jsx` — corpo de `function App()` (estado, rotas, Melhor Envios, Supabase/realtime, checkout `sendToWhatsApp` em `05-checkout`, pedido manual, preços/pontos/pré-orders, carrinho/login admin)
+  - `src/app/render/00-casca-portal-manual.part.jsx` (`return (`, casca nova, portal, formulário de pedido, checkout, nav antiga — **tag de versão**), `01-loja-antiga`, `02-admin/` (abas), `03-calculadora`, `04-modais/` (reserva/senha, detalhe do pedido, pedido manual, rastreio, legal, PIX, etiqueta, produto), `05-rodape-fim` (fecha o `App`)
+  - `src/main.jsx` — `ReactDOM.createRoot(...)`
+- **As 13 abas do admin** (uma por arquivo em `src/app/render/02-admin/`; `00-cabecalho` = cadeado + botões das abas): `01-pedidos`, `02-estoque`, `03-produtos`, `04-artigos`, `05-preorders`, `06-avisos`, `07-financeiro`, `08-importacao`, `09-clientes`, `10-cupons`, `11-combos`, `12-mapa` (regiões), `13-config` (fecha a view admin). A lógica que elas chamam está em `src/app/logica/` (ver MAPA).
+- **`.part.jsx` = fragmento** do corpo do `App` (não é JS válido sozinho; todos os nomes são closures do mesmo `App`). A 1ª linha `// @fragmento ...` descreve o pedaço e é **descartada** pelo `montar()`. Pode mover código entre fragmentos vizinhos à vontade: só a ordem do texto importa.
+- **Manifesto**: `src/manifest.json` (`partes`) = ordem exata de montagem (escopo global único: `const`/TDZ, hoisting). Arquivo novo = marcador na casca + entrada no manifesto, na mesma posição.
+- **Como o build monta**: `build.js` chama `require('./tools/montar').montar()`; concatenação pura, CRLF→LF, aborta se faltar arquivo, sobrar marcador ou a ordem da casca diferir do manifesto. `index.html` não abre direto no navegador: testar sempre pelo `dist/`. `.gitattributes` força LF em `index.html`, `src/**` e `tools/*.js`.
+- **`npm run check`** (refatoração = só mover código): compara o sha256 do texto montado agora com o montado no HEAD (ou `npm run check -- <commit>`) — tem que dar `✅ idêntico`. Mudança de verdade no código dá diferente (esperado); aí vale `npm run build` + teste no `dist`. Prova completa usada nas etapas: `node build.js` antes/depois e comparar sha256 de `dist/index.html`, `dist/antigo/index.html`, `dist/novo/index.html`, `dist/404.html` e o `build XXXXXXXXXX` do sw.js.
+- **Tag de versão**: mora em `src/app/render/00-casca-portal-manual.part.jsx` (3 ocorrências). Achar sempre com `git grep -lE "v2\.[a-f0-9]{7}" -- index.html src ':!src/blobs'`.
+- **Rollback de layout**: `src/novo/rotas.jsx` → `const NOVO_NO_INICIO = true;` para `false`. Rollback de código: `git revert <hash>` + push.
+- **Commits**: etapa 6 `ce6198d` (+ tag `edd64ee`), etapa 7 `8f890dd` (+ tag `a566b8e`).
+- **Ainda pendente (fora do plano)**: o dist continua baixando o Babel (replaces do `build.js` não casam com as tags com `integrity`); `CLAUDE.md` do projeto (previsto na etapa 8) não foi criado — fica para o dono aprovar o texto.
 
 ## Regras do dono
 

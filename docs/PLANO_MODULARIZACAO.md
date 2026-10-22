@@ -1,6 +1,6 @@
 # Plano — dividir o `index.html` em módulos (sem mudar o site)
 
-> Status: **etapas 0–5 executadas em 21/10/2026** (ver `docs/HANDOFF.md`, "Modularização"); 6–8 pendentes. Desvio: `FAQ_SECTIONS` ficou em `src/core/faq.jsx` (depois do `BANNER_BG`), e `conteudo.jsx` vai até a linha 1799. Texto original abaixo (21/10/2026). Fatos abaixo conferidos no commit `1495274`.
+> Status: **etapas 0–8 executadas em 21/10/2026** (ver `docs/HANDOFF.md`, "Modularização"). Desvios nas 6–8: pastas numeradas `src/app/render/02-admin/`, `03-calculadora`, `04-modais/`, `05-rodape-fim` (nomes refletem a ordem de montagem); cabeçalho `// @fragmento` descartado pelo `montar()`; `tools/mapa.js` roda por `npm run mapa` (fora do build, para o `build.js` não mudar); `CLAUDE.md` do projeto não criado (aguarda o dono). Desvio: `FAQ_SECTIONS` ficou em `src/core/faq.jsx` (depois do `BANNER_BG`), e `conteudo.jsx` vai até a linha 1799. Texto original abaixo (21/10/2026). Fatos abaixo conferidos no commit `1495274`.
 > Objetivo: o Claude Code ler/editar só o pedaço certo, gastando menos tokens. O site publicado deve sair **idêntico, byte a byte**.
 
 ## 1. Mapa atual do `index.html` (11.543 linhas, 2,37 MB, LF)
