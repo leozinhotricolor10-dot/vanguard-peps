@@ -1,6 +1,9 @@
 {
   "_leia": "Ordem exata de montagem do index.html (tools/montar.js). A ordem é o contrato: não reordenar. Cada arquivo entra no lugar do seu marcador <!-- @inclui ... --> no index.html.",
   "partes": [
+    "src/blobs/product-images.js",
+    "src/core/topo.jsx",
+    "src/blobs/banner-bg.js",
     "src/app/app.jsx"
   ]
 }
