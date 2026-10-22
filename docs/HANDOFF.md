@@ -1,6 +1,6 @@
 # Handoff — Vanguard Peptides (17/10/2026)
 
-Estado do projeto e o que fazer na próxima sessão. Versão no ar: ver tag `v2.xxxxxxx` no rodapé do site (última conferida: **v2.8f890dd**, 21/10/2026). **Código agora em `src/`** (ver "Modularização"); comece pelo `docs/MAPA.md`.
+Estado do projeto e o que fazer na próxima sessão. Versão no ar: ver tag `v2.xxxxxxx` no rodapé do site (última conferida: **v2.3c5dcf1**, 21/10/2026). **Código agora em `src/`** (ver "Modularização"); comece pelo `docs/MAPA.md`.
 
 ## Estado em 17/10/2026 (fim da sessão) — LEIA PRIMEIRO
 
