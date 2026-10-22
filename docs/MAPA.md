@@ -16,7 +16,8 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/views/portal.jsx` | 177 | 11 |
 | `src/novo/rotas.jsx` | 68 | 4 |
 | `src/novo/css.jsx` | 176 | 17 |
-| `src/novo/admin-shell.jsx` | 220 | 16 |
+| `src/novo/admin-shell.jsx` | 221 | 16 |
+| `src/novo/sorteio-admin.jsx` | 221 | 13 |
 | `src/novo/componentes.jsx` | 188 | 11 |
 | `src/novo/loja.jsx` | 662 | 43 |
 | `src/app/logica/01-estado-rotas.part.jsx` | 333 | 24 |
@@ -29,7 +30,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/logica/08-carrinho-admin.part.jsx` | 473 | 24 |
 | `src/app/render/00-casca-portal-manual.part.jsx` | 631 | 48 |
 | `src/app/render/01-loja-antiga.part.jsx` | 676 | 42 |
-| `src/app/render/02-admin/00-cabecalho.part.jsx` | 100 | 9 |
+| `src/app/render/02-admin/00-cabecalho.part.jsx` | 101 | 9 |
 | `src/app/render/02-admin/01-pedidos.part.jsx` | 440 | 37 |
 | `src/app/render/02-admin/02-estoque.part.jsx` | 240 | 20 |
 | `src/app/render/02-admin/03-produtos.part.jsx` | 229 | 20 |
@@ -42,7 +43,8 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/02-admin/10-cupons.part.jsx` | 85 | 9 |
 | `src/app/render/02-admin/11-combos.part.jsx` | 136 | 14 |
 | `src/app/render/02-admin/12-mapa.part.jsx` | 173 | 12 |
-| `src/app/render/02-admin/13-config.part.jsx` | 36 | 3 |
+| `src/app/render/02-admin/13-sorteio.part.jsx` | 4 | 0 |
+| `src/app/render/02-admin/14-config.part.jsx` | 36 | 3 |
 | `src/app/render/03-calculadora.part.jsx` | 13 | 1 |
 | `src/app/render/04-modais/00-reserva-senha.part.jsx` | 63 | 4 |
 | `src/app/render/04-modais/01-pedido-detalhe.part.jsx` | 275 | 27 |
@@ -54,7 +56,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/07-produto.part.jsx` | 94 | 7 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **11513** | |
+| **total** | **11740** | |
 
 ## Conteúdo (nome:linha)
 
@@ -83,7 +85,10 @@ NV_SLUG:3 · NOVO_NO_INICIO:6 · IS_ANTIGO:7 · IS_NOVO:9 · NV_HOME:10 · nvSlu
 NOVO_CSS:1
 
 ### `src/novo/admin-shell.jsx`
-NVA_GROUPS:5 · NVA_ITEMS:29 · nvaActiveItem:31 · NOVO_ADMIN_CSS:37 · NovaAdminShell:161 · NovaAdminSub:193 · NovaAdminInnerTabs:207
+NVA_GROUPS:5 · NVA_ITEMS:30 · nvaActiveItem:32 · NOVO_ADMIN_CSS:38 · NovaAdminShell:162 · NovaAdminSub:194 · NovaAdminInnerTabs:208
+
+### `src/novo/sorteio-admin.jsx`
+SORTEIO_STATUS_OK:7 · SORTEIO_LS:8 · SORTEIO_MESES:9 · sorteioMesSP:12 · sorteioMesLabel:18 · sorteioChaveCliente:23 · sorteioRand:34 · sorteioEscolhe:41 · sorteioLoad:47 · sorteioSave:50 · sorteioBRL:51 · SorteioAdmin:53
 
 ### `src/novo/componentes.jsx`
 nvFmt:1 · NvIcon:3 · NV_ICONS:6 · NvMarquee:20 · NvProdImg:95 · NvComboImg:109 · NvInstallBanner:121 · SORTEIO:153 · NvSorteio:160
@@ -160,7 +165,10 @@ TAB: CUPONS:2
 ### `src/app/render/02-admin/12-mapa.part.jsx` — render admin: aba MAPA (regiões)
 TAB: REGIOES:2 · PEDIDOS CONFIRMADOS:74 · PRÉ-ORDERS:119
 
-### `src/app/render/02-admin/13-config.part.jsx` — render admin: aba CONFIG + fecha a view admin
+### `src/app/render/02-admin/13-sorteio.part.jsx` — render admin: aba SORTEIO (mensal)
+TAB: SORTEIO:2
+
+### `src/app/render/02-admin/14-config.part.jsx` — render admin: aba CONFIG + fecha a view admin
 TAB: CONFIG:2 · CEP Origem Simulador:6
 
 ### `src/app/render/03-calculadora.part.jsx` — render: view calculadora + fecha main/grid da loja antiga

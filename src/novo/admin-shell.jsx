@@ -8,6 +8,7 @@ const NVA_GROUPS = [
     { id: 'preorders', label: 'Pré-orders', tab: 'preorders' },
     { id: 'clientes', label: 'Clientes', tab: 'clientes' },
     { id: 'cupons', label: 'Cupons', tab: 'cupons' },
+    { id: 'sorteio', label: 'Sorteio', tab: 'sorteio' },
   ] },
   { id: 'envios', label: 'Envios', icon: <><path d="M3 7l9-4 9 4-9 4-9-4z" /><path d="M3 7v10l9 4 9-4V7" /></>, items: [
     { id: 'etiquetas', label: 'Etiquetas', tab: 'pedidos' }, // pedidos pagos (botão Etiqueta)

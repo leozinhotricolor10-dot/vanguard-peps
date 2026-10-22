@@ -1,4 +1,4 @@
-// @fragmento do App() — render admin: aba CONFIG + fecha a view admin. Antes: 12-mapa.part.jsx | depois: 03-calculadora.part.jsx. Não é JS válido sozinho: tools/montar.js junta na ordem de src/manifest.json (esta linha é descartada).
+// @fragmento do App() — render admin: aba CONFIG + fecha a view admin. Antes: 13-sorteio.part.jsx | depois: 03-calculadora.part.jsx. Não é JS válido sozinho: tools/montar.js junta na ordem de src/manifest.json (esta linha é descartada).
             {/* TAB: CONFIG */}
             {adminTab==="config" && <>
               <div style={{fontFamily:"'Space Mono',monospace",fontSize:"0.6rem",color:"var(--accent)",letterSpacing:"2px",marginBottom:16}}>⚙️ CONFIGURAÇÕES</div>

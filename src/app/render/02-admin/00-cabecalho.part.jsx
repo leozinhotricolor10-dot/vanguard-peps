@@ -94,6 +94,7 @@
   <button className={`admin-tab ${adminTab==="cupons"?"active":""}`} onClick={()=>setAdminTab("cupons")}>🏷️ CUPONS</button>
               <button className={`admin-tab ${adminTab==="clientes"?"active":""}`} onClick={()=>setAdminTab("clientes")}>👥 CLIENTES</button>
               <button className={`admin-tab ${adminTab==="mapa"?"active":""}`} onClick={()=>setAdminTab("mapa")}>🗺️ MAPA</button>
+              <button className={`admin-tab ${adminTab==="sorteio"?"active":""}`} onClick={()=>setAdminTab("sorteio")}>🎲 SORTEIO</button>
               <button className="admin-tab" onClick={openSenderPool}>📮 REMETENTES</button>
               <button className={`admin-tab ${adminTab==="config"?"active":""}`} onClick={()=>setAdminTab("config")}>⚙️ CONFIG</button>
             </div>

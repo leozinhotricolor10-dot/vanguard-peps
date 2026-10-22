@@ -237,3 +237,11 @@ supabase functions deploy <nome> --project-ref aumubzvdhzvtnqfzqeqd --no-verify-
 - Layout: celular (<760px) mostra o pôster inteiro na largura; desktop/tablet = card com pôster de 280px à esquerda + texto e botão "Ver GHK-Cu 50mg" em HTML à direita. Botão × dispensa e lembra no localStorage (try/catch).
 - Imagem: `assets/sorteio-ghkcu.webp` (800×1200, ~114 KB, reduzida da arte original de 1024×1536).
 - Teste de vigência local: em `localhost`, definir `window.__vgNow = <timestamp>` no console e navegar dentro do app (o override é ignorado em outros hosts).
+
+## Sorteio mensal no admin (21/10/2026)
+
+- Aba nova **Sorteio** (menu Vendas, e botão 🎲 no admin antigo). Código: componente `SorteioAdmin` em `src/novo/sorteio-admin.jsx` + fragmento `src/app/render/02-admin/13-sorteio.part.jsx` (a aba Config virou `14-config.part.jsx`). Só aparece após login no admin; nada público.
+- Participantes: pedidos do mês escolhido (fuso America/Sao_Paulo) com status pago, enviado ou entregue. **1 chance por cliente**; cliente = CPF (11 dígitos) > e-mail (minúsculo) > telefone (sem 55) > senão o próprio pedido. A tela mostra só nome, nº de pedidos, total e cidade/UF (CPF/telefone/e-mail nunca aparecem). Checkbox exclui participante (zera ao trocar de mês).
+- Sorteio com `crypto.getRandomValues` (sem viés, N ganhadores sem repetir); a roleta de nomes é só visual (ganhador já decidido). Resultado: nome + código VG-, botão WhatsApp (`wa.me`, só abre ao clicar) e Copiar resultado.
+- **Histórico só em localStorage `vg-sorteios`** (mês, data/hora, nº de participantes, ganhadores com nome/código/cidade). Fica neste navegador; não vai para o Supabase (nenhuma tabela criada). Se quiser persistir no banco, precisa de tabela nova (ex.: `raffles`) + entrada em `ADMIN_TABLE_KEYS` e na admin-db.
+- Teste: build + cópia em `dist/t/` com fetch simulado (verify-admin ok, admin-db só `list`, escritas bloqueadas, `window.open` interceptado), 12 pedidos fictícios: regra de 1 chance (CPF, e-mail e telefone), pendente/cancelado fora, bordas de mês no fuso SP, exclusão, 2 ganhadores, histórico, WhatsApp, 375px e console limpo.
