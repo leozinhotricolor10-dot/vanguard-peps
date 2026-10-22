@@ -13,7 +13,8 @@ const DIST = path.join(DIST_DIR, 'index.html');
 
 console.log('⚡ Vanguard build iniciado...\n');
 
-const html = fs.readFileSync(SRC, 'utf-8');
+// index.html é a casca; o app está em src/ (ordem em src/manifest.json). montar() devolve o texto completo.
+const html = require('./tools/montar').montar();
 const origSize = (html.length / 1024).toFixed(1);
 
 // 1) Extrair JSX do <script type="text/babel">

@@ -1,0 +1,5 @@
+# index.html (casca) e src/ (partes do app) sempre com LF: o build concatena os arquivos
+# e a prova de equivalência compara sha256 do texto montado.
+index.html text eol=lf
+src/** text eol=lf
+tools/*.js text eol=lf
