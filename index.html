@@ -4095,6 +4095,8 @@ function App() {
   const [cfgRedeem, setCfgRedeem] = useState(() => String(JSON.parse(localStorage.getItem('vg-points-config')||'null')?.redeem || 5));
   const [disclaimer, setDisclaimer] = useState(false);
   const [adminStatusFilter, setAdminStatusFilter] = useState('all');
+  const [waAuto, setWaAuto] = useState(() => { try { return localStorage.getItem('vg-wa-auto') === '1'; } catch { return false; } }); // abrir WhatsApp ao mudar status (padrão: desligado)
+  function toggleWaAuto(v) { setWaAuto(v); try { localStorage.setItem('vg-wa-auto', v ? '1' : '0'); } catch {} }
   const [nvaSec, setNvaSec] = useState('pedidos'); // item do menu do admin no /novo (Etiquetas = Pedidos filtrado)
   const [nvaSelOrder, setNvaSelOrder] = useState(null); // pedido aberto no painel lateral (Pedidos no /novo, desktop largo)
   const [adminSearch, setAdminSearch] = useState('');
@@ -4173,6 +4175,29 @@ function App() {
     showToast('Pedido marcado como extraviado', 'error');
   }
 
+  // Mensagem pronta de WhatsApp conforme o status do pedido (pago/enviado/entregue)
+  function openStatusWhatsApp(order) {
+    const newStatus = order.status;
+    if (!['pago','enviado','entregue'].includes(newStatus) || !order._phone) return;
+    const digits = order._phone.replace(/\D/g, '');
+    const intlPhone = digits.startsWith('55') ? digits : '55' + digits;
+    const firstName = (order.buyerName || 'Cliente').split(' ')[0];
+    const code = order._code || '';
+    const total = order._total ? `R$ ${order._total.toLocaleString('pt-BR')}` : '';
+    const msg = newStatus === 'pago'
+      ? `✅ *Olá, ${firstName}! Seu pagamento foi confirmado.*${code ? `\n\n📋 *Pedido:* ${code}` : ''}${total ? `\n💰 *Total:* ${total}` : ''}\n\nEstamos preparando seu pedido e avisaremos assim que for enviado. Qualquer dúvida, é só chamar!\n\n_Vanguard Peptides_ 🧬`
+      : newStatus === 'enviado'
+      ? `📦 *Olá, ${firstName}! Seu pedido foi enviado!*${code ? `\n\n📋 *Pedido:* ${code}` : ''}${total ? `\n💰 *Total:* ${total}` : ''}${order.tracking_code ? `\n\n🔍 *Código de rastreio:*\n${order.tracking_code}\n\n📲 Acompanhe aqui: https://melhorrastreio.com.br/rastreio/${order.tracking_code}` : `\n\nPara acompanhar, acesse vanguardpep.com → 📦 PEDIDO${code ? ` e use o código *${code}*` : ''}.`}\n\nQualquer dúvida é só chamar! 🙏\n\n_Vanguard Peptides_ 🧬`
+      : `🎉 *Olá, ${firstName}! Seu pedido foi entregue!*${code ? `\n\n📋 *Pedido:* ${code}` : ''}\n\nEsperamos que você aproveite muito! Se tiver qualquer dúvida sobre o uso, estamos aqui para ajudar.\n\nObrigado pela confiança! 🙏\n\n_Vanguard Peptides_ 🧬`;
+    window.open(`https://wa.me/${intlPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
+  // Pedido entregue por motoboy (DDD 11 / Grande SP): não precisa de etiqueta do Melhor Envios
+  function isMotoboyOrder(order) {
+    const d = ((order && (order._phone || order.phone)) || '').replace(/\D/g, '');
+    return (d.startsWith('55') ? d.slice(2, 4) : d.slice(0, 2)) === '11';
+  }
+
   async function cycleStatus(orderId) {
     const cycle = ['pendente','pago','enviado','entregue'];
     const order = orders.find(o => o.id === orderId);
@@ -4193,20 +4218,8 @@ function App() {
         return;
       }
     }
-    // WhatsApp automático para pago/enviado/entregue
-    if ((newStatus === 'pago' || newStatus === 'enviado' || newStatus === 'entregue') && order._phone) {
-      const digits = order._phone.replace(/\D/g, '');
-      const intlPhone = digits.startsWith('55') ? digits : '55' + digits;
-      const firstName = (order.buyerName || 'Cliente').split(' ')[0];
-      const code = order._code || '';
-      const total = order._total ? `R$ ${order._total.toLocaleString('pt-BR')}` : '';
-      const msg = newStatus === 'pago'
-        ? `✅ *Olá, ${firstName}! Seu pagamento foi confirmado.*${code ? `\n\n📋 *Pedido:* ${code}` : ''}${total ? `\n💰 *Total:* ${total}` : ''}\n\nEstamos preparando seu pedido e avisaremos assim que for enviado. Qualquer dúvida, é só chamar!\n\n_Vanguard Peptides_ 🧬`
-        : newStatus === 'enviado'
-        ? `📦 *Olá, ${firstName}! Seu pedido foi enviado!*${code ? `\n\n📋 *Pedido:* ${code}` : ''}${total ? `\n💰 *Total:* ${total}` : ''}${order.tracking_code ? `\n\n🔍 *Código de rastreio:*\n${order.tracking_code}\n\n📲 Acompanhe aqui: https://melhorrastreio.com.br/rastreio/${order.tracking_code}` : `\n\nPara acompanhar, acesse vanguardpep.com → 📦 PEDIDO${code ? ` e use o código *${code}*` : ''}.`}\n\nQualquer dúvida é só chamar! 🙏\n\n_Vanguard Peptides_ 🧬`
-        : `🎉 *Olá, ${firstName}! Seu pedido foi entregue!*${code ? `\n\n📋 *Pedido:* ${code}` : ''}\n\nEsperamos que você aproveite muito! Se tiver qualquer dúvida sobre o uso, estamos aqui para ajudar.\n\nObrigado pela confiança! 🙏\n\n_Vanguard Peptides_ 🧬`;
-      window.open(`https://wa.me/${intlPhone}?text=${encodeURIComponent(msg)}`, '_blank');
-    }
+    // WhatsApp automático (opcional) para pago/enviado/entregue
+    if (waAuto) openStatusWhatsApp({ ...order, status: newStatus });
     if (newStatus === 'pago') awardPoints(order);
   }
 
@@ -6083,7 +6096,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
   const nvaActive = nvaActiveItem(adminTab, nvaSec, adminStatusFilter);
   const nvaBadges = novoAdmin ? {
     pedidos: orders.filter(o => o._supabase && (o.status || 'pendente') === 'pendente').length,
-    etiquetas: orders.filter(o => o._supabase && o.status === 'pago' && !o.label_url).length,
+    etiquetas: orders.filter(o => o._supabase && o.status === 'pago' && !o.label_url && !isMotoboyOrder(o)).length,
   } : {};
   function nvaPick(it) {
     if (it.action === 'senders') { openSenderPool(); return; }
@@ -6101,13 +6114,14 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
   function nvaAdvance(order) {
     const next = NVA_NEXT[order.status || 'pendente'];
     if (!next) return;
-    const wa = order._phone ? '\n\nAbre o WhatsApp do cliente com a mensagem automática.' : '';
+    const wa = order._phone && waAuto ? '\n\nAbre o WhatsApp do cliente com a mensagem automática.' : '';
     if (!window.confirm(`${order._code || '#' + order.id} · ${order.buyerName || 'Cliente'}\n\nMarcar como ${NVA_ST[next].toUpperCase()}?${wa}`)) return;
     cycleStatus(order.id);
   }
   function nvaWhats(order) {
     const digits = (order._phone || '').replace(/\D/g, '');
     const intl = digits.startsWith('55') ? digits : '55' + digits;
+    if (['pago','enviado','entregue'].includes(order.status)) { openStatusWhatsApp(order); return; }
     window.open(`https://wa.me/${intl}`, '_blank');
   }
   function nvaRemove(order) {
@@ -6122,6 +6136,8 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
     if (st === 'pendente') {
       main = { label: 'Marcar como pago', run: () => nvaAdvance(order), primary: true };
       sec.push({ label: 'Cobrar PIX', run: () => { setPixCode(''); setPixModal(order); } });
+    } else if (st === 'pago' && isMotoboyOrder(order)) {
+      main = { label: 'Marcar como enviado', run: () => nvaAdvance(order), primary: true };
     } else if (st === 'pago' && !order.label_url) {
       main = { label: 'Gerar etiqueta', run: () => gerarEtiqueta(order), primary: true };
       sec.push({ label: 'Marcar como enviado', run: () => nvaAdvance(order) });
@@ -7529,6 +7545,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                 </div>
               );
             })()}
+            <label style={{display:'flex',alignItems:'center',gap:8,fontSize:'0.72rem',color:'var(--muted)',margin:'0 0 12px',cursor:'pointer'}}><input type="checkbox" checked={waAuto} onChange={e=>toggleWaAuto(e.target.checked)} /> Abrir WhatsApp ao mudar status (desligado: use o botão 💬 do pedido)</label>
             {!novoAdmin && <div className="admin-grid" style={{marginBottom:24}}>
               <div className="admin-stat"><div className="admin-stat-label">Compradores</div><div className="admin-stat-value">{totalBuyers}</div></div>
               <div className="admin-stat"><div className="admin-stat-label">Total unidades</div><div className="admin-stat-value">{totalUnits}</div></div>
@@ -7746,7 +7763,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                                     <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                                       <button className="admin-remove-btn" style={{background:'rgba(0,229,195,0.08)',color:'var(--accent)',borderColor:'rgba(0,229,195,0.3)'}} onClick={()=>setOrderDetail(order)}>detalhes</button>
                                       {(order.status||'pendente')==='pendente' && <button className="admin-remove-btn" style={{background:'rgba(139,0,0,0.15)',color:'#e05555',borderColor:'rgba(139,0,0,0.3)',fontSize:'0.6rem'}} onClick={()=>{ setPixCode(''); setPixModal(order); }}>💳 PIX</button>}
-                                      {(order.status||'pendente')==='pago' && <button className="admin-remove-btn" style={{background:'rgba(0,180,255,0.1)',color:'#5bc8ff',borderColor:'rgba(0,180,255,0.3)',fontSize:'0.6rem'}} onClick={()=>gerarEtiqueta(order)}>{order.label_url ? '🏷️ Reimpr.' : '🏷️ Etiqueta'}</button>}
+                                      {(order.status||'pendente')==='pago' && !isMotoboyOrder(order) && <button className="admin-remove-btn" style={{background:'rgba(0,180,255,0.1)',color:'#5bc8ff',borderColor:'rgba(0,180,255,0.3)',fontSize:'0.6rem'}} onClick={()=>gerarEtiqueta(order)}>{order.label_url ? '🏷️ Reimpr.' : '🏷️ Etiqueta'}</button>}
                                       <button className="admin-remove-btn" onClick={()=>adminRemove(order.id)}>remover</button>
                                     </div>
                                   </div>
@@ -7811,7 +7828,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                                 <span className="nvp-who">
                                   <b>{order.buyerName || 'Cliente'}</b>
                                   <small><code>{order._code || '#' + order.id}</code> · {nvaWhen(order.createdAt)}</small>
-                                  <small className="nvp-items">{items.join(' · ')}</small>
+                                  <small className="nvp-items">{items.join(' · ')}{isMotoboyOrder(order) && ' · 🏍️ Motoboy'}</small>
                                 </span>
                                 <span className="nvp-tot">{nvFmt(tot)}</span>
                                 <span className="nvp-stc">{pill(order)}</span>
@@ -7925,9 +7942,9 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
                         <div style={{display:'flex',flexDirection:'column',gap:4}}>
                           <button className="admin-remove-btn" style={{background:'rgba(0,229,195,0.08)',color:'var(--accent)',borderColor:'rgba(0,229,195,0.3)'}} onClick={()=>setOrderDetail(order)}>detalhes</button>
                           {(order.status||'pendente')==='pendente' && <button className="admin-remove-btn" style={{background:'rgba(139,0,0,0.15)',color:'#e05555',borderColor:'rgba(139,0,0,0.3)',fontSize:'0.6rem'}} onClick={()=>{ setPixCode(''); setPixModal(order); }}>💳 PIX</button>}
-                          {(order.status||'pendente')==='pago' && <button className="admin-remove-btn" style={{background:'rgba(0,180,255,0.1)',color:'#5bc8ff',borderColor:'rgba(0,180,255,0.3)',fontSize:'0.6rem'}} onClick={()=>gerarEtiqueta(order)}>{order.label_url ? '🏷️ Reimpr.' : '🏷️ Etiqueta'}</button>}
+                          {(order.status||'pendente')==='pago' && !isMotoboyOrder(order) && <button className="admin-remove-btn" style={{background:'rgba(0,180,255,0.1)',color:'#5bc8ff',borderColor:'rgba(0,180,255,0.3)',fontSize:'0.6rem'}} onClick={()=>gerarEtiqueta(order)}>{order.label_url ? '🏷️ Reimpr.' : '🏷️ Etiqueta'}</button>}
                           {order.tracking_code && <button className="admin-remove-btn" style={{background:'rgba(255,180,0,0.1)',color:'#ffb800',borderColor:'rgba(255,180,0,0.3)',fontSize:'0.6rem'}} onClick={()=>{ const firstName=(order.buyerName||'Cliente').split(' ')[0]; const code=order._code||''; const msg=`📦 *Olá, ${firstName}!*\n\n🔍 *Código de rastreio do seu pedido${code?` ${code}`:''}:*\n${order.tracking_code}\n\n📲 Acompanhe aqui: https://melhorrastreio.com.br/rastreio/${order.tracking_code}\n\nQualquer dúvida é só chamar! 🙏\n\n_Vanguard Peptides_ 🧬`; const digits=(order._phone||'').replace(/\D/g,''); const intl=digits.startsWith('55')?digits:'55'+digits; window.open(`https://wa.me/${intl}?text=${encodeURIComponent(msg)}`,'_blank'); }}>📲 Rastreio</button>}
-                          {order._phone && <button className="admin-remove-btn" style={{background:'rgba(37,211,102,0.1)',color:'#25d366',borderColor:'rgba(37,211,102,0.3)',fontSize:'0.6rem'}} onClick={()=>{ const digits=(order._phone||'').replace(/\D/g,''); const intl=digits.startsWith('55')?digits:'55'+digits; window.open(`https://wa.me/${intl}`,'_blank'); }}>💬 Mensagem</button>}
+                          {order._phone && <button className="admin-remove-btn" style={{background:'rgba(37,211,102,0.1)',color:'#25d366',borderColor:'rgba(37,211,102,0.3)',fontSize:'0.6rem'}} onClick={()=>nvaWhats(order)}>💬 Mensagem</button>}
                           <button className="admin-remove-btn" onClick={()=>adminRemove(order.id)}>remover</button>
                         </div>
                       </div>
