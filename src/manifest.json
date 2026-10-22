@@ -11,6 +11,11 @@
     "src/core/faq.jsx",
     "src/views/calc.jsx",
     "src/views/portal.jsx",
+    "src/novo/rotas.jsx",
+    "src/novo/css.jsx",
+    "src/novo/admin-shell.jsx",
+    "src/novo/componentes.jsx",
+    "src/novo/loja.jsx",
     "src/app/app.jsx"
   ]
 }
