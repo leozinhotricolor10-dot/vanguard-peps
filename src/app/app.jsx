@@ -2395,7 +2395,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
       {toast && <div className={`toast ${toast.type}`}>{toast.msg}</div>}
 
       {novoAdmin && <style>{NOVO_ADMIN_CSS}</style>}
-      {novoAdmin && <NovaAdminShell active={nvaActive} onPick={nvaPick} badges={nvaBadges} onExit={() => { setView('catalog'); window.scrollTo(0, 0); }} versionTag="v2.b1db85f" />}
+      {novoAdmin && <NovaAdminShell active={nvaActive} onPick={nvaPick} badges={nvaBadges} onExit={() => { setView('catalog'); window.scrollTo(0, 0); }} versionTag="v2.68758dd" />}
 
       {novoActive && <NovaLoja
         products={products} categories={CATEGORIES} effectivePrice={effectivePrice} availableStock={availableStock}
@@ -2409,7 +2409,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
         orderSuccessCode={orderSuccessCode} setOrderSuccessCode={setOrderSuccessCode}
         trackQuery={trackQuery} setTrackQuery={setTrackQuery} searchOrders={searchOrders} trackResults={trackResults} trackLoading={trackLoading} statusLabel={statusLabel}
         freteDestCep={freteDestCep} setFreteDestCep={setFreteDestCep} freteResults={freteResults} freteLoading={freteLoading} freteError={freteError} calcularFrete={calcularFrete}
-        notices={notices.filter(n => !dismissedNotices.includes(n.id))} onVersionTap={versionTap} versionTag="v2.b1db85f"
+        notices={notices.filter(n => !dismissedNotices.includes(n.id))} onVersionTap={versionTap} versionTag="v2.68758dd"
       />}
 
       {/* ── CUSTOMER PORTAL ── */}
@@ -3003,7 +3003,7 @@ Frete: ${freight.value === 0 ? 'GRÁTIS' : 'R$ ' + freight.value.toLocaleString(
             taps.push(now);
             window[key] = taps;
             if (taps.length >= 5) { window[key] = []; adminUnlocked ? setView('admin') : handleAdminUnlock(); }
-          }} style={{fontSize:'0.5rem',fontFamily:"'Space Mono',monospace",color:'var(--muted)',letterSpacing:'0.05em',marginLeft:6,opacity:0.6,alignSelf:'flex-end',marginBottom:2,cursor:'default',userSelect:'none'}}>v2.b1db85f</span>
+          }} style={{fontSize:'0.5rem',fontFamily:"'Space Mono',monospace",color:'var(--muted)',letterSpacing:'0.05em',marginLeft:6,opacity:0.6,alignSelf:'flex-end',marginBottom:2,cursor:'default',userSelect:'none'}}>v2.68758dd</span>
         </div>
         <div className="nav-right">
           <button className={`nav-btn ${view==="catalog"?"active":""}`} onClick={()=>setView("catalog")}>CATÁLOGO</button>
