@@ -19,6 +19,12 @@ Estado do projeto e o que fazer na próxima sessão. Versão no ar: ver tag `v2.
 
 **Próximos passos sugeridos:** (1) estoque real; (2) página de protocolos + calculadora de reconstituição; (3) atendente por IA no chat do site (depois WhatsApp com número dedicado; a API oficial da Meta pode reprovar esse nicho); (4) perfil do cliente etapa 1; (5) token do carrinho para fechar de vez a chamada direta à API sem reservar estoque.
 
+## Rodada de 21/10/2026 — admin: WhatsApp opcional + motoboy sem etiqueta
+
+- **WhatsApp opcional** (`66ab3b3`): mudar o status do pedido NÃO abre mais o wa.me automaticamente. Toggle "Abrir WhatsApp ao mudar status" no topo da aba Pedidos (localStorage `vg-wa-auto`, padrão desligado). `cycleStatus` só chama `openStatusWhatsApp(order)` com o toggle ligado; os botões manuais ("WhatsApp" em `nvaWhats`, "💬 Mensagem" na lista antiga) abrem a mensagem pronta quando o pedido está pago/enviado/entregue.
+- **Motoboy (DDD 11) sem etiqueta**: helper `isMotoboyOrder(order)` (DDD 11 do `_phone`, mesmo critério do mapa de calor). Para esses pedidos ficam ocultos o botão "🏷️ Etiqueta" (listas antigas), a ação "Gerar etiqueta" (`nvaSteps`, o principal vira "Marcar como enviado") e a contagem do badge "Etiquetas"; selo "🏍️ Motoboy" no layout novo. "Imprimir etiqueta" continua se o pedido já tem `label_url`.
+- Não testado no navegador na hora do commit — conferir no admin. Version tag: `v2.66ab3b3`.
+
 ## Rodada de 17/10/2026 (aprovada pelo dono) — o que mudou
 
 - **A) Desconto manual** (`a3facab`): grava em `orders.manual_discount` (coluna NOVA — SQL `sql/orders_manual_discount.sql` **já aplicado em 17/10/2026**). Antes gravava em `discount`, que não existe. Total = subtotal − cupom − combo − pontos − desconto manual + frete (`orderTotalWith`, também ao editar itens). Sem a coluna, o admin mostra "Falta aplicar o SQL…" e não muda nada. `orderDiscounts()` lê `manual`; painel do /novo e detalhe mostram a linha.
