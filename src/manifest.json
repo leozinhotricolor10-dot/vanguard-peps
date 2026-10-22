@@ -9,6 +9,8 @@
     "src/core/conteudo.jsx",
     "src/blobs/banner-bg.js",
     "src/core/faq.jsx",
+    "src/views/calc.jsx",
+    "src/views/portal.jsx",
     "src/app/app.jsx"
   ]
 }
