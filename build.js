@@ -40,35 +40,15 @@ esbuild.transform(jsxCode, {
   // 3) Montar HTML otimizado
   let dist = html;
 
-  // Remover Babel (maior ganho de performance)
+  // Remover Babel standalone (maior ganho de performance). As tags CDN têm integrity/crossorigin,
+  // então o casamento é por regex no src, independente dos atributos. Função como replacement (evita $&).
+  // React, ReactDOM e Supabase ficam como estão (integrity preservado). Não trocar a URL do Supabase:
+  // o integrity (SRI) é do arquivo exato e um .min.js de outro CDN seria bloqueado pelo navegador.
   dist = dist.replace(
-    '<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>\n',
-    ''
+    /<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/babel-standalone\/[^"]+"[^>]*><\/script>\n?/,
+    () => ''
   );
-
-  // Trocar Supabase de unpkg → jsDelivr + usar .min.js
-  dist = dist.replace(
-    'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js',
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js'
-  );
-  dist = dist.replace(
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js',
-    'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js'
-  );
-
-  // crossorigin para melhor cache nos CDN scripts
-  dist = dist.replace(
-    /(<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/react\/[^"]+")><\/script>/g,
-    '$1 crossorigin></script>'
-  );
-  dist = dist.replace(
-    /(<script src="https:\/\/cdnjs\.cloudflare\.com\/ajax\/libs\/react-dom\/[^"]+")><\/script>/g,
-    '$1 crossorigin></script>'
-  );
-  dist = dist.replace(
-    /(<script src="https:\/\/cdn\.jsdelivr\.net\/npm\/@supabase\/[^"]+")><\/script>/g,
-    '$1 crossorigin></script>'
-  );
+  if (/babel-standalone/.test(dist)) { console.error('❌ Babel standalone ainda presente no dist'); process.exit(1); }
 
   // Adicionar preconnect hints logo após <meta charset> (reduz DNS lookup time)
   dist = dist.replace(
@@ -223,7 +203,6 @@ Sitemap: ${SITE}/sitemap.xml
   console.log(`\n🚀 O que foi removido/otimizado:`);
   console.log(`   ✓ Babel standalone (~500KB) removido`);
   console.log(`   ✓ JSX compilado e minificado (${compiledSize}KB)`);
-  console.log(`   ✓ Supabase CDN: unpkg → jsDelivr (mais rápido)`);
   console.log(`   ✓ preconnect hints adicionados`);
   console.log(`   ✓ Loading screen CSS imediata`);
   console.log(`\n✅ Pronto! Faça git push do dist/ para deploy.\n`);
