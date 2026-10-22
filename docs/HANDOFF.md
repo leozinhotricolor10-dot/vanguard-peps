@@ -151,7 +151,8 @@ Plano completo em `docs/PLANO_MODULARIZACAO.md`. O código só mudou de arquivo;
 - **Tag de versão**: mora em `src/app/render/00-casca-portal-manual.part.jsx` (3 ocorrências). Achar sempre com `git grep -lE "v2\.[a-f0-9]{7}" -- index.html src ':!src/blobs'`.
 - **Rollback de layout**: `src/novo/rotas.jsx` → `const NOVO_NO_INICIO = true;` para `false`. Rollback de código: `git revert <hash>` + push.
 - **Commits**: etapa 6 `ce6198d` (+ tag `edd64ee`), etapa 7 `8f890dd` (+ tag `a566b8e`).
-- **Ainda pendente (fora do plano)**: o dist continua baixando o Babel (replaces do `build.js` não casam com as tags com `integrity`); `CLAUDE.md` do projeto (previsto na etapa 8) não foi criado — fica para o dono aprovar o texto.
+- **Babel removido do dist (21/10/2026)**: o `build.js` agora tira a tag do Babel standalone por regex (casa mesmo com `integrity`/`crossorigin`); antes os `replace` por texto exato não casavam e o navegador baixava ~3 MB à toa. React, ReactDOM e Supabase seguem síncronos no `<head>` com `integrity` intacto. Removidos também os replaces de `crossorigin` (as tags já o têm) e a troca unpkg->jsDelivr do Supabase (quebraria o `integrity`). O build aborta se `babel-standalone` sobrar no dist. **O hash do `dist/index.html`, `antigo`, `404` e `p/*` mudou de propósito** (só some a linha do Babel; `npm run check` continua idêntico porque compara o texto montado, antes do build).
+- **`CLAUDE.md` do projeto** criado na raiz (curto, só ponteiros para MAPA/HANDOFF e regras do dono).
 
 ## Regras do dono
 
