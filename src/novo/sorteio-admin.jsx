@@ -137,6 +137,7 @@ function SorteioAdmin({ orders, showToast, normUF }) {
   const [colar, setColar] = React.useState(false);
   const [texto, setTexto] = React.useState('');
   const [gravando, setGravando] = React.useState(false);
+  const [palco, setPalco] = React.useState(false); // modo palco (tela cheia comercial)
   const timerRef = React.useRef(null);
   React.useEffect(() => () => clearInterval(timerRef.current), []);
 
@@ -263,14 +264,28 @@ function SorteioAdmin({ orders, showToast, normUF }) {
       setRoleta(elegiveis[i % elegiveis.length].name);
       if (Date.now() - t0 >= 2800) {
         clearInterval(timerRef.current);
-        const reg = { id: Date.now(), mes, at: new Date().toISOString(), participantes: nMax, excluidos: totalCand - nMax,
-          ganhadores: ganhadores.map(g => ({ name: g.name, code: g.code, city: g.city })) };
-        sorteioSave([reg, ...sorteioLoad()]); // espelho local
-        setHist(h => [{ ...reg, _local: true }, ...h.filter(x => x.id !== reg.id)]);
-        if (sb && !falta) salvaBanco(reg);
+        registraSorteio(ganhadores);
         setRes({ mes, ganhadores, total: nMax }); setFase('pronto');
       }
     }, 70);
+  }
+
+  // grava no histórico (local + banco); usado pela aba e pelo modo palco
+  function registraSorteio(ganhadores, total) {
+    const tot = total || nMax;
+    const reg = { id: Date.now(), mes, at: new Date().toISOString(), participantes: tot, excluidos: totalCand - tot,
+      ganhadores: ganhadores.map(g => ({ name: g.name, code: g.code, city: g.city })) };
+    sorteioSave([reg, ...sorteioLoad()]); // espelho local
+    setHist(h => [{ ...reg, _local: true }, ...h.filter(x => x.id !== reg.id)]);
+    if (sb && !falta) salvaBanco(reg);
+  }
+  // Modo palco: sorteia k entre os elegíveis (menos quem já saiu no palco) e devolve só { key, name }
+  function sortearPalco(k, jaKeys) {
+    const pool = elegiveis.filter(e => !jaKeys.includes(e.key));
+    if (!pool.length) return null;
+    const g = sorteioEscolhe(pool, Math.min(k, pool.length));
+    registraSorteio(g, nMax);
+    return g.map(x => ({ key: x.key, name: x.name }));
   }
 
   async function salvaBanco(reg) {
@@ -368,6 +383,7 @@ function SorteioAdmin({ orders, showToast, normUF }) {
   }
 
   return <>
+    {palco && <SorteioPalco nomes={elegiveis.map(e => e.name)} qtd={n} mes={mes} onSortear={sortearPalco} onSair={() => setPalco(false)} />}
     <div style={card}>
       <div style={lbl}>🎲 SORTEIO MENSAL</div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-end' }}>
@@ -382,6 +398,7 @@ function SorteioAdmin({ orders, showToast, normUF }) {
           <input style={{ ...inp, width: 80 }} type="number" min="1" max={Math.max(1, nMax)} value={qtd} onChange={e => setQtd(e.target.value)} disabled={fase === 'girando'} />
         </div>
         <button onClick={sortear} disabled={!nMax || fase === 'girando'} style={{ padding: '10px 22px', background: nMax ? 'var(--accent)' : 'var(--border)', border: 'none', borderRadius: 8, color: '#000', fontWeight: 700, fontSize: '0.78rem', cursor: nMax ? 'pointer' : 'not-allowed', fontFamily: "'Space Mono',monospace" }}>🎲 Sortear</button>
+        <button onClick={() => setPalco(true)} disabled={!nMax || fase === 'girando'} style={{ padding: '10px 22px', background: 'transparent', border: '1px solid var(--accent)', borderRadius: 8, color: 'var(--accent)', fontWeight: 700, fontSize: '0.78rem', cursor: nMax ? 'pointer' : 'not-allowed', fontFamily: "'Space Mono',monospace" }}>🎬 Abrir modo palco</button>
       </div>
       <div style={{ marginTop: 12, fontSize: '0.78rem', color: 'var(--muted)' }}>
         <b style={{ color: 'var(--text)' }}>{nMax}</b> participante{nMax === 1 ? '' : 's'} concorrendo{totalCand !== nMax && <> ({totalCand - nMax} excluído{totalCand - nMax === 1 ? '' : 's'})</>}.

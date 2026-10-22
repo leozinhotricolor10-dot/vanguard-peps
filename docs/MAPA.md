@@ -17,7 +17,8 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/novo/rotas.jsx` | 68 | 4 |
 | `src/novo/css.jsx` | 176 | 17 |
 | `src/novo/admin-shell.jsx` | 221 | 16 |
-| `src/novo/sorteio-admin.jsx` | 515 | 33 |
+| `src/novo/sorteio-admin.jsx` | 532 | 34 |
+| `src/novo/sorteio-palco.jsx` | 131 | 9 |
 | `src/novo/componentes.jsx` | 188 | 11 |
 | `src/novo/loja.jsx` | 662 | 43 |
 | `src/app/logica/01-estado-rotas.part.jsx` | 333 | 24 |
@@ -56,7 +57,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/07-produto.part.jsx` | 94 | 7 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **12034** | |
+| **total** | **12182** | |
 
 ## Conteúdo (nome:linha)
 
@@ -89,6 +90,9 @@ NVA_GROUPS:5 · NVA_ITEMS:30 · nvaActiveItem:32 · NOVO_ADMIN_CSS:38 · NovaAdm
 
 ### `src/novo/sorteio-admin.jsx`
 SORTEIO_STATUS_OK:10 · SORTEIO_LS:11 · SORTEIO_LS_MIGRADO:12 · SORTEIO_ERRO_TABELA:13 · SORTEIO_MESES:14 · sorteioMesSP:17 · sorteioMesLabel:23 · sorteioChaveCliente:28 · sorteioRand:39 · sorteioEscolhe:46 · sorteioLoad:52 · sorteioSave:55 · sorteioDeLinha:57 · sorteioParaLinha:61 · sorteioJunta:66 · sorteioBRL:71 · SORTEIO_EXTRAS_LS:74 · SORTEIO_ERRO_EXTRAS:75 · sorteioExtrasLoad:76 · sorteioExtrasSave:79 · sorteioLimpaNome:81 · sorteioParseLista:87 · sorteioNorm:101 · sorteioNomeBate:106 · sorteioParecePlaceholder:114 · SorteioAdmin:118
+
+### `src/novo/sorteio-palco.jsx`
+sorteioNomePalco:5 · SORTEIO_PALCO_CSS:13 · SorteioPalco:47
 
 ### `src/novo/componentes.jsx`
 nvFmt:1 · NvIcon:3 · NV_ICONS:6 · NvMarquee:20 · NvProdImg:95 · NvComboImg:109 · NvInstallBanner:121 · SORTEIO:153 · NvSorteio:160

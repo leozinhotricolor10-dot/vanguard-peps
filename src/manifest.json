@@ -15,6 +15,7 @@
     "src/novo/css.jsx",
     "src/novo/admin-shell.jsx",
     "src/novo/sorteio-admin.jsx",
+    "src/novo/sorteio-palco.jsx",
     "src/novo/componentes.jsx",
     "src/novo/loja.jsx",
     "src/app/logica/01-estado-rotas.part.jsx",
