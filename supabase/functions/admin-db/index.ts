@@ -17,6 +17,7 @@ const TABLES: Record<string, [string, string]> = {
   customers: ["cpf", "points"],
   coupons: ["id", "created_at"],
   expenses: ["id", "created_at"],
+  raffles: ["id", "created_at"],
   import_history: ["id", "created_at"],
   purchase_order_caps: ["id", "created_at"],
   products: ["id", "sort_order"],
