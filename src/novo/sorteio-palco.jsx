@@ -11,16 +11,16 @@ function sorteioNomePalco(nome) {
 }
 
 const SORTEIO_PALCO_CSS = `
-.sp{position:fixed;inset:0;z-index:99999;overflow:hidden;color:#e2eaf0;font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;
+.sp{position:fixed;top:0;left:0;width:100vw;height:100vh;height:100dvh;box-sizing:border-box;z-index:2147483000;overflow:hidden;color:#e2eaf0;font-family:'DM Sans',sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px 24px 64px;
 background:radial-gradient(70% 60% at 50% 0,rgba(0,229,195,.22),transparent 60%),radial-gradient(60% 50% at 100% 100%,rgba(120,90,255,.18),transparent 60%),#050a0e}
 .sp-x{position:absolute;top:16px;right:16px;padding:10px 16px;border-radius:10px;border:1px solid rgba(255,255,255,.25);background:rgba(5,10,14,.7);color:#fff;font-size:14px;cursor:pointer;z-index:3}
 .sp-brand{font-family:'Space Mono',monospace;letter-spacing:6px;font-size:clamp(11px,1.6vw,16px);color:#00e5c3;text-transform:uppercase}
 .sp-title{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(34px,7vw,92px);line-height:1;margin:10px 0 6px;text-shadow:0 0 40px rgba(0,229,195,.45)}
 .sp-prize{font-size:clamp(16px,2.6vw,32px);color:#a9bfcb;margin-bottom:18px}
 .sp-prize b{color:#00e5c3}
-.sp-body{display:flex;align-items:center;justify-content:center;gap:clamp(20px,4vw,56px);width:100%;max-width:1200px;flex:0 1 auto;min-height:0}
-.sp-img{height:min(52vh,560px);aspect-ratio:2/3;border-radius:18px;box-shadow:0 0 60px rgba(0,229,195,.3),0 20px 60px rgba(0,0,0,.6);border:1px solid rgba(0,229,195,.35);object-fit:cover}
-.sp-main{flex:1 1 420px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;min-width:0}
+.sp-body{display:flex;align-items:center;justify-content:center;gap:clamp(20px,4vw,56px);width:100%;max-width:1700px;flex:0 1 auto;min-height:0}
+.sp-img{flex:0 0 auto;height:min(56vh,640px);max-width:40vw;aspect-ratio:2/3;border-radius:18px;box-shadow:0 0 60px rgba(0,229,195,.3),0 20px 60px rgba(0,0,0,.6);border:1px solid rgba(0,229,195,.35);object-fit:cover}
+.sp-main{container-type:inline-size;flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;min-width:0}
 .sp-count{font-family:'Space Mono',monospace;font-size:clamp(14px,2vw,22px);color:#a9bfcb}
 .sp-count b{color:#00e5c3;font-size:1.6em}
 .sp-btn{padding:clamp(16px,2.4vw,26px) clamp(40px,7vw,96px);font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(24px,4vw,46px);letter-spacing:3px;border:none;border-radius:60px;cursor:pointer;color:#001a16;
@@ -30,19 +30,24 @@ background:linear-gradient(135deg,#00e5c3,#7dffe9);box-shadow:0 0 50px rgba(0,22
 @keyframes spPulse{50%{transform:scale(1.05);box-shadow:0 0 80px rgba(0,229,195,.8)}}
 .sp-count-n{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(120px,26vw,300px);line-height:1;color:#00e5c3;text-shadow:0 0 60px rgba(0,229,195,.7);animation:spPop 1s ease-out}
 @keyframes spPop{0%{transform:scale(1.8);opacity:0}30%{opacity:1}100%{transform:scale(1)}}
-.sp-roll{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(34px,7vw,88px);color:#fff;min-height:1.3em;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-shadow:0 0 30px rgba(0,229,195,.6)}
+.sp-roll{max-width:100%;font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(34px,7vw,88px);color:#fff;min-height:1.3em;max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:var(--f,clamp(34px,7vw,88px));text-shadow:0 0 30px rgba(0,229,195,.6)}
 .sp-label{font-family:'Space Mono',monospace;letter-spacing:5px;font-size:clamp(12px,1.8vw,20px);color:#00e5c3}
-.sp-win{font-family:'Syne',sans-serif;font-weight:800;font-size:clamp(40px,9vw,120px);line-height:1.05;background:linear-gradient(90deg,#fff,#00e5c3,#fff);background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:spShine 3s linear infinite,spPop .9s ease-out}
-.sp-win.sm{font-size:clamp(28px,5.5vw,64px)}
+.sp-win{font-family:'Syne',sans-serif;font-weight:800;font-size:var(--f,64px);max-width:100%;overflow-wrap:anywhere;word-break:break-word;line-height:1.1;padding:0 .05em;background:linear-gradient(90deg,#fff,#00e5c3,#fff);background-size:200% auto;-webkit-background-clip:text;background-clip:text;color:transparent;animation:spShine 3s linear infinite,spPop .9s ease-out}
 @keyframes spShine{to{background-position:200% center}}
 .sp-tick{position:absolute;bottom:0;left:0;right:0;height:42px;overflow:hidden;border-top:1px solid rgba(0,229,195,.15);background:rgba(5,10,14,.6);font-family:'Space Mono',monospace;font-size:14px;color:#7d9aa8;display:flex;align-items:center}
 .sp-tick-in{display:inline-block;white-space:nowrap;padding-left:100%;animation:spTick var(--d,60s) linear infinite}
 @keyframes spTick{to{transform:translateX(-100%)}}
 .sp-conf{position:absolute;top:-20px;width:10px;height:16px;opacity:.95;animation:spFall linear forwards;z-index:2;pointer-events:none}
 @keyframes spFall{to{transform:translateY(110vh) rotate(720deg)}}
-@media (max-width:760px){.sp-body{flex-direction:column}.sp-img{height:26vh}}
+@media (max-width:760px){.sp{padding:56px 16px 56px}.sp-body{flex-direction:column;gap:16px}.sp-img{height:24vh;max-width:60vw}.sp-main{flex:0 0 auto;width:100%}.sp-btn{letter-spacing:1px}}
 @media (prefers-reduced-motion:reduce){.sp-btn,.sp-win,.sp-count-n{animation:none}}
 `;
+
+// tamanho da fonte proporcional ao comprimento do nome, relativo à largura da coluna (cqw), com teto
+function sorteioFonte(txt, tetoPx, fator) {
+  const n = Math.max(4, String(txt || '').length);
+  return 'min(' + tetoPx + 'px,' + (100 / (n * (fator || 0.62))).toFixed(2) + 'cqw)';
+}
 
 function SorteioPalco({ nomes, qtd, mes, onSortear, onSair }) {
   const [fase, setFase] = React.useState('idle'); // idle | contagem | girando | pronto
@@ -92,7 +97,7 @@ function SorteioPalco({ nomes, qtd, mes, onSortear, onSair }) {
 
   const restantes = Math.max(0, nomes.length - ja.length);
   const unico = ganhadores.length === 1;
-  return (
+  const palco = (
     <div className="sp" role="dialog" aria-label="Modo palco do sorteio">
       <style>{SORTEIO_PALCO_CSS}</style>
       <button className="sp-x" onClick={() => { limpa(); onSair(); }}>Sair (Esc)</button>
@@ -113,11 +118,11 @@ function SorteioPalco({ nomes, qtd, mes, onSortear, onSair }) {
           </>}
           {fase === 'girando' && <>
             <div className="sp-label">SORTEANDO...</div>
-            <div className="sp-roll">{roleta}</div>
+            <div className="sp-roll" style={{ '--f': sorteioFonte('MMMMMMMMMMMMMMMM', 96, 0.8) }}>{roleta}</div>
           </>}
           {fase === 'pronto' && <>
             <div className="sp-label">{unico ? '🏆 O(A) GANHADOR(A) É' : '🏆 OS GANHADORES SÃO'}</div>
-            {ganhadores.map((g, i) => <div key={g.key} className={'sp-win' + (unico ? '' : ' sm')}>{unico ? '' : (i + 1) + 'º '}{sorteioNomePalco(g.name)}</div>)}
+            {ganhadores.map((g, i) => <div key={g.key} className="sp-win" style={{ '--f': sorteioFonte((unico ? '' : '1º ') + sorteioNomePalco(g.name), unico ? 150 : 72, 0.78) }}>{unico ? '' : (i + 1) + 'º '}{sorteioNomePalco(g.name)}</div>)}
             <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
               {restantes > 0 && <button className="sp-btn2" onClick={comecar}>🎲 Sortear novamente (novo ganhador)</button>}
               <button className="sp-btn2" onClick={() => { limpa(); onSair(); }}>Encerrar</button>
@@ -128,4 +133,5 @@ function SorteioPalco({ nomes, qtd, mes, onSortear, onSair }) {
       {nomes.length > 0 && <div className="sp-tick" aria-hidden="true"><span className="sp-tick-in" style={{ '--d': Math.max(30, mascarados.length * 2.5) + 's' }}>{mascarados.join('   ✦   ')}</span></div>}
     </div>
   );
+  return ReactDOM.createPortal(palco, document.body);
 }
