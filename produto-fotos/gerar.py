@@ -45,16 +45,19 @@ CATALOGO = [
     ("DS10", "DSIP", "10MG"),
     ("EPT10", "Epithalon", "10MG"),
     ("KL80", "BPC + GHK + TB500 + KPV Blend", "80MG"),
+    ("KP30", "KPV", "30MG"),
     ("MS40", "MOTS-c", "40MG"),
     ("P41", "PT-141", "10MG"),
     ("RT15", "Retatrutide", "15MG"),
     ("RT20", "Retatrutide", "20MG"),
+    ("RT30", "Retatrutide", "30MG"),
     ("RT50", "Retatrutide", "50MG"),
     ("SLK5", "Selank", "5MG"),
     ("SNAP10", "SNAP-8", "10MG"),
     ("TR60", "Tirzepatide", "60MG"),
     ("TSM5", "Tesamorelin", "5MG"),
     ("TZ15", "Tirzepatide", "15MG"),
+    ("TZ40", "Tirzepatide", "40MG"),
 ]
 
 # Geometria da faixa do rotulo na foto base (medida em pixels).
