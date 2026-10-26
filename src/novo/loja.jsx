@@ -39,10 +39,12 @@ function NovaLoja(P) {
 
   const qtyOf = id => myOrders.filter(o => o.peptideId === id && !o._packId).reduce((s, o) => s + (o.qty || 0), 0);
   const lineOf = id => myOrders.find(o => o.peptideId === id && !o._packId);
-  const visible = products.filter(p => (cat === 'all' || p.category === cat) &&
+  const inStock = p => { const a = availableStock(p.id); return a === null || a > 0; };
+  const shop = products.filter(inStock);
+  const visible = shop.filter(p => (cat === 'all' || p.category === cat) &&
     (!q.trim() || (p.name + ' ' + (p.desc || '') + ' ' + (p.sku || '')).toLowerCase().includes(q.trim().toLowerCase())));
-  const hot = resolveBestsellers(bestsellers, products);
-  const product = pid ? products.find(p => p.id === pid || nvSlugOf(p) === String(pid).toLowerCase()) : null;
+  const hot = resolveBestsellers(bestsellers, shop);
+  const product = pid ? shop.find(p => p.id === pid || nvSlugOf(p) === String(pid).toLowerCase()) : null;
 
   const isPix = checkout.pagamento === 'pix';
   const freightRaw = calcFreight(checkout.estado, myTotal);
@@ -62,8 +64,8 @@ function NovaLoja(P) {
     const full = nvBundleFull(b, products, effectivePrice);
     if (full === null || full <= b.price) return null;
     const items = b.items.map(id => products.find(p => p.id === id));
-    return { ...b, full, prods: items, out: items.some(p => availableStock(p.id) === 0) };
-  }).filter(Boolean);
+    return { ...b, full, prods: items, out: items.some(p => !inStock(p)) };
+  }).filter(b => b && !b.out);
 
   const Back = ({ title, to = 'loja' }) => (
     <div className="nv-back">
@@ -174,7 +176,7 @@ function NovaLoja(P) {
           <div className="nv-search"><NvIcon d={NV_ICONS.search} size={18} w={2} /><input id="nv-busca" placeholder="Buscar: tirzepatida, GHK-Cu..." value={q} onChange={e => setQ(e.target.value)} /></div>
         </div>
         <div role="navigation" className="nv-chips" aria-label="Categorias">
-          {categories.map(c => <button key={c.id} className={'nv-chip' + (cat === c.id ? ' on' : '')} aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>{c.id === 'all' ? 'Todos' : c.name}</button>)}
+          {categories.filter(c => c.id === 'all' || shop.some(p => p.category === c.id)).map(c => <button key={c.id} className={'nv-chip' + (cat === c.id ? ' on' : '')} aria-pressed={cat === c.id} onClick={() => setCat(c.id)}>{c.id === 'all' ? 'Todos' : c.name}</button>)}
         </div>
         {cat === 'all' && !q.trim() && hot.length > 0 && (
           <section className="nv-sec nv-hotsec" style={{ marginTop: 4, marginBottom: 20 }} aria-label="Mais vendidos">
@@ -225,8 +227,11 @@ function NovaLoja(P) {
         )}
         <section className="nv-grid" aria-label="Produtos">
           {visible.length === 0 && <div className="nv-box" style={{ gridColumn: '1/-1' }}>
-            <div style={{ fontWeight: 600, marginBottom: 6 }}>Nada encontrado para "{q}".</div>
-            <a href="https://wa.me/447418333521" target="_blank" rel="noreferrer">Pedir esse produto pelo WhatsApp</a>
+            {q.trim()
+              ? <><div style={{ fontWeight: 600, marginBottom: 6 }}>Nada encontrado para "{q}".</div>
+                <a href="https://wa.me/447418333521" target="_blank" rel="noreferrer">Falar com a gente pelo WhatsApp</a></>
+              : <><div style={{ fontWeight: 600, marginBottom: 6 }}>Estamos atualizando o catálogo.</div>
+                <a href="https://wa.me/447418333521" target="_blank" rel="noreferrer">Falar com a gente pelo WhatsApp</a></>}
           </div>}
           {visible.map((p, idx) => {
             const out = availableStock(p.id) === 0;
@@ -268,7 +273,7 @@ function NovaLoja(P) {
 
   if (screen === 'artigo' && article) {
     const a = article;
-    const rel = a.relatedProductId ? products.find(p => p.id === a.relatedProductId || p.name.toLowerCase().includes((a.relatedProductId || '').replace(/[0-9]/g, '').toLowerCase())) : null;
+    const rel = a.relatedProductId ? shop.find(p => p.id === a.relatedProductId || p.name.toLowerCase().includes((a.relatedProductId || '').replace(/[0-9]/g, '').toLowerCase())) : null;
     const others = arts.filter(x => x.id !== a.id).slice(0, 2);
     body = (
       <div className="nv-wrap nv-narrow" style={{ paddingBottom: 20 }}>
@@ -621,7 +626,7 @@ function NovaLoja(P) {
   if (!body) body = (
     <div className="nv-wrap nv-narrow" style={{ paddingTop: 40, display: 'flex', flexDirection: 'column', gap: 14 }}>
       {screen === 'artigo' && <p className="nv-sub">Artigo não encontrado.</p>}
-      {screen === 'produto' && <p className="nv-sub">{products.length ? 'Produto não encontrado. Ele pode ter saído do catálogo.' : 'Carregando produto...'}</p>}
+      {screen === 'produto' && <p className="nv-sub">{products.length ? 'Produto indisponível no momento.' : 'Carregando produto...'}</p>}
       <button className="nv-btn2" onClick={() => go('loja')}>Ver todos os produtos</button>
     </div>
   );
@@ -630,7 +635,7 @@ function NovaLoja(P) {
     <div className="nv">
       <style>{NOVO_CSS}</style>
       {header}
-      {screen === 'loja' && <NvSorteio products={products} go={go} />}
+      {screen === 'loja' && <NvSorteio products={shop} go={go} />}
       {screen === 'loja' && <NvInstallBanner />}
       {screen === 'loja' && <div className="nv-strip"><span>PIX com <b style={{ color: 'var(--ac)' }}>frete grátis</b></span><span>Envio rápido</span><span>Pureza ≥ 99%</span></div>}
       <div role="main">{body}</div>

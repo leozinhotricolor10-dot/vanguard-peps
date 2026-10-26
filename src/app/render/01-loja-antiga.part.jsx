@@ -32,7 +32,7 @@
 
           <div className="sidebar-section-title">Categorias</div>
           {CATEGORIES.map(c => {
-            const count = c.id === "all" ? products.length : products.filter(p => p.category === c.id).length;
+            const count = c.id === "all" ? shopProducts.length : shopProducts.filter(p => p.category === c.id).length;
             return (
               <button key={c.id} className={`cat-btn ${activeCat===c.id?"active":""}`}
                 onClick={()=>{ setActiveCat(c.id); setView("catalog"); }}>
@@ -88,7 +88,7 @@
             <div className="page-sub">
               {activeCat === 'all'
                 ? 'Adicione produtos ao carrinho e finalize seu pedido.'
-                : (() => { const n = products.filter(p=>p.category===activeCat).length; return `${n} produto${n!==1?'s':''} nesta categoria`; })()
+                : (() => { const n = shopProducts.filter(p=>p.category===activeCat).length; return `${n} produto${n!==1?'s':''} nesta categoria`; })()
               }
             </div>
 
@@ -151,7 +151,7 @@
 
             {/* FEATURED CAROUSEL - only on all tab with no search */}
             {activeCat==='all' && !searchQuery && (() => {
-              const hotProducts = products.filter(p => p.hot || (productPromo[p.id]||0) > 0);
+              const hotProducts = shopProducts.filter(p => p.hot || (productPromo[p.id]||0) > 0);
               if (!hotProducts.length) return null;
               const maxIdx = hotProducts.length - 1;
               return (
@@ -212,13 +212,13 @@
               <div className="cat-pills" style={{overflowX:'auto',paddingBottom:4}}>
                 <button className={`cat-pill ${filterInStock?'active':''}`} onClick={()=>setFilterInStock(v=>!v)}
                   style={filterInStock ? {borderColor:'rgba(0,229,195,0.6)',background:'rgba(0,229,195,0.12)',color:'var(--accent)'} : {}}>
-                  <span>✅</span> Em estoque <span className="cat-pill-count">{products.filter(p=>availableStock(p.id)>0).length}</span>
+                  <span>✅</span> Em estoque <span className="cat-pill-count">{shopProducts.filter(p=>availableStock(p.id)>0).length}</span>
                 </button>
                 <button className={`cat-pill ${activeCat==='all'?'active':''}`} onClick={()=>setActiveCat('all')}>
-                  <span>⚡</span> Todos <span className="cat-pill-count">{products.length}</span>
+                  <span>⚡</span> Todos <span className="cat-pill-count">{shopProducts.length}</span>
                 </button>
                 {CATEGORIES.filter(c=>c.id!=='all').map(cat=>{
-                  const cnt = products.filter(p=>p.category===cat.id).length;
+                  const cnt = shopProducts.filter(p=>p.category===cat.id).length;
                   return (
                     <button key={cat.id} className={`cat-pill ${activeCat===cat.id?'active':''}`} onClick={()=>setActiveCat(cat.id)}>
                       <span>{cat.icon}</span> {cat.name} <span className="cat-pill-count">{cnt}</span>
@@ -234,8 +234,8 @@
 
             <div className="products-grid">
               {(()=>{
-                let filtered = activeCat === 'all' ? products : products.filter(p=>p.category===activeCat);
-                if (searchQuery) filtered = products.filter(p=>(p.name||'').toLowerCase().includes(searchQuery.toLowerCase()) || (p.desc||'').toLowerCase().includes(searchQuery.toLowerCase()));
+                let filtered = activeCat === 'all' ? shopProducts : shopProducts.filter(p=>p.category===activeCat);
+                if (searchQuery) filtered = shopProducts.filter(p=>(p.name||'').toLowerCase().includes(searchQuery.toLowerCase()) || (p.desc||'').toLowerCase().includes(searchQuery.toLowerCase()));
                 if (filterInStock) filtered = filtered.filter(p=>availableStock(p.id)>0);
                 return filtered.map(peptide => {
                 const inCartQty = peptideCartQty(peptide.id);
@@ -340,7 +340,7 @@
           {/* PRODUCT DETAIL */}
           <div className={`view ${view==="detail"?"visible":""}`}>
             <div className="view-detail-wrap">
-            {selectedProduct && (()=>{
+            {selectedProduct && inStockPublic(selectedProduct) && (()=>{
               const p = selectedProduct;
               const proto = PROTOCOLS[Object.keys(CALC_PEP_DB).find(k => CALC_PEP_DB[k].name.toLowerCase().includes(p.name.split(' ')[0].toLowerCase()))];
               const inCartQty = peptideCartQty(p.id);
@@ -473,7 +473,7 @@
           <div className={`view ${view==="article"?"visible":""}`}>
             {selectedArticle && (()=>{
               const art = selectedArticle;
-              const related = art.relatedProductId ? products.find(p=>p.id===art.relatedProductId || p.name.toLowerCase().includes((art.relatedProductId||'').replace(/[0-9]/g,'').toLowerCase())) : null;
+              const related = art.relatedProductId ? shopProducts.find(p=>p.id===art.relatedProductId || p.name.toLowerCase().includes((art.relatedProductId||'').replace(/[0-9]/g,'').toLowerCase())) : null;
               return (
                 <>
                   <button className="detail-back" onClick={()=>setView("catalog")}>← Voltar ao catálogo</button>

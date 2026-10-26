@@ -219,6 +219,18 @@
     return baseAvail;
   }
 
+  // Vitrine pública: só aparece produto com estoque disponível (null = sem controle de estoque, segue vendável)
+  function inStockPublic(p) {
+    if (!p) return false;
+    const a = availableStock(p.id);
+    return a === null || a > 0;
+  }
+  const shopProducts = products.filter(inStockPublic);
+  // Detalhe aberto (layout antigo) de produto que ficou sem estoque: volta ao catálogo
+  React.useEffect(() => {
+    if (view === 'detail' && selectedProduct && !inStockPublic(selectedProduct)) { setSelectedProduct(null); setView('catalog'); }
+  }, [view, selectedProduct, stock]);
+
   function notifyPreorder(po) {
     const now = Date.now();
     const expireAt = now + 12*60*60*1000;

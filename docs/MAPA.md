@@ -20,14 +20,14 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/novo/sorteio-admin.jsx` | 532 | 34 |
 | `src/novo/sorteio-palco.jsx` | 137 | 10 |
 | `src/novo/componentes.jsx` | 188 | 11 |
-| `src/novo/loja.jsx` | 662 | 43 |
+| `src/novo/loja.jsx` | 667 | 44 |
 | `src/app/logica/01-estado-rotas.part.jsx` | 333 | 24 |
 | `src/app/logica/02-notificacoes-status.part.jsx` | 160 | 9 |
 | `src/app/logica/03-melhor-envios-cambio.part.jsx` | 277 | 17 |
 | `src/app/logica/04-supabase-sync.part.jsx` | 376 | 20 |
 | `src/app/logica/05-checkout.part.jsx` | 199 | 10 |
 | `src/app/logica/06-pedido-manual.part.jsx` | 267 | 13 |
-| `src/app/logica/07-precos-pontos-preorders.part.jsx` | 315 | 15 |
+| `src/app/logica/07-precos-pontos-preorders.part.jsx` | 327 | 15 |
 | `src/app/logica/08-carrinho-admin.part.jsx` | 473 | 24 |
 | `src/app/render/00-casca-portal-manual.part.jsx` | 631 | 48 |
 | `src/app/render/01-loja-antiga.part.jsx` | 676 | 42 |
@@ -57,7 +57,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/07-produto.part.jsx` | 94 | 7 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **12188** | |
+| **total** | **12205** | |
 
 ## Conteúdo (nome:linha)
 
@@ -119,7 +119,7 @@ calcFreight:3 · fetchCep:10 · validateCheckout:27 · saveCheckoutData:43 · up
 pastCustomers:3 · fillManualFromCustomer:16 · releaseOrderStock:30 · reserveOrderStock:40 · itemsSavingRef:62 · stockDiffOfEdit:63 · saveOrderItemsEdit:75 · createManualOrder:116 · parseAndFillManualOrder:163
 
 ### `src/app/logica/07-precos-pontos-preorders.part.jsx` — lógica 7/8: preço efetivo, cupons, pontos, pré-orders, availableStock, toast/nome
-effectivePrice:2 · persistCoupons:8 · persistCustomers:9 · awardPoints:11 · _checkPointsReq:33 · checkPoints:34 · applyCouponCode:60 · generateToken:76 · savePreorder:82 · removePreorder:144 · persistPreorders:152 · availableStock:175 · notifyPreorder:222 · sendReminder:243 · checkPreorderExpiry:258 · cancelPreorderByToken:279 · reducePreorderQty:284 · showToast:293 · saveName:299 · handleWelcomeConfirm:301 · handleNameConfirm:309
+effectivePrice:2 · persistCoupons:8 · persistCustomers:9 · awardPoints:11 · _checkPointsReq:33 · checkPoints:34 · applyCouponCode:60 · generateToken:76 · savePreorder:82 · removePreorder:144 · persistPreorders:152 · availableStock:175 · inStockPublic:223 · notifyPreorder:234 · sendReminder:255 · checkPreorderExpiry:270 · cancelPreorderByToken:291 · reducePreorderQty:296 · showToast:305 · saveName:311 · handleWelcomeConfirm:313 · handleNameConfirm:321
 
 ### `src/app/logica/08-carrinho-admin.part.jsx` — lógica 8/8: carrinho, combos/packs, login admin, totais, helpers do admin novo (nva*)
 myOrders:3 · myTotal:4 · bundleInfo:7 · addBundleToCart:14 · openModal:51 · addPackToCart:57 · quickAdd:80 · versionTap:101 · handleAddToCart:109 · updateQtyInCart:151 · removeFromCart:216 · openSenderPool:240 · handleAdminUnlock:245 · submitAdminPassword:255 · adminRemove:305 · copyWhatsApp:330 · totalRevenue:355 · totalUnits:359 · totalBuyers:360 · peptideCartQty:368 · nvaPick:405 · NVA_ST:416 · NVA_NEXT:417 · nvaAdvance:418 · nvaWhats:425 · nvaRemove:431 · nvaSteps:436 · nvaWhen:460 · nvaItemsText:470
