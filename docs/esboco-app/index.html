@@ -123,11 +123,20 @@ input:focus,select:focus{border-color:var(--ac)}
         <h2>Protocolo A · 22:00</h2>
         <div class="big" id="cd">02:14:36</div>
         <span class="sm">horas : min : seg</span>
-        <p class="sub">Dose registrada por você: <b style="color:var(--tx)">250 mcg</b> · Local: abdômen</p>
+        <p class="sub">Dose registrada por você: <b class="dil-dose" style="color:var(--tx)">250 mcg</b> · Local: abdômen</p>
+        <div style="width:100%;border:1px solid var(--ac);border-radius:12px;padding:10px;font-size:15px">💉 Puxe <b class="dil-ui" style="color:var(--ac)">5,0 UI</b> na seringa U-100</div>
         <div class="row" style="width:100%">
           <button class="btn pri grow" id="tomei">✓ Tomei</button>
           <button class="btn grow" id="pular">Pular</button>
         </div>
+      </div>
+      <div class="card" id="dil-card">
+        <div class="row sp"><h2>Como diluí (Protocolo A)</h2><span class="pill m" id="dil-data">20/10</span></div>
+        <div class="row sp"><span class="sub">Frasco</span><b id="dil-mg">10 mg</b></div>
+        <div class="row sp"><span class="sub">Água / diluente</span><b id="dil-ml">2 ml</b></div>
+        <div class="row sp"><span class="sub">Concentração</span><b id="dil-conc">5,00 mg/ml</b></div>
+        <div class="row sp"><span class="sub">Dose → volume</span><b id="dil-vol">250 mcg → 0,050 ml</b></div>
+        <span class="sm">Salvo no seu celular quando você guardou o protocolo. Se refizer a diluição, edite o protocolo.</span>
       </div>
       <div class="card">
         <div class="row sp"><h2>Frasco atual</h2><span class="pill">12 dias</span></div>
@@ -147,9 +156,9 @@ input:focus,select:focus{border-color:var(--ac)}
       <div class="seg" id="segag"><button class="on" data-v="dia">Dia</button><button data-v="sem">Semana</button></div>
       <div class="week" id="week"></div>
       <div id="ag-dia" class="scr on" style="padding:0">
-        <div class="item"><div class="dot ok">✓</div><div class="t"><b>08:00 · Protocolo A</b><div class="sm">250 mcg · abdômen esquerdo</div></div><span class="pill">Feita</span></div>
+        <div class="item"><div class="dot ok">✓</div><div class="t"><b>08:00 · Protocolo A</b><div class="sm">250 mcg · <span class="dil-ui">5,0 UI</span> · abdômen esquerdo</div></div><span class="pill">Feita</span></div>
         <div class="item"><div class="dot sk">↷</div><div class="t"><b>14:00 · Protocolo B</b><div class="sm">0,5 mg · coxa direita</div></div><span class="pill w">Pulada</span></div>
-        <div class="item"><div class="dot">·</div><div class="t"><b>22:00 · Protocolo A</b><div class="sm">250 mcg · local a registrar</div></div><button class="btn sm2 pri" id="agtomei">Tomei</button></div>
+        <div class="item"><div class="dot">·</div><div class="t"><b>22:00 · Protocolo A</b><div class="sm">250 mcg · <span class="dil-ui">5,0 UI</span> · local a registrar</div></div><button class="btn sm2 pri" id="agtomei">Tomei</button></div>
         <div class="card"><span class="sm">LOCAL DA APLICAÇÃO (rodízio anotado por você)</span>
           <div class="chips" id="locais"><button class="chip on">Abdômen E</button><button class="chip">Abdômen D</button><button class="chip">Coxa E</button><button class="chip">Coxa D</button><button class="chip">Outro</button></div></div>
       </div>
@@ -196,6 +205,8 @@ input:focus,select:focus{border-color:var(--ac)}
       <label>Horários<div class="row"><input type="time" value="08:00"><input type="time" value="22:00"><button class="btn sm2">＋</button></div></label>
       <div class="card"><div class="row sp"><span>Lembrete neste protocolo</span><button class="sw on" aria-label="lembrete"></button></div>
         <span class="sm">O lembrete nunca mostra o nome da substância.</span></div>
+      <label>Data da diluição<input id="n-data" type="date"></label>
+      <span class="sm">A diluição (frasco, água, dose e UI) fica salva no protocolo e aparece no Início e na Agenda.</span>
       <button class="btn pri" id="salvarp">Salvar protocolo</button>
     </section>
 
@@ -341,7 +352,23 @@ input:focus,select:focus{border-color:var(--ac)}
     if(c.parentElement.id==='freq'){document.getElementById('f-n').classList.toggle('hidden',c.dataset.f!=='n');document.getElementById('f-dias').classList.toggle('hidden',c.dataset.f!=='dias')}
   }});
   document.querySelectorAll('.sw').forEach(function(s){s.onclick=function(){s.classList.toggle('on')}});
-  document.getElementById('salvarp').onclick=function(){toast('Protocolo salvo (exemplo)');setTimeout(function(){go('inicio')},700)};
+  // diluição salva no protocolo (no app real: localStorage do celular)
+  function showDil(d){
+    function all(c,t){Array.prototype.forEach.call(document.querySelectorAll(c),function(e){e.textContent=t})}
+    all('.dil-ui',d.ui);all('.dil-dose',d.dose);
+    document.getElementById('dil-mg').textContent=d.mg;document.getElementById('dil-ml').textContent=d.ml;
+    document.getElementById('dil-conc').textContent=d.conc;document.getElementById('dil-vol').textContent=d.vol;
+    document.getElementById('dil-data').textContent=d.data;
+  }
+  try{var sv=JSON.parse(localStorage.getItem('vg-dil')||'null');if(sv)showDil(sv)}catch(e){}
+  document.getElementById('salvarp').onclick=function(){
+    var mg=num('n-mg'),ml=num('n-ml'),dose=num('n-dose'),u=document.getElementById('n-un').value;
+    if(!(mg>0&&ml>0&&dose>0)){toast('Preencha frasco, água e dose');return}
+    var conc=mg/ml,vol=u==='ml'?dose:(u==='mcg'?dose/1000:dose)/conc,dt=document.getElementById('n-data').value;
+    var d={ui:f(vol*100,1)+' UI',dose:f(dose,2).replace(/,?0+$/,'')+' '+u,mg:f(mg,2).replace(/,?0+$/,'')+' mg',ml:f(ml,2).replace(/,?0+$/,'')+' ml',
+      conc:f(conc,2)+' mg/ml',vol:f(dose,2).replace(/,?0+$/,'')+' '+u+' → '+f(vol,3)+' ml',data:dt?dt.split('-').reverse().slice(0,2).join('/'):'hoje'};
+    showDil(d);try{localStorage.setItem('vg-dil',JSON.stringify(d))}catch(e){}
+    toast('Protocolo e diluição salvos');setTimeout(function(){go('inicio')},700)};
   document.getElementById('apagar').onclick=function(){toast('Pediria confirmação antes de apagar (exemplo)')};
   // semana
   var wk=document.getElementById('week'),dn=['D','S','T','Q','Q','S','S'];
