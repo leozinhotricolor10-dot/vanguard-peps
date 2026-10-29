@@ -172,8 +172,20 @@ input:focus,select:focus{border-color:var(--ac)}
       <p class="sub">Você preenche tudo. O app apenas guarda e lembra.</p>
       <label>Nome / substância (texto livre)<input placeholder="Ex.: o que você anotou do frasco"></label>
       <div class="row">
-        <label class="grow">Dose (você digita)<input inputmode="decimal" placeholder="0"></label>
-        <label style="width:110px">Unidade<select><option>mcg</option><option>mg</option><option>UI</option><option>ml</option></select></label>
+        <label class="grow">Dose desejada (você digita)<input id="n-dose" inputmode="decimal" placeholder="0"></label>
+        <label style="width:110px">Unidade<select id="n-un"><option>mcg</option><option>mg</option><option>ml</option></select></label>
+      </div>
+      <div class="card">
+        <h2>Calculadora do frasco</h2>
+        <span class="sm">Preencha o que está no seu frasco. O app só faz a conta com os seus números.</span>
+        <div class="row" style="margin-top:10px">
+          <label class="grow">Frasco (mg)<input id="n-mg" inputmode="decimal" placeholder="0"></label>
+          <label class="grow">Água / diluente (ml)<input id="n-ml" inputmode="decimal" placeholder="0"></label>
+        </div>
+        <div class="row sp"><span class="sub">Concentração</span><b id="n-conc" style="color:var(--ac)">-</b></div>
+        <div class="row sp"><span class="sub">Volume a puxar</span><b id="n-vol">-</b></div>
+        <div class="row sp"><span class="sub">Seringa U-100</span><b id="n-uis" style="color:var(--ac)">preencha os campos</b></div>
+        <div class="syr"><div class="bar" style="height:14px"><i id="n-syr" style="width:0"></i></div><div class="row sp sm"><span>0</span><span>50</span><span>100 UI</span></div></div>
       </div>
       <div>
         <span class="sm">FREQUÊNCIA</span>
@@ -354,6 +366,20 @@ input:focus,select:focus{border-color:var(--ac)}
     document.getElementById('c-rest').textContent=dose>0?'~'+Math.floor(6200/dose)+' doses':'-';
   }
   ['c-mg','c-ml','c-dose'].forEach(function(id){document.getElementById(id).oninput=calc});calc();
+  // calculadora dentro do Novo protocolo (mesma conta, unidade da dose respeitada)
+  function ncalc(){
+    var mg=num('n-mg'),ml=num('n-ml'),dose=num('n-dose'),u=document.getElementById('n-un').value;
+    var conc=ml>0?mg/ml:0,vol=0;
+    if(u==='ml')vol=dose;
+    else if(conc>0)vol=(u==='mcg'?dose/1000:dose)/conc;
+    var ui=vol*100,ok=vol>0;
+    document.getElementById('n-conc').textContent=conc>0?f(conc,2)+' mg/ml':'-';
+    document.getElementById('n-vol').textContent=ok?f(vol,3)+' ml':'-';
+    document.getElementById('n-uis').textContent=ok?f(ui,1)+' UI':'preencha os campos';
+    document.getElementById('n-syr').style.width=Math.min(100,ui)+'%';
+  }
+  ['n-mg','n-ml','n-dose'].forEach(function(id){document.getElementById(id).oninput=ncalc});
+  document.getElementById('n-un').onchange=ncalc;ncalc();
   // gráfico
   var series={peso:{u:' kg',d:[85.5,85.0,84.6,84.1,83.8,83.2,82.9,82.4],dl:'−3,1 kg em 8 sem'},cintura:{u:' cm',d:[98,97.5,96.8,96,95.5,95,94.2,93.8],dl:'−4,2 cm em 8 sem'},quadril:{u:' cm',d:[108,107.8,107.2,106.9,106.5,106.2,105.8,105.5],dl:'−2,5 cm em 8 sem'}};
   function draw(k){
