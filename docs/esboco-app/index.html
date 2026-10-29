@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vanguard Protocolo - esboço</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#050a0e;--bg2:#0a1219;--bg3:#0f1c28;--ac:#00e5c3;--tx:#e2eaf0;--mu:#a9bfcb;--mu2:#7d9aa8;--ln:rgba(0,229,195,.12);--warn:#ffc46b;--err:#ff9f80}
+*{box-sizing:border-box;margin:0}
+html,body{background:#02050a;color:var(--tx);font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:16px 0}
+button,input,select{font-family:inherit;font-size:16px;color:var(--tx)}
+button{cursor:pointer}
+.phone{width:390px;max-width:100%;height:820px;max-height:calc(100vh - 32px);background:var(--bg);border:1px solid var(--ln);border-radius:34px;overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,229,195,.08)}
+@media(max-width:430px){body{padding:0}.phone{border-radius:0;border:none;height:100vh;max-height:none}}
+.top{display:flex;align-items:center;gap:8px;height:56px;padding:0 14px;border-bottom:1px solid var(--ln);flex-shrink:0;background:rgba(5,10,14,.94)}
+.logo{font-family:'Syne',sans-serif;font-weight:800;font-size:18px;letter-spacing:.5px;flex:1}
+.logo span{color:var(--ac)}
+.ib{width:42px;height:42px;border-radius:12px;border:none;background:transparent;display:flex;align-items:center;justify-content:center;font-size:20px}
+.ib.p{background:rgba(0,229,195,.1);color:var(--ac)}
+main{flex:1;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+main::-webkit-scrollbar{display:none}
+.scr{display:none;padding:16px 16px 24px;flex-direction:column;gap:14px}
+.scr.on{display:flex}
+h1{font-family:'Syne',sans-serif;font-weight:800;font-size:26px;line-height:1.1;letter-spacing:-.5px}
+h2{font-family:'Syne',sans-serif;font-weight:700;font-size:17px}
+.sub{font-size:14px;line-height:1.45;color:var(--mu)}
+.sm{font-size:12px;color:var(--mu2);line-height:1.4}
+.card{background:var(--bg2);border:1px solid rgba(0,229,195,.1);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.btn{height:48px;border-radius:14px;border:1px solid rgba(0,229,195,.25);background:transparent;font-weight:600;padding:0 16px;color:var(--tx)}
+.btn.pri{background:var(--ac);color:#04110e;border-color:var(--ac)}
+.btn.dng{color:var(--err);border-color:rgba(255,159,128,.35)}
+.btn.sm2{height:40px;font-size:14px;padding:0 12px}
+.row{display:flex;gap:8px;align-items:center}
+.row>*{min-width:0}
+.sp{justify-content:space-between}
+.grow{flex:1}
+label{font-size:13px;color:var(--mu);display:flex;flex-direction:column;gap:6px}
+input,select{height:48px;border-radius:14px;background:var(--bg3);border:1px solid var(--ln);padding:0 14px;width:100%;outline:none}
+input:focus,select:focus{border-color:var(--ac)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{height:40px;padding:0 14px;border-radius:20px;font-size:14px;font-weight:600;background:transparent;color:#c7d6de;border:1px solid rgba(0,229,195,.2)}
+.chip.on{background:var(--ac);color:#04110e;border-color:var(--ac)}
+.big{font-family:'Syne',sans-serif;font-weight:800;font-size:44px;color:var(--ac);letter-spacing:-1px;line-height:1}
+.pill{display:inline-block;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600;background:rgba(0,229,195,.12);color:var(--ac)}
+.pill.w{background:rgba(255,196,107,.14);color:var(--warn)}
+.pill.m{background:rgba(125,154,168,.15);color:var(--mu)}
+.bar{height:10px;border-radius:5px;background:var(--bg3);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ac)}
+.item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:var(--bg3);border:1px solid var(--ln)}
+.item .t{flex:1;min-width:0}
+.item b{font-weight:600;font-size:15px}
+.dot{width:28px;height:28px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;border:1.5px solid var(--mu2);color:var(--mu2)}
+.dot.ok{background:var(--ac);border-color:var(--ac);color:#04110e}
+.dot.sk{border-color:var(--warn);color:var(--warn)}
+.warnbox{background:rgba(255,196,107,.08);border:1px solid rgba(255,196,107,.3);border-radius:14px;padding:12px;font-size:13px;line-height:1.45;color:#f3dcb0}
+.nav{display:flex;border-top:1px solid var(--ln);background:rgba(5,10,14,.97);flex-shrink:0;padding-bottom:4px}
+.nav button{flex:1;height:60px;border:none;background:none;color:var(--mu2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;min-width:0}
+.nav button span{font-size:20px}
+.nav button.on{color:var(--ac)}
+.nav.hide{display:none}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.week button{height:56px;border-radius:12px;border:1px solid var(--ln);background:var(--bg2);font-size:11px;color:var(--mu);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.week button b{font-size:16px;color:var(--tx)}
+.week button.on{background:var(--ac);color:#04110e;border-color:var(--ac)}
+.week button.on b{color:#04110e}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.cal div{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--mu2);background:var(--bg3)}
+.cal .h{background:none;aspect-ratio:auto;font-size:11px}
+.cal .a1{background:rgba(0,229,195,.25);color:var(--tx)}
+.cal .a2{background:rgba(0,229,195,.55);color:#04110e;font-weight:600}
+.cal .a3{background:var(--ac);color:#04110e;font-weight:700}
+.cal .no{background:transparent}
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.photos div{aspect-ratio:3/4;border-radius:10px;background:radial-gradient(70% 55% at 50% 45%,rgba(0,229,195,.12),transparent 70%),#070d12;border:1px dashed rgba(0,229,195,.25);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--mu2);text-align:center;padding:4px}
+.notif{background:#1b2630;border-radius:18px;padding:12px;display:flex;gap:10px;align-items:center;border:1px solid rgba(255,255,255,.08)}
+.notif .ic{width:36px;height:36px;border-radius:9px;background:var(--ac);color:#04110e;font-family:'Syne',sans-serif;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.notif b{font-size:14px;display:block}
+.notif span{font-size:13px;color:var(--mu)}
+.sw{position:relative;width:50px;height:28px;border-radius:14px;background:var(--bg3);border:1px solid var(--ln);flex-shrink:0;padding:0}
+.sw::after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--mu2);transition:.15s}
+.sw.on{background:rgba(0,229,195,.25);border-color:var(--ac)}
+.sw.on::after{left:25px;background:var(--ac)}
+.seg{display:flex;background:var(--bg3);border-radius:12px;padding:3px;border:1px solid var(--ln)}
+.seg button{flex:1;height:36px;border:none;border-radius:9px;background:none;color:var(--mu);font-size:14px;font-weight:600}
+.seg button.on{background:var(--ac);color:#04110e}
+.toast{position:absolute;left:16px;right:16px;bottom:78px;background:var(--ac);color:#04110e;font-weight:600;padding:12px 14px;border-radius:14px;font-size:14px;opacity:0;transform:translateY(10px);pointer-events:none;transition:.2s;z-index:9}
+.toast.on{opacity:1;transform:none}
+.welcome{align-items:center;text-align:center;justify-content:center;min-height:100%;gap:18px;padding-top:30px}
+.vmark{width:84px;height:84px;border-radius:24px;background:rgba(0,229,195,.1);border:1px solid rgba(0,229,195,.3);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:800;font-size:44px;color:var(--ac)}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+  <div class="top" id="top">
+    <div class="logo">VANGUARD <span>Protocolo</span></div>
+    <button class="ib" data-go="novo" title="Novo protocolo" aria-label="Novo protocolo">＋</button>
+    <button class="ib" data-go="ajustes" title="Ajustes" aria-label="Ajustes">⚙</button>
+  </div>
+  <main id="main">
+
+    <!-- 1 BOAS-VINDAS -->
+    <section class="scr welcome on" id="s-boas">
+      <div class="vmark">V</div>
+      <h1>Seu registro,<br>do seu jeito.</h1>
+      <p class="sub">Anote suas doses, acompanhe seu frasco e veja sua evolução. Tudo fica só neste celular. Sem conta, sem login.</p>
+      <div class="warnbox" style="text-align:left"><b>Aviso importante.</b> Este app é uma ferramenta de registro e não substitui orientação médica. Você define suas próprias doses e horários; o app nunca sugere nem recomenda doses.</div>
+      <label class="row" style="flex-direction:row;align-items:flex-start;text-align:left;gap:10px;width:100%">
+        <input type="checkbox" id="aceite" style="width:22px;height:22px;flex-shrink:0;margin-top:1px">
+        <span>Li e entendi que é apenas uma ferramenta de registro.</span>
+      </label>
+      <button class="btn pri" id="entrar" style="width:100%;opacity:.5">Começar</button>
+      <p class="sm">Instale na tela inicial para usar como app (PWA).</p>
+    </section>
+
+    <!-- 2 INICIO -->
+    <section class="scr" id="s-inicio">
+      <div><h1>Olá 👋</h1><p class="sub">Terça-feira, 28 de outubro</p></div>
+      <div class="card" style="align-items:center;text-align:center">
+        <span class="sm">PRÓXIMO HORÁRIO</span>
+        <h2>Protocolo A · 22:00</h2>
+        <div class="big" id="cd">02:14:36</div>
+        <span class="sm">horas : min : seg</span>
+        <p class="sub">Dose registrada por você: <b style="color:var(--tx)">250 mcg</b> · Local: abdômen</p>
+        <div class="row" style="width:100%">
+          <button class="btn pri grow" id="tomei">✓ Tomei</button>
+          <button class="btn grow" id="pular">Pular</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row sp"><h2>Frasco atual</h2><span class="pill">12 dias</span></div>
+        <div class="bar"><i style="width:62%"></i></div>
+        <div class="row sp"><span class="sm">Restam ~1,24 ml (62%)</span><button class="btn sm2" data-go="frasco">Ver frasco</button></div>
+      </div>
+      <div class="card">
+        <h2>Esta semana</h2>
+        <div class="row sp"><span class="sub">4 de 5 horários feitos</span><span class="pill">Ótimo ritmo</span></div>
+        <div class="bar"><i style="width:80%"></i></div>
+      </div>
+    </section>
+
+    <!-- 3 AGENDA -->
+    <section class="scr" id="s-agenda">
+      <h1>Agenda</h1>
+      <div class="seg" id="segag"><button class="on" data-v="dia">Dia</button><button data-v="sem">Semana</button></div>
+      <div class="week" id="week"></div>
+      <div id="ag-dia" class="scr on" style="padding:0">
+        <div class="item"><div class="dot ok">✓</div><div class="t"><b>08:00 · Protocolo A</b><div class="sm">250 mcg · abdômen esquerdo</div></div><span class="pill">Feita</span></div>
+        <div class="item"><div class="dot sk">↷</div><div class="t"><b>14:00 · Protocolo B</b><div class="sm">0,5 mg · coxa direita</div></div><span class="pill w">Pulada</span></div>
+        <div class="item"><div class="dot">·</div><div class="t"><b>22:00 · Protocolo A</b><div class="sm">250 mcg · local a registrar</div></div><button class="btn sm2 pri" id="agtomei">Tomei</button></div>
+        <div class="card"><span class="sm">LOCAL DA APLICAÇÃO (rodízio anotado por você)</span>
+          <div class="chips" id="locais"><button class="chip on">Abdômen E</button><button class="chip">Abdômen D</button><button class="chip">Coxa E</button><button class="chip">Coxa D</button><button class="chip">Outro</button></div></div>
+      </div>
+      <div id="ag-sem" class="scr" style="padding:0">
+        <div class="card" style="gap:6px">
+          <div class="row sp"><span>Seg</span><span class="pill">2/2</span></div>
+          <div class="row sp"><span>Ter</span><span class="pill">2/2</span></div>
+          <div class="row sp"><span>Qua</span><span class="pill w">1/2 · 1 pulada</span></div>
+          <div class="row sp"><span>Qui (hoje)</span><span class="pill m">1/3</span></div>
+          <div class="row sp"><span>Sex</span><span class="pill m">0/2</span></div>
+          <div class="row sp"><span>Sáb</span><span class="pill m">0/1</span></div>
+          <div class="row sp"><span>Dom</span><span class="pill m">sem horários</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4 NOVO PROTOCOLO -->
+    <section class="scr" id="s-novo">
+      <h1>Novo protocolo</h1>
+      <p class="sub">Você preenche tudo. O app apenas guarda e lembra.</p>
+      <label>Nome / substância (texto livre)<input placeholder="Ex.: o que você anotou do frasco"></label>
+      <div class="row">
+        <label class="grow">Dose (você digita)<input inputmode="decimal" placeholder="0"></label>
+        <label style="width:110px">Unidade<select><option>mcg</option><option>mg</option><option>UI</option><option>ml</option></select></label>
+      </div>
+      <div>
+        <span class="sm">FREQUÊNCIA</span>
+        <div class="chips" style="margin-top:8px" id="freq"><button class="chip on" data-f="dia">Todo dia</button><button class="chip" data-f="n">A cada N dias</button><button class="chip" data-f="dias">Dias da semana</button></div>
+      </div>
+      <label id="f-n" class="hidden">A cada quantos dias?<input inputmode="numeric" value="3"></label>
+      <div id="f-dias" class="hidden"><div class="chips"><button class="chip on">Seg</button><button class="chip">Ter</button><button class="chip on">Qua</button><button class="chip">Qui</button><button class="chip on">Sex</button><button class="chip">Sáb</button><button class="chip">Dom</button></div></div>
+      <label>Horários<div class="row"><input type="time" value="08:00"><input type="time" value="22:00"><button class="btn sm2">＋</button></div></label>
+      <div class="card"><div class="row sp"><span>Lembrete neste protocolo</span><button class="sw on" aria-label="lembrete"></button></div>
+        <span class="sm">O lembrete nunca mostra o nome da substância.</span></div>
+      <button class="btn pri" id="salvarp">Salvar protocolo</button>
+    </section>
+
+    <!-- 5 FRASCO -->
+    <section class="scr" id="s-frasco">
+      <h1>Frasco e calculadora</h1>
+      <p class="sub">Calculadora de conversão. Os números são seus; o app só faz a conta.</p>
+      <div class="card">
+        <div class="row">
+          <label class="grow">Frasco (mg)<input id="c-mg" inputmode="decimal" value="10"></label>
+          <label class="grow">Diluente (ml)<input id="c-ml" inputmode="decimal" value="2"></label>
+        </div>
+        <div class="row sp"><span class="sub">Concentração</span><b id="c-conc" style="color:var(--ac)">5,00 mg/ml</b></div>
+      </div>
+      <div class="card">
+        <label>Dose que você definiu (mcg)<input id="c-dose" inputmode="decimal" value="250"></label>
+        <div class="row sp"><span class="sub">Volume</span><b id="c-vol">0,050 ml</b></div>
+        <div class="row sp"><span class="sub">Seringa U-100</span><b id="c-un" style="color:var(--ac)">5,0 unidades</b></div>
+        <div class="syr"><div class="bar" style="height:14px"><i id="c-syr" style="width:5%"></i></div><div class="row sp sm"><span>0</span><span>50</span><span>100 un</span></div></div>
+      </div>
+      <div class="card">
+        <div class="row sp"><h2>Quanto resta</h2><span class="pill" id="c-rest">~40 doses</span></div>
+        <div class="bar"><i style="width:62%"></i></div>
+        <span class="sm">Restam ~6,2 mg de 10 mg · baseado nas doses que você registrou.</span>
+      </div>
+      <a class="btn pri" style="display:flex;align-items:center;justify-content:center;text-decoration:none" href="https://vanguardpep.com" target="_blank" rel="noopener">Recomprar na Vanguard</a>
+      <p class="sm">O botão abre a loja vanguardpep.com. Nenhum dado seu é enviado.</p>
+    </section>
+
+    <!-- 6 EVOLUCAO -->
+    <section class="scr" id="s-evolucao">
+      <h1>Evolução</h1>
+      <div class="seg" id="segev"><button class="on" data-m="peso">Peso</button><button data-m="cintura">Cintura</button><button data-m="quadril">Quadril</button></div>
+      <div class="card">
+        <div class="row sp"><b id="ev-val">82,4 kg</b><span class="pill" id="ev-delta">−3,1 kg em 8 sem</span></div>
+        <svg id="chart" viewBox="0 0 320 150" width="100%" style="display:block"></svg>
+        <button class="btn sm2">＋ Registrar medida de hoje</button>
+      </div>
+      <div class="card">
+        <h2>Sintomas e sensações</h2>
+        <div class="chips"><button class="chip on">Tudo bem</button><button class="chip">Enjoo</button><button class="chip">Cansaço</button><button class="chip">Dor de cabeça</button><button class="chip">Sono ruim</button></div>
+        <div class="item"><div class="t"><b>24/10 · Cansaço leve</b><div class="sm">"Melhorou após beber mais água"</div></div></div>
+        <button class="btn sm2">＋ Anotar como me sinto</button>
+      </div>
+      <div class="card">
+        <h2>Fotos de progresso</h2>
+        <div class="photos"><div>Semana 0</div><div>Semana 4</div><div>Semana 8</div></div>
+        <button class="btn sm2">＋ Adicionar foto</button>
+        <span class="sm">As fotos ficam só neste aparelho.</span>
+      </div>
+    </section>
+
+    <!-- 7 HISTORICO -->
+    <section class="scr" id="s-historico">
+      <h1>Histórico</h1>
+      <div class="card" style="text-align:center">
+        <div class="big">23</div>
+        <span class="sub">dias registrados nos últimos 30. Constância incrível! 💪</span>
+      </div>
+      <div class="card">
+        <div class="row sp"><h2>Outubro</h2><span class="sm">mais escuro = mais registros</span></div>
+        <div class="cal" id="cal"></div>
+      </div>
+      <div class="card">
+        <h2>Backup</h2>
+        <p class="sub">Seus dados só existem neste celular. Para trocar de aparelho, exporte e importe o arquivo.</p>
+        <div class="row"><button class="btn grow sm2 pri" data-toast="Backup baixado (exemplo)">Exportar backup</button><button class="btn grow sm2" data-toast="Escolher arquivo (exemplo)">Importar backup</button></div>
+      </div>
+    </section>
+
+    <!-- 8 AJUSTES -->
+    <section class="scr" id="s-ajustes">
+      <h1>Ajustes</h1>
+      <div class="card">
+        <h2>Lembretes</h2>
+        <div class="row sp"><span>Notificação ao abrir o app</span><button class="sw on" aria-label="notificação"></button></div>
+        <p class="sm">Sem servidor, o app só consegue avisar quando é aberto. Para alarmes com o app fechado, use o calendário.</p>
+        <button class="btn sm2" data-toast="Arquivo .ics com alarme baixado (exemplo)">Baixar calendário (.ics) com alarme</button>
+        <span class="sm">EXEMPLO DE NOTIFICAÇÃO</span>
+        <div class="notif"><div class="ic">V</div><div><b>Vanguard</b><span>Hora do seu horário</span></div></div>
+        <span class="sm">Nunca aparece o nome da substância.</span>
+      </div>
+      <div class="card">
+        <h2>Backup</h2>
+        <div class="row"><button class="btn grow sm2" data-toast="Backup baixado (exemplo)">Exportar</button><button class="btn grow sm2" data-toast="Escolher arquivo (exemplo)">Importar</button></div>
+      </div>
+      <div class="card">
+        <h2>Apagar tudo</h2>
+        <p class="sm">Remove protocolos, registros, medidas e fotos deste aparelho. Não dá para desfazer.</p>
+        <button class="btn dng sm2" id="apagar">Apagar todos os meus dados</button>
+      </div>
+      <div class="card">
+        <h2>Aviso legal</h2>
+        <p class="sm">Ferramenta de registro. Não substitui orientação médica, não diagnostica e não sugere doses. Todas as informações são inseridas por você e permanecem no seu aparelho.</p>
+        <button class="btn sm2" data-go="boas">Rever boas-vindas</button>
+      </div>
+      <p class="sm" style="text-align:center">Vanguard Protocolo · esboço v0</p>
+    </section>
+
+  </main>
+  <nav class="nav hide" id="nav">
+    <button data-go="inicio"><span>⌂</span>Início</button>
+    <button data-go="agenda"><span>▦</span>Agenda</button>
+    <button data-go="frasco"><span>⚗</span>Frasco</button>
+    <button data-go="evolucao"><span>↗</span>Evolução</button>
+    <button data-go="historico"><span>◷</span>Histórico</button>
+  </nav>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script>
+(function(){
+  var main=document.getElementById('main'),nav=document.getElementById('nav'),top=document.getElementById('top');
+  var toastEl=document.getElementById('toast'),tt;
+  function toast(m){toastEl.textContent=m;toastEl.classList.add('on');clearTimeout(tt);tt=setTimeout(function(){toastEl.classList.remove('on')},1800)}
+  function go(id){
+    document.querySelectorAll('main > .scr').forEach(function(s){s.classList.toggle('on',s.id==='s-'+id)});
+    nav.classList.toggle('hide',id==='boas');
+    top.style.display=id==='boas'?'none':'flex';
+    nav.querySelectorAll('button').forEach(function(b){b.classList.toggle('on',b.dataset.go===id)});
+    main.scrollTop=0;
+  }
+  document.addEventListener('click',function(e){
+    var g=e.target.closest('[data-go]');if(g){go(g.dataset.go);return}
+    var t=e.target.closest('[data-toast]');if(t){toast(t.dataset.toast)}
+  });
+  top.style.display='none';
+  // boas-vindas
+  var ac=document.getElementById('aceite'),en=document.getElementById('entrar');
+  ac.onchange=function(){en.style.opacity=ac.checked?1:.5};
+  en.onclick=function(){if(ac.checked)go('inicio');else toast('Marque a confirmação para continuar')};
+  // contagem regressiva
+  var left=2*3600+14*60+36,cd=document.getElementById('cd');
+  function p(n){return (n<10?'0':'')+n}
+  setInterval(function(){if(left>0)left--;cd.textContent=p(Math.floor(left/3600))+':'+p(Math.floor(left%3600/60))+':'+p(left%60)},1000);
+  document.getElementById('tomei').onclick=function(){toast('Registrado! Boa constância ✓')};
+  document.getElementById('pular').onclick=function(){toast('Horário marcado como pulado')};
+  document.getElementById('agtomei').onclick=function(){toast('Registrado! ✓')};
+  // chips de seleção única/múltipla
+  document.querySelectorAll('.chips .chip').forEach(function(c){c.onclick=function(){
+    if(c.parentElement.id==='freq'||c.parentElement.id==='locais'){c.parentElement.querySelectorAll('.chip').forEach(function(x){x.classList.remove('on')});c.classList.add('on')}
+    else c.classList.toggle('on');
+    if(c.parentElement.id==='freq'){document.getElementById('f-n').classList.toggle('hidden',c.dataset.f!=='n');document.getElementById('f-dias').classList.toggle('hidden',c.dataset.f!=='dias')}
+  }});
+  document.querySelectorAll('.sw').forEach(function(s){s.onclick=function(){s.classList.toggle('on')}});
+  document.getElementById('salvarp').onclick=function(){toast('Protocolo salvo (exemplo)');setTimeout(function(){go('inicio')},700)};
+  document.getElementById('apagar').onclick=function(){toast('Pediria confirmação antes de apagar (exemplo)')};
+  // semana
+  var wk=document.getElementById('week'),dn=['D','S','T','Q','Q','S','S'];
+  for(var i=0;i<7;i++){var b=document.createElement('button');b.innerHTML=dn[i]+'<b>'+(25+i-3>31?25+i-3-31:25+i-3)+'</b>';if(i===3)b.className='on';b.onclick=function(){wk.querySelectorAll('button').forEach(function(x){x.classList.remove('on')});this.classList.add('on')};wk.appendChild(b)}
+  document.querySelectorAll('#segag button').forEach(function(b){b.onclick=function(){
+    document.querySelectorAll('#segag button').forEach(function(x){x.classList.toggle('on',x===b)});
+    document.getElementById('ag-dia').classList.toggle('on',b.dataset.v==='dia');
+    document.getElementById('ag-sem').classList.toggle('on',b.dataset.v==='sem');
+  }});
+  // calculadora (só conversão matemática do que o usuário digitou)
+  function num(id){return parseFloat(String(document.getElementById(id).value).replace(',','.'))||0}
+  function f(n,d){return n.toFixed(d).replace('.',',')}
+  function calc(){
+    var mg=num('c-mg'),ml=num('c-ml'),dose=num('c-dose');
+    var conc=ml>0?mg/ml:0; // mg/ml
+    var vol=conc>0?(dose/1000)/conc:0; // ml
+    var un=vol*100;
+    document.getElementById('c-conc').textContent=f(conc,2)+' mg/ml';
+    document.getElementById('c-vol').textContent=f(vol,3)+' ml';
+    document.getElementById('c-un').textContent=f(un,1)+' unidades';
+    document.getElementById('c-syr').style.width=Math.min(100,un)+'%';
+    document.getElementById('c-rest').textContent=dose>0?'~'+Math.floor(6200/dose)+' doses':'-';
+  }
+  ['c-mg','c-ml','c-dose'].forEach(function(id){document.getElementById(id).oninput=calc});calc();
+  // gráfico
+  var series={peso:{u:' kg',d:[85.5,85.0,84.6,84.1,83.8,83.2,82.9,82.4],dl:'−3,1 kg em 8 sem'},cintura:{u:' cm',d:[98,97.5,96.8,96,95.5,95,94.2,93.8],dl:'−4,2 cm em 8 sem'},quadril:{u:' cm',d:[108,107.8,107.2,106.9,106.5,106.2,105.8,105.5],dl:'−2,5 cm em 8 sem'}};
+  function draw(k){
+    var s=series[k],d=s.d,mn=Math.min.apply(null,d)-1,mx=Math.max.apply(null,d)+1,W=320,H=150,pad=14,pts=[];
+    d.forEach(function(v,i){pts.push([pad+i*(W-2*pad)/(d.length-1),pad+(mx-v)/(mx-mn)*(H-2*pad)])});
+    var path=pts.map(function(q,i){return (i?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1)}).join(' ');
+    var area=path+' L'+pts[pts.length-1][0]+' '+(H-pad)+' L'+pts[0][0]+' '+(H-pad)+' Z';
+    var g='';for(var i=0;i<4;i++){var y=pad+i*(H-2*pad)/3;g+='<line x1="'+pad+'" x2="'+(W-pad)+'" y1="'+y+'" y2="'+y+'" stroke="rgba(0,229,195,.1)"/>'}
+    document.getElementById('chart').innerHTML=g+'<path d="'+area+'" fill="rgba(0,229,195,.12)"/><path d="'+path+'" fill="none" stroke="#00e5c3" stroke-width="2.5" stroke-linejoin="round"/>'+pts.map(function(q){return '<circle cx="'+q[0]+'" cy="'+q[1]+'" r="3.5" fill="#00e5c3"/>'}).join('');
+    document.getElementById('ev-val').textContent=String(d[d.length-1]).replace('.',',')+s.u;
+    document.getElementById('ev-delta').textContent=s.dl;
+  }
+  draw('peso');
+  document.querySelectorAll('#segev button').forEach(function(b){b.onclick=function(){document.querySelectorAll('#segev button').forEach(function(x){x.classList.toggle('on',x===b)});draw(b.dataset.m)}});
+  // calendário
+  var cal=document.getElementById('cal'),h='';
+  ['D','S','T','Q','Q','S','S'].forEach(function(x){h+='<div class="h">'+x+'</div>'});
+  for(var i=0;i<3;i++)h+='<div class="no"></div>'; // 1º de out/2026 = quinta
+  var lv=[3,3,2,3,0,3,3,3,2,3,3,0,3,3,2,3,3,3,0,3,3,3,2,3,3,1,0,0,0,0,0];
+  for(var d=1;d<=31;d++){var l=d<=28?lv[d-1]:0;h+='<div class="'+(l?'a'+l:'')+'">'+d+'</div>'}
+  cal.innerHTML=h;
+})();
+</script>
+</body>
+</html>
