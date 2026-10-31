@@ -92,6 +92,7 @@ function NovaLoja(P) {
           <button onClick={() => go('faq')}>Dúvidas</button>
         </div>
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+          <button className="nv-ico nv-calcico" onClick={() => go('calc')} aria-label="Calculadora de dose"><NvIcon d={NV_ICONS.calc} /></button>
           <button className="nv-ico" onClick={() => go('rastrear')} aria-label="Rastrear pedido"><NvIcon d={NV_ICONS.box} /></button>
           <button className="nv-ico nv-cartbtn" onClick={() => go('checkout')} aria-label={`Carrinho, ${cartCount} itens`}>
             <NvIcon d={NV_ICONS.cart} />

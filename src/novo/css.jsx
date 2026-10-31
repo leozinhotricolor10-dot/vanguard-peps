@@ -13,6 +13,7 @@ const NOVO_CSS = `
 .nv-links button{height:40px;padding:0 12px;border:none;background:none;color:var(--mu);font-size:14px;cursor:pointer;border-radius:10px}
 .nv-links button:hover{color:var(--tx)}
 .nv-ico{width:44px;height:44px;border-radius:12px;border:none;background:transparent;color:var(--tx);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.nv-calcico{color:var(--ac)}
 .nv-cartbtn{background:rgba(0,229,195,.1);color:var(--ac)}
 .nv-badge{position:absolute;top:4px;right:4px;min-width:18px;height:18px;border-radius:9px;background:var(--ac);color:#04110e;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
 .nv-strip{display:flex;justify-content:space-between;gap:8px;padding:10px 16px;background:var(--bg2);font-size:12px;color:var(--mu);max-width:1100px;margin:0 auto}
@@ -162,6 +163,7 @@ const NOVO_CSS = `
 .nv-sheet>div{width:100%;max-width:520px;max-height:92vh;overflow:auto;background:var(--bg);border-radius:22px 22px 0 0;border:1px solid var(--ln);padding:20px 16px 24px;display:flex;flex-direction:column;gap:14px}
 @media (min-width:760px){
   .nv-links{display:flex}
+  .nv-calcico{display:none}
   .nv-h1{font-size:44px}
   .nv-grid{grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
   .nv-narrow{max-width:640px;margin:0 auto}

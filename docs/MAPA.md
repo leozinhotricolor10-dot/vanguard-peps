@@ -15,12 +15,12 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/views/calc.jsx` | 451 | 20 |
 | `src/views/portal.jsx` | 177 | 11 |
 | `src/novo/rotas.jsx` | 68 | 4 |
-| `src/novo/css.jsx` | 176 | 17 |
+| `src/novo/css.jsx` | 178 | 17 |
 | `src/novo/admin-shell.jsx` | 221 | 16 |
 | `src/novo/sorteio-admin.jsx` | 532 | 34 |
 | `src/novo/sorteio-palco.jsx` | 137 | 10 |
-| `src/novo/componentes.jsx` | 188 | 11 |
-| `src/novo/loja.jsx` | 667 | 44 |
+| `src/novo/componentes.jsx` | 189 | 11 |
+| `src/novo/loja.jsx` | 668 | 44 |
 | `src/app/logica/01-estado-rotas.part.jsx` | 333 | 24 |
 | `src/app/logica/02-notificacoes-status.part.jsx` | 160 | 9 |
 | `src/app/logica/03-melhor-envios-cambio.part.jsx` | 277 | 17 |
@@ -57,7 +57,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/07-produto.part.jsx` | 94 | 7 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **12205** | |
+| **total** | **12209** | |
 
 ## Conteúdo (nome:linha)
 
@@ -95,7 +95,7 @@ SORTEIO_STATUS_OK:10 · SORTEIO_LS:11 · SORTEIO_LS_MIGRADO:12 · SORTEIO_ERRO_T
 sorteioNomePalco:5 · SORTEIO_PALCO_CSS:13 · sorteioFonte:47 · SorteioPalco:52
 
 ### `src/novo/componentes.jsx`
-nvFmt:1 · NvIcon:3 · NV_ICONS:6 · NvMarquee:20 · NvProdImg:95 · NvComboImg:109 · NvInstallBanner:121 · SORTEIO:153 · NvSorteio:160
+nvFmt:1 · NvIcon:3 · NV_ICONS:6 · NvMarquee:21 · NvProdImg:96 · NvComboImg:110 · NvInstallBanner:122 · SORTEIO:154 · NvSorteio:161
 
 ### `src/novo/loja.jsx`
 NovaLoja:1
