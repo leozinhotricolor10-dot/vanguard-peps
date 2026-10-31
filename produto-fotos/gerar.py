@@ -42,6 +42,7 @@ CATALOGO = [
     ("BBG70", "GLOW Blend", "70MG"),
     ("CP10", "CJC-1295 + Ipamorelin", "NO DAC · 10MG"),   # sistema: "CJC-1295 no DAC+Ipa", spec 10mg
     ("CU50", "GHK-Cu", "50MG"),
+    ("CU100", "GHK-Cu", "100MG"),
     ("DS10", "DSIP", "10MG"),
     ("EPT10", "Epithalon", "10MG"),
     ("KL80", "BPC + GHK + TB500 + KPV Blend", "80MG"),
