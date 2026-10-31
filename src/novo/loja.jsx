@@ -23,7 +23,7 @@ function NovaLoja(P) {
     const depth = ((window.history.state && window.history.state.nv && window.history.state.nv.d) || 0) + 1;
     // Produto ganha endereço próprio (/p/<código>); o resto fica na home da loja nova
     const prod = s === 'produto' && products.find(p => p.id === id);
-    const url = prod ? '/p/' + nvSlugOf(prod) : NV_HOME;
+    const url = prod ? '/p/' + nvSlugOf(prod) : NV_HOME + (s === 'calc' ? '#/calculadora' : '');
     window.history.pushState({ nv: { s, pid: id || null, d: depth } }, '', url);
     setScreen(s); setPid(id || null); window.scrollTo(0, 0);
   }

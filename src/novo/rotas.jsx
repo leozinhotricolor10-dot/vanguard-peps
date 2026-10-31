@@ -14,7 +14,7 @@ if (NOVO_NO_INICIO && /^\/novo\/?$/.test(window.location.pathname)) {
 }
 const nvSlugOf = p => String(p.sku || p.id).toLowerCase();
 // Links antigos com hash (#/produto/<id>, #/faq, #/carrinho...) abrem a tela equivalente do layout novo
-const NV_HASH_SCREENS = { faq: 'faq', calcular: 'calc', calc: 'calc', blog: 'artigos', artigos: 'artigos', carrinho: 'checkout', cart: 'checkout', frete: 'frete', rastrear: 'rastrear', pedido: 'rastrear' };
+const NV_HASH_SCREENS = { faq: 'faq', calculadora: 'calc', calcular: 'calc', calc: 'calc', blog: 'artigos', artigos: 'artigos', carrinho: 'checkout', cart: 'checkout', frete: 'frete', rastrear: 'rastrear', pedido: 'rastrear' };
 const nvStateFromUrl = () => {
   if (/^\/p\//.test(window.location.pathname))
     return { s: 'produto', pid: decodeURIComponent(window.location.pathname.split('/')[2] || '').toLowerCase() };
