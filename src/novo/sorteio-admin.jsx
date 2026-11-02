@@ -68,6 +68,21 @@ function sorteioJunta(banco, local) {
   const soLocal = local.filter(h => !ids.has(h.id)).map(h => ({ ...h, _local: true }));
   return [...banco, ...soLocal].sort((a, b) => new Date(b.at) - new Date(a.at));
 }
+// Texto da lista de participantes para o grupo de WhatsApp: só nomes (nada de CPF/telefone/e-mail/valores/cidade), em ordem alfabética
+function sorteioTextoLista(ym, nomes) {
+  const [y, m] = ym.split('-');
+  const mesNome = SORTEIO_MESES[parseInt(m, 10) - 1];
+  const ord = nomes.map(x => String(x || '').replace(/\s+/g, ' ').trim()).filter(Boolean).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  return [
+    '🎁 Sorteio Vanguard — ' + mesNome.charAt(0).toUpperCase() + mesNome.slice(1) + '/' + y,
+    '',
+    'Participantes: ' + ord.length,
+    '',
+    'Se você NÃO está na lista ou seu nome está errado, avise aqui no grupo. 🙏',
+    '',
+    ...ord.map((n, i) => (i + 1) + '. ' + n),
+  ].join('\n');
+}
 const sorteioBRL = v => 'R$ ' + (Number(v) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 // ── Participantes manuais ────────────────────────────────────────────────────
@@ -131,6 +146,7 @@ function SorteioAdmin({ orders, showToast, normUF }) {
   const [extrasOk, setExtrasOk] = React.useState(false); // true = lista manual lida do Supabase
   const [extrasFalta, setExtrasFalta] = React.useState(false); // tabela raffle_extras não existe / não permitida
   const [manSel, setManSel] = React.useState({}); // chave 'm:id' -> true/false (sobrepõe o padrão: entra, salvo duplicado/revisar)
+  const [listaEdit, setListaEdit] = React.useState(null); // texto da lista p/ WhatsApp editado à mão (null = automático)
   const [fNome, setFNome] = React.useState('');
   const [fObs, setFObs] = React.useState('');
   const [fTel, setFTel] = React.useState('');
@@ -247,8 +263,12 @@ function SorteioAdmin({ orders, showToast, normUF }) {
   const manuaisElig = manuais.filter(m => m.entra).map(m => ({ key: m.key, name: m.nome, code: '', phone: m.telefone || '', city: '', manual: true }));
   const elegiveis = [...parts.filter(p => !excl[p.key]), ...manuaisElig];
   const nMax = elegiveis.length;
+  const listaGerada = sorteioTextoLista(mes, elegiveis.map(e => e.name)); // mesma lista (elegiveis) que o sorteio usa
+  const listaTxt = listaEdit === null ? listaGerada : listaEdit;
   const totalCand = parts.length + manuais.length;
   const n = Math.max(1, Math.min(parseInt(qtd, 10) || 1, nMax || 1));
+
+  React.useEffect(() => { setListaEdit(null); }, [listaGerada]);
 
   function trocaMes(m) { setMes(m); setExcl({}); setManSel({}); setRes(null); setFase('idle'); }
 
@@ -307,6 +327,27 @@ function SorteioAdmin({ orders, showToast, normUF }) {
   async function copiar(txt) {
     try { await navigator.clipboard.writeText(txt); showToast('Resultado copiado ✓', 'success'); }
     catch (e) { showToast('Não consegui copiar. Selecione o texto e copie.', 'error'); }
+  }
+  async function copiarLista() {
+    try { await navigator.clipboard.writeText(listaTxt); }
+    catch (err) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = listaTxt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (!ok) throw new Error('execCommand');
+      } catch (e2) { showToast('Não consegui copiar. Selecione o texto e copie.', 'error'); return; }
+    }
+    showToast('Lista copiada ✓', 'success');
+  }
+  function baixarLista() {
+    const url = URL.createObjectURL(new Blob([listaTxt], { type: 'text/plain;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = 'sorteio-' + mes + '-participantes.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
   function whats(g, mesRef) {
     let d = String(g.phone || '').replace(/\D/g, '');
@@ -456,6 +497,21 @@ function SorteioAdmin({ orders, showToast, normUF }) {
           </table>
         </div>}
       <div style={{ fontSize: '0.65rem', color: 'var(--muted)', marginTop: 8 }}>Desmarque quem não deve concorrer (funcionário, teste). CPF, telefone e e-mail não aparecem aqui.</div>
+    </div>
+
+    <div style={card}>
+      <div style={lbl}>📲 LISTA PARA O WHATSAPP · {sorteioMesLabel(mes).toUpperCase()}</div>
+      {nMax === 0
+        ? <div style={{ color: 'var(--muted)', fontSize: '0.8rem' }}>Nenhum participante para listar.</div>
+        : <>
+          <textarea style={{ ...inp, width: '100%', minHeight: 180, boxSizing: 'border-box' }} aria-label="Lista para o WhatsApp" value={listaTxt} onChange={e => setListaEdit(e.target.value)} />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 8 }}>
+            <button onClick={copiarLista} style={btn}>📋 Copiar lista p/ WhatsApp</button>
+            <button onClick={baixarLista} style={btn}>⬇️ Baixar .txt</button>
+            {listaEdit !== null && <button onClick={() => setListaEdit(null)} style={btn}>↺ Refazer texto</button>}
+          </div>
+        </>}
+      <div style={{ fontSize: '0.65rem', color: 'var(--muted)', marginTop: 8 }}>Mesma lista do sorteio (quem está desmarcado fica de fora). Só nomes, em ordem alfabética. Pode editar o texto antes de copiar.</div>
     </div>
 
     <div style={card}>
