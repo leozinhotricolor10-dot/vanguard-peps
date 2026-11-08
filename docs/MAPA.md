@@ -21,24 +21,24 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/novo/sorteio-palco.jsx` | 137 | 10 |
 | `src/novo/componentes.jsx` | 189 | 11 |
 | `src/novo/loja.jsx` | 668 | 44 |
-| `src/app/logica/01-estado-rotas.part.jsx` | 333 | 24 |
+| `src/app/logica/01-estado-rotas.part.jsx` | 336 | 24 |
 | `src/app/logica/02-notificacoes-status.part.jsx` | 160 | 9 |
 | `src/app/logica/03-melhor-envios-cambio.part.jsx` | 277 | 17 |
 | `src/app/logica/04-supabase-sync.part.jsx` | 376 | 20 |
 | `src/app/logica/05-checkout.part.jsx` | 199 | 10 |
 | `src/app/logica/06-pedido-manual.part.jsx` | 267 | 13 |
 | `src/app/logica/07-precos-pontos-preorders.part.jsx` | 327 | 15 |
-| `src/app/logica/08-carrinho-admin.part.jsx` | 473 | 24 |
+| `src/app/logica/08-carrinho-admin.part.jsx` | 526 | 27 |
 | `src/app/render/00-casca-portal-manual.part.jsx` | 631 | 48 |
 | `src/app/render/01-loja-antiga.part.jsx` | 676 | 42 |
-| `src/app/render/02-admin/00-cabecalho.part.jsx` | 101 | 9 |
-| `src/app/render/02-admin/01-pedidos.part.jsx` | 440 | 37 |
+| `src/app/render/02-admin/00-cabecalho.part.jsx` | 118 | 11 |
+| `src/app/render/02-admin/01-pedidos.part.jsx` | 440 | 38 |
 | `src/app/render/02-admin/02-estoque.part.jsx` | 240 | 20 |
 | `src/app/render/02-admin/03-produtos.part.jsx` | 229 | 20 |
 | `src/app/render/02-admin/04-artigos.part.jsx` | 86 | 6 |
 | `src/app/render/02-admin/05-preorders.part.jsx` | 258 | 20 |
 | `src/app/render/02-admin/06-avisos.part.jsx` | 34 | 2 |
-| `src/app/render/02-admin/07-financeiro.part.jsx` | 569 | 42 |
+| `src/app/render/02-admin/07-financeiro.part.jsx` | 570 | 43 |
 | `src/app/render/02-admin/08-importacao.part.jsx` | 520 | 41 |
 | `src/app/render/02-admin/09-clientes.part.jsx` | 85 | 9 |
 | `src/app/render/02-admin/10-cupons.part.jsx` | 85 | 9 |
@@ -57,7 +57,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/07-produto.part.jsx` | 94 | 7 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **12265** | |
+| **total** | **12339** | |
 
 ## Conteúdo (nome:linha)
 
@@ -101,7 +101,7 @@ nvFmt:1 · NvIcon:3 · NV_ICONS:6 · NvMarquee:21 · NvProdImg:96 · NvComboImg:
 NovaLoja:1
 
 ### `src/app/logica/01-estado-rotas.part.jsx` — lógica 1/8: abre function App(), useState/useEffect iniciais e rotas por hash
-parseHash:7 · setView:24 · toastTimerRef:63 · adminLockRef:68 · adminPwRef:69 · openEditCustomer:115 · editCustomerCep:119 · saveEditCustomer:128 · MANUAL_ORDER_EMPTY:147 · detailActionsRef:181 · persistDespesas:182 · persistShippingCosts:183 · persistPurchaseOrders:184 · addPurchaseOrder:185 · receivePurchaseOrder:193 · removePurchaseOrder:201 · callSendersApi:214 · setMeEnv:241 · recoverPoolFromME:249 · fetchMeBalance:271 · setCartBundles:310 · toggleWaAuto:323
+parseHash:7 · setView:24 · toastTimerRef:63 · adminLockRef:68 · adminPwRef:69 · openEditCustomer:115 · editCustomerCep:119 · saveEditCustomer:128 · MANUAL_ORDER_EMPTY:147 · setAdminMonth:178 · detailActionsRef:184 · persistDespesas:185 · persistShippingCosts:186 · persistPurchaseOrders:187 · addPurchaseOrder:188 · receivePurchaseOrder:196 · removePurchaseOrder:204 · callSendersApi:217 · setMeEnv:244 · recoverPoolFromME:252 · fetchMeBalance:274 · setCartBundles:313 · toggleWaAuto:326
 
 ### `src/app/logica/02-notificacoes-status.part.jsx` — lógica 2/8: notificações, artigos, status do pedido, rastreio e WhatsApp de status
 addNotif:7 · markAllRead:18 · clearNotifs:22 · timeAgo:24 · loadArticles:32 · persistArticles:34 · statusLabel:36 · setOrderStatus:46 · markExtraviado:62 · openStatusWhatsApp:71 · isMotoboyOrder:88 · cycleStatus:93 · persistOrders:118 · fetchTrackingFromME:122 · saveTrackingManual:141 · sendTrackingWhatsApp:151
@@ -122,7 +122,7 @@ pastCustomers:3 · fillManualFromCustomer:16 · releaseOrderStock:30 · reserveO
 effectivePrice:2 · persistCoupons:8 · persistCustomers:9 · awardPoints:11 · _checkPointsReq:33 · checkPoints:34 · applyCouponCode:60 · generateToken:76 · savePreorder:82 · removePreorder:144 · persistPreorders:152 · availableStock:175 · inStockPublic:223 · notifyPreorder:234 · sendReminder:255 · checkPreorderExpiry:270 · cancelPreorderByToken:291 · reducePreorderQty:296 · showToast:305 · saveName:311 · handleWelcomeConfirm:313 · handleNameConfirm:321
 
 ### `src/app/logica/08-carrinho-admin.part.jsx` — lógica 8/8: carrinho, combos/packs, login admin, totais, helpers do admin novo (nva*)
-myOrders:3 · myTotal:4 · bundleInfo:7 · addBundleToCart:14 · openModal:51 · addPackToCart:57 · quickAdd:80 · versionTap:101 · handleAddToCart:109 · updateQtyInCart:151 · removeFromCart:216 · openSenderPool:240 · handleAdminUnlock:245 · submitAdminPassword:255 · adminRemove:305 · copyWhatsApp:330 · totalRevenue:355 · totalUnits:359 · totalBuyers:360 · peptideCartQty:368 · nvaPick:405 · NVA_ST:416 · NVA_NEXT:417 · nvaAdvance:418 · nvaWhats:425 · nvaRemove:431 · nvaSteps:436 · nvaWhen:460 · nvaItemsText:470
+myOrders:3 · myTotal:4 · bundleInfo:7 · addBundleToCart:14 · openModal:51 · addPackToCart:57 · quickAdd:80 · versionTap:101 · handleAddToCart:109 · updateQtyInCart:151 · removeFromCart:216 · openSenderPool:240 · handleAdminUnlock:245 · submitAdminPassword:255 · adminRemove:305 · copyWhatsApp:330 · adminDateOf:357 · adminMonthKeyOf:368 · adminMonthLabel:373 · adminMonthKey:374 · inAdminMonth:380 · shipDateOf:382 · adminMonthOptions:384 · amOrders:396 · amPreorders:397 · amDespesas:398 · amImportHistory:399 · amShippingCosts:400 · totalRevenue:408 · totalUnits:412 · totalBuyers:413 · peptideCartQty:421 · nvaPick:458 · NVA_ST:469 · NVA_NEXT:470 · nvaAdvance:471 · nvaWhats:478 · nvaRemove:484 · nvaSteps:489 · nvaWhen:513 · nvaItemsText:523
 
 ### `src/app/render/00-casca-portal-manual.part.jsx` — render: return(, toast, casca do layout novo (NovaLoja/NovaAdminShell, tag de versão), portal de pré-order, formulário de pedido manual, checkout, nav antiga (tag de versão)
 ── CUSTOMER PORTAL ──:24 · ── MANUAL ORDER VIEW ──:39 · Produtos:138 · Dados pessoais:165 · Endereço:178 · Pagamento:196 · Observações:212 · Resumo:218 · CHECKOUT MODAL:261 · STEPPER:275 · PASSO 1 — Dados Pessoais:304 · PASSO 2 — Endereço:353 · PASSO 3 — Pagamento + Descontos:418 · PASSO 4 — Revisão + Enviar:520 · NAV:602
@@ -131,7 +131,7 @@ myOrders:3 · myTotal:4 · bundleInfo:7 · addBundleToCart:14 · openModal:51 ·
 HERO BANNER — full width, fora do grid:2 · SIDEBAR:28 · MAIN:59 · CATALOG:61 · NOTICE BOARD:67 · BANNER FRETE:95 · BOTÃO CATÁLOGO COMPLETO NO WHATSAPP — somente admin:101 · SEARCH BAR:140 · FEATURED CAROUSEL - only on all tab with no search:152 · CATEGORY PILLS - below carousel, above products:210 · FAQ:314 · PRODUCT DETAIL:340 · LEFT — imagem:359 · RIGHT — info:367 · ARTICLE PAGE:472 · CART:502 · MINHAS RESERVAS:583 · SIMULADOR DE FRETE:630
 
 ### `src/app/render/02-admin/00-cabecalho.part.jsx` — render admin: abre a view admin, cadeado/login, cabeçalho e botões das abas
-ADMIN:2 · 🔔 Bell icon:19 · TABS:83
+ADMIN:2 · 🔔 Bell icon:19 · TABS:100
 
 ### `src/app/render/02-admin/01-pedidos.part.jsx` — render admin: aba PEDIDOS
 TAB: PEDIDOS:2 · LISTA DE AVISOS DE REPOSIÇÃO:408
@@ -152,7 +152,7 @@ TAB: PRÉ-ORDERS:2 · FORMULÁRIO MANUAL:41 · MODAL EDITAR RESERVA:94 · Produc
 TAB: AVISOS:2
 
 ### `src/app/render/02-admin/07-financeiro.part.jsx` — render admin: aba FINANCEIRO (P&L, importações, despesas)
-TAB: FINANCEIRO:2 · ── P&L PANEL ──:160 · ── BREAKDOWN IMPORTAÇÕES ──:196 · ── DESPESAS MANUAIS ──:267 · Lista de despesas manuais:298 · Perdas por apreensão alfandegária:320 · Perdas por extravio:339 · Fretes ME registrados:355 · Cards principais:370 · Segunda linha quando há dados de custo:407 · Estoque em Trânsito:429 · Por Status:458 · Lucratividade por Produto — só aparece quando há _custoVial:477 · Ranking de Produtos:500 · Taxa de Conversão Pré-Orders:517 · Projeção Pré-Orders por Produto:536 · Últimos 7 Dias:551
+TAB: FINANCEIRO:2 · ── P&L PANEL ──:161 · ── BREAKDOWN IMPORTAÇÕES ──:197 · ── DESPESAS MANUAIS ──:268 · Lista de despesas manuais:299 · Perdas por apreensão alfandegária:321 · Perdas por extravio:340 · Fretes ME registrados:356 · Cards principais:371 · Segunda linha quando há dados de custo:408 · Estoque em Trânsito:430 · Por Status:459 · Lucratividade por Produto — só aparece quando há _custoVial:478 · Ranking de Produtos:501 · Taxa de Conversão Pré-Orders:518 · Projeção Pré-Orders por Produto:537 · Últimos 7 Dias:552
 
 ### `src/app/render/02-admin/08-importacao.part.jsx` — render admin: aba IMPORTAÇÃO
 TAB: IMPORTAÇÃO:2 · BANNER: modo edição:231 · PARÂMETROS:239 · Segunda linha: outros custos + valor real:272 · Sumário overhead:303 · ITENS:314 · COTAÇÃO — ANÁLISE DE MARGEM:362 · Header:366 · SIMULADOR:395 · AÇÕES:425 · HISTÓRICO:440

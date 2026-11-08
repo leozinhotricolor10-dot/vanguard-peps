@@ -47,7 +47,7 @@
                 <button className="admin-action-btn danger" onClick={clearAllOrders}>🗑️ Limpar tudo</button>
               </div>
               {(() => {
-                const adminOrders = sb ? orders.filter(o => o._supabase) : orders;
+                const adminOrders = sb ? amOrders.filter(o => o._supabase) : amOrders;
                 const adminSearchLower = adminSearch.trim().toLowerCase();
                 const filteredOrders = adminOrders
                   .filter(o => adminStatusFilter === 'all' || (o.status||'pendente') === adminStatusFilter)
@@ -72,7 +72,7 @@
                   extraviado: adminOrders.filter(o=>o.status==='extraviado').length,
                 };
                 if (adminOrders.length === 0) return (
-                  <div style={{textAlign:"center",color:"var(--muted)",padding:40,fontSize:"0.85rem"}}>Nenhum pedido ainda</div>
+                  <div style={{textAlign:"center",color:"var(--muted)",padding:40,fontSize:"0.85rem"}}>{adminMonthKey ? `Nenhum pedido em ${adminMonthLabel(adminMonthKey)} — troque o período no topo para ver outros meses` : 'Nenhum pedido ainda'}</div>
                 );
                 return (
                 <div>

@@ -4,7 +4,8 @@
               const fmt = v => `R$ ${v.toLocaleString('pt-BR')}`;
 
               // Revenue using _total (real amount paid) or calculate from _items
-              const sbOrders = orders.filter(o => o._supabase);
+              const sbOrders = amOrders.filter(o => o._supabase);
+              const sbOrdersAll = orders.filter(o => o._supabase); // últimos 7 dias: janela fixa, ignora o filtro de mês
               const ordsByStatus = s => sbOrders.filter(o=>(o.status||'pendente')===s);
               const revForOrds = ords => ords.reduce((a,o)=>{
                 if(o._total) return a + o._total;
@@ -16,7 +17,7 @@
               const pending   = revByStatus('pendente');
               const totalOrds = sbOrders.length;
               const ticket    = totalOrds ? Math.round((confirmed+pending)/totalOrds) : 0;
-              const preorderProj = preorders.reduce((a,po)=>{ const p=products.find(x=>x.id===po.productId); return a+(p?p.price*(po.qty||0):0); },0);
+              const preorderProj = amPreorders.reduce((a,po)=>{ const p=products.find(x=>x.id===po.productId); return a+(p?p.price*(po.qty||0):0); },0);
 
               // COGS — confirmed orders where product has _custoVial
               const confirmedOrds = [...ordsByStatus('pago'), ...ordsByStatus('enviado'), ...ordsByStatus('entregue')];
@@ -79,24 +80,24 @@
               const estoqueLucroLatente = estoqueVendaTotal - estoqueValorizado;
 
               // Taxa de conversão pré-orders
-              const poTotal = preorders.length;
-              const poConcluidas = preorders.filter(po=>po.status==='completed').length;
+              const poTotal = amPreorders.length;
+              const poConcluidas = amPreorders.filter(po=>po.status==='completed').length;
               const taxaConversao = poTotal > 0 ? Math.round((poConcluidas/poTotal)*100) : 0;
 
               const poByProd = {};
-              preorders.forEach(po=>{ const p=products.find(x=>x.id===po.productId); if(!p) return; if(!poByProd[p.name]) poByProd[p.name]={qty:0,proj:0}; poByProd[p.name].qty+=(po.qty||0); poByProd[p.name].proj+=p.price*(po.qty||0); });
+              amPreorders.forEach(po=>{ const p=products.find(x=>x.id===po.productId); if(!p) return; if(!poByProd[p.name]) poByProd[p.name]={qty:0,proj:0}; poByProd[p.name].qty+=(po.qty||0); poByProd[p.name].proj+=p.price*(po.qty||0); });
 
               const days7 = Array.from({length:7},(_,i)=>{ const d=new Date(); d.setDate(d.getDate()-(6-i)); return d; });
               const trendData = days7.map(d=>{
                 const ds = d.toLocaleDateString('pt-BR');
-                const dayOrds = sbOrders.filter(o=>o.createdAt && new Date(o.createdAt).toLocaleDateString('pt-BR')===ds);
+                const dayOrds = sbOrdersAll.filter(o=>o.createdAt && new Date(o.createdAt).toLocaleDateString('pt-BR')===ds);
                 return { label: d.toLocaleDateString('pt-BR',{weekday:'short'}), rev: revForOrds(dayOrds) };
               });
               const maxTrend = Math.max(...trendData.map(d=>d.rev),1);
 
               // ── DESPESAS ──────────────────────────────────────────────────
               // 1) Frete de saída (ME labels)
-              const totalFreteEnvio = Object.values(shippingCosts).reduce((s,e)=>s+(e.cost||0), 0);
+              const totalFreteEnvio = Object.values(amShippingCosts).reduce((s,e)=>s+(e.cost||0), 0);
 
               // 2) Taxas MP — calculadas por pedido confirmado baseado no pagamento
               const calcMpFee = o => {
@@ -118,14 +119,14 @@
               }, 0);
 
               // 4) Despesas manuais
-              const totalDespManuais = despesas.reduce((s,d)=>s+(parseFloat(d.valor)||0), 0);
+              const totalDespManuais = amDespesas.reduce((s,d)=>s+(parseFloat(d.valor)||0), 0);
 
               // 4) Custo de importações
               const importCustoH = h => (parseFloat(h.totalOrderUsd)||0) * (parseFloat(h.cambio)||0) + (parseFloat(h.overheadBrl)||0);
-              const totalImportCost = importHistory.reduce((s,h) => s + importCustoH(h), 0);
+              const totalImportCost = amImportHistory.reduce((s,h) => s + importCustoH(h), 0);
 
               // Perdas por apreensão — importação retida na alfândega = 100% prejuízo
-              const apreendidasList = importHistory.filter(h => h.status === 'apreendida');
+              const apreendidasList = amImportHistory.filter(h => h.status === 'apreendida');
               const perdaApreensao = apreendidasList.reduce((s,h) => s + importCustoH(h), 0);
 
               // 5) P&L — extravio: COGS perdido entra como despesa
@@ -168,7 +169,7 @@
                       { label:'(-) Frete de envio (ME)', val: totalFreteEnvio, color:'#ffa040', sign:'-', sub: totalFreteEnvio===0?'Será registrado ao gerar etiquetas':null },
                       { label:'(-) Frete absorvido — PIX', val: totalFretePixAbsorvido, color:'#ffa040', sign:'-', sub: pixOrdsConfirmed.length > 0 ? `${pixOrdsConfirmed.length} pedido${pixOrdsConfirmed.length>1?'s':''} PIX × R$ ${FRETE_FIXO} (sem etiqueta ME gerada)` : 'Nenhum pedido PIX confirmado ainda' },
                       { label:'(-) Taxas Mercado Pago', val: totalTaxasMP, color:'#ffa040', sign:'-', sub:'Estimado por tipo de pagamento' },
-                      { label:'(-) Despesas manuais', val: totalDespManuais, color:'#ffa040', sign:'-', sub: despesas.length===0?'Nenhuma lançada ainda':null },
+                      { label:'(-) Despesas manuais', val: totalDespManuais, color:'#ffa040', sign:'-', sub: amDespesas.length===0?(adminMonthKey?'Nenhuma neste mês':'Nenhuma lançada ainda'):null },
                     ].map((row,i)=>(
                       <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,0.04)'}}>
                         <div>
@@ -194,10 +195,10 @@
                   </div>
 
                   {/* ── BREAKDOWN IMPORTAÇÕES ── */}
-                  {importHistory.length > 0 && (
+                  {amImportHistory.length > 0 && (
                     <div style={{marginBottom:20}}>
                       <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'var(--muted)',letterSpacing:'1.5px',marginBottom:10}}>📦 IMPORTAÇÕES — CUSTO vs RECEITA RECUPERADA</div>
-                      {importHistory.map(h => {
+                      {amImportHistory.map(h => {
                         const prodCost = (parseFloat(h.totalOrderUsd)||0) * (parseFloat(h.cambio)||0);
                         const overhead = parseFloat(h.overheadBrl)||0;
                         const totalCusto = prodCost + overhead;
@@ -296,9 +297,9 @@
                       </button>
                     </div>
                     {/* Lista de despesas manuais */}
-                    {despesas.length > 0 && (
+                    {amDespesas.length > 0 && (
                       <div style={{background:'rgba(255,255,255,0.02)',border:'1px solid var(--border)',borderRadius:10,overflow:'hidden'}}>
-                        {despesas.map(d=>(
+                        {amDespesas.map(d=>(
                           <div key={d.id} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'9px 14px',borderBottom:'1px solid rgba(255,255,255,0.03)',fontSize:'0.78rem'}}>
                             <div style={{display:'flex',alignItems:'center',gap:10,flex:1,minWidth:0}}>
                               <span style={{fontSize:'0.72rem'}}>{DESP_CATS[d.categoria]||'📌'}</span>
@@ -353,11 +354,11 @@
                       </div>
                     )}
                     {/* Fretes ME registrados */}
-                    {Object.keys(shippingCosts).length > 0 && (
+                    {Object.keys(amShippingCosts).length > 0 && (
                       <div style={{marginTop:10}}>
                         <div style={{fontSize:'0.6rem',color:'var(--muted)',fontFamily:"'Space Mono',monospace",marginBottom:6}}>📦 FRETES ME GERADOS — R${totalFreteEnvio.toLocaleString('pt-BR',{minimumFractionDigits:2})} total</div>
                         <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
-                          {Object.values(shippingCosts).map((s,i)=>(
+                          {Object.values(amShippingCosts).map((s,i)=>(
                             <span key={i} style={{fontSize:'0.65rem',fontFamily:"'Space Mono',monospace",background:'rgba(255,160,64,0.07)',border:'1px solid rgba(255,160,64,0.2)',borderRadius:6,padding:'3px 8px',color:'var(--muted)'}}>
                               {s.date} · {s.carrier} · R${s.cost.toFixed(2)}
                             </span>
@@ -394,7 +395,7 @@
                       <div className="fin-card purple">
                         <div className="fin-card-label">Projeção Pré-Orders</div>
                         <div className="fin-card-value">{fmt(preorderProj)}</div>
-                        <div className="fin-card-sub">{preorders.length} reserva{preorders.length!==1?'s':''} em fila</div>
+                        <div className="fin-card-sub">{amPreorders.length} reserva{amPreorders.length!==1?'s':''} em fila</div>
                       </div>
                       <div className="fin-card blue">
                         <div className="fin-card-label">Ticket Médio</div>
@@ -409,7 +410,7 @@
                     <div className="fin-card purple">
                       <div className="fin-card-label">Projeção Pré-Orders</div>
                       <div className="fin-card-value">{fmt(preorderProj)}</div>
-                      <div className="fin-card-sub">{preorders.length} reserva{preorders.length!==1?'s':''} em fila</div>
+                      <div className="fin-card-sub">{amPreorders.length} reserva{amPreorders.length!==1?'s':''} em fila</div>
                     </div>
                     <div className="fin-card blue">
                       <div className="fin-card-label">Ticket Médio</div>

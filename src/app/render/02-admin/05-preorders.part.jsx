@@ -10,13 +10,13 @@
                 expired: {txt:'⏰ Expirado', color:'#888'},
                 cancelled: {txt:'✕ Cancelado', color:'#ff5050'},
               };
-              const pendingList = preorders.filter(po=>(po.status||'pending')==='pending');
-              const notifiedList = preorders.filter(po=>po.status==='notified');
-              const doneList = preorders.filter(po=>['completed','expired','cancelled'].includes(po.status));
+              const pendingList = amPreorders.filter(po=>(po.status||'pending')==='pending');
+              const notifiedList = amPreorders.filter(po=>po.status==='notified');
+              const doneList = amPreorders.filter(po=>['completed','expired','cancelled'].includes(po.status));
 
               // Summary chips
               const byProduct = {};
-              preorders.filter(po=>['pending','notified'].includes(po.status||'pending')).forEach(po => {
+              amPreorders.filter(po=>['pending','notified'].includes(po.status||'pending')).forEach(po => {
                 if (!byProduct[po.productName]) byProduct[po.productName] = 0;
                 byProduct[po.productName] += (po.qty || 0);
               });
@@ -155,8 +155,8 @@
                   </div>
                 )}
 
-                {preorders.length === 0 && (
-                  <div style={{textAlign:"center",color:"var(--muted)",padding:40,fontSize:"0.85rem"}}>Nenhuma reserva ainda</div>
+                {amPreorders.length === 0 && (
+                  <div style={{textAlign:"center",color:"var(--muted)",padding:40,fontSize:"0.85rem"}}>{adminMonthKey ? `Nenhuma reserva em ${adminMonthLabel(adminMonthKey)}` : 'Nenhuma reserva ainda'}</div>
                 )}
 
                 {/* PENDING SECTION */}

@@ -58,10 +58,27 @@
               </div>
             </div>
 
+            {/* FILTRO DE MÊS GLOBAL — vale para pedidos, financeiro, pré-orders, mapa (não afeta estoque/produtos) */}
+            <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap',margin:'12px 0',padding:'8px 12px',borderRadius:10,border:`1px solid ${adminMonthKey?'rgba(255,170,0,0.45)':'var(--border)'}`,background:adminMonthKey?'rgba(255,170,0,0.08)':'var(--card)'}}>
+              <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.62rem',letterSpacing:'1px',textTransform:'uppercase',color:'var(--muted)'}}>📅 Período</span>
+              <select value={adminMonthKey && !['cur','prev'].includes(adminMonth) ? adminMonthKey : adminMonth} onChange={e=>{ setAdminMonth(e.target.value); setAdminPage(1); }}
+                style={{padding:'6px 10px',borderRadius:8,border:'1px solid var(--border)',background:'var(--bg, #0b0f14)',color:'var(--text)',fontSize:'0.8rem',fontFamily:"'DM Sans',sans-serif",cursor:'pointer'}}>
+                <option value="all">Todos</option>
+                <option value="cur">Mês atual ({adminMonthLabel(adminMonthKeyOf(new Date()))})</option>
+                <option value="prev">Mês anterior ({adminMonthLabel(adminMonthKeyOf(new Date(new Date().getFullYear(), new Date().getMonth()-1, 1)))})</option>
+                {(adminMonthKey && !adminMonthOptions.includes(adminMonthKey) && !['cur','prev'].includes(adminMonth) ? [adminMonthKey, ...adminMonthOptions] : adminMonthOptions).map(k => <option key={k} value={k}>{adminMonthLabel(k)}</option>)}
+              </select>
+              {adminMonthKey ? <>
+                <span style={{fontSize:'0.78rem',fontWeight:700,color:'#ffaa00'}}>Mostrando: {adminMonthLabel(adminMonthKey)}</span>
+                <span style={{fontSize:'0.68rem',color:'var(--muted)'}}>pedidos, financeiro, pré-orders e mapa filtrados · estoque e produtos não</span>
+                <button onClick={()=>{ setAdminMonth('all'); setAdminPage(1); }} style={{marginLeft:'auto',background:'transparent',border:'1px solid rgba(255,170,0,0.45)',borderRadius:8,padding:'4px 10px',color:'#ffaa00',cursor:'pointer',fontSize:'0.7rem',fontFamily:"'Space Mono',monospace"}}>✕ Ver todos</button>
+              </> : <span style={{fontSize:'0.68rem',color:'var(--muted)'}}>Mostrando todos os meses</span>}
+            </div>
+
             {novoAdmin && <NovaAdminSub active={nvaActive} onPick={nvaPick} badges={nvaBadges} />}
             {novoAdmin && <NovaAdminInnerTabs active={nvaActive} adminTab={adminTab} setAdminTab={setAdminTab} />}
             {novoAdmin && adminTab === 'pedidos' && (() => {
-              const ao = sb ? orders.filter(o => o._supabase) : orders;
+              const ao = sb ? amOrders.filter(o => o._supabase) : amOrders;
               const n = s => ao.filter(o => (o.status || 'pendente') === s).length;
               return (
                 <div className="nvp-kpis">

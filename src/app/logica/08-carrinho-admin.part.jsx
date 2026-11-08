@@ -351,13 +351,66 @@
     navigator.clipboard.writeText(text).then(() => showToast("Lista copiada! 📋")).catch(() => showToast("Erro ao copiar", "error"));
   }
 
-  // ── totals for admin ──
-  const totalRevenue = useMemo(() => orders.reduce((s, o) => {
+  // ── filtro de mês global do admin ──
+  // Aceita ISO ("2026-11-08T..."), data pura ("2026-11-08"), pt-BR ("08/11/2026") ou timestamp (ms).
+  // Tudo no fuso local do navegador. Sem data válida → null (só aparece em "Todos").
+  function adminDateOf(v) {
+    if (v == null || v === '') return null;
+    if (typeof v === 'number') { const d = new Date(v); return isNaN(d) ? null : d; }
+    const s = String(v).trim();
+    let m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (m) return new Date(+m[3], +m[2] - 1, +m[1]);
+    m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return new Date(+m[1], +m[2] - 1, +m[3]);
+    const d = new Date(s);
+    return isNaN(d) ? null : d;
+  }
+  function adminMonthKeyOf(v) {
+    const d = adminDateOf(v);
+    return d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` : null;
+  }
+  const ADMIN_MESES = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  function adminMonthLabel(key) { const [y, mo] = String(key).split('-'); return `${ADMIN_MESES[(+mo) - 1] || mo}/${y}`; }
+  const adminMonthKey = (() => {
+    const hoje = new Date();
+    if (adminMonth === 'cur') return adminMonthKeyOf(hoje);
+    if (adminMonth === 'prev') return adminMonthKeyOf(new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1));
+    return /^\d{4}-\d{2}$/.test(adminMonth) ? adminMonth : null; // null = Todos
+  })();
+  function inAdminMonth(dateVal) { return !adminMonthKey || adminMonthKeyOf(dateVal) === adminMonthKey; }
+  const poDateOf = po => po.date || po.ts;
+  const shipDateOf = (e, id) => e.date || (orders.find(o => o.id === (e.orderId || id)) || {}).createdAt;
+  // Meses que têm dados (mais recente primeiro) para o seletor
+  const adminMonthOptions = useMemo(() => {
+    if (!adminUnlocked) return [];
+    const ks = new Set();
+    const add = v => { const k = adminMonthKeyOf(v); if (k) ks.add(k); };
+    orders.forEach(o => add(o.createdAt));
+    preorders.forEach(po => add(poDateOf(po)));
+    despesas.forEach(d => add(d.data));
+    importHistory.forEach(h => add(h.date));
+    Object.entries(shippingCosts).forEach(([id, e]) => add(shipDateOf(e || {}, id)));
+    return [...ks].sort().reverse();
+  }, [adminUnlocked, orders, preorders, despesas, importHistory, shippingCosts]);
+  // Versões filtradas (só leitura/métricas). Ações que gravam continuam usando as listas completas.
+  const amOrders = useMemo(() => adminMonthKey ? orders.filter(o => inAdminMonth(o.createdAt)) : orders, [orders, adminMonthKey]);
+  const amPreorders = useMemo(() => adminMonthKey ? preorders.filter(po => inAdminMonth(poDateOf(po))) : preorders, [preorders, adminMonthKey]);
+  const amDespesas = useMemo(() => adminMonthKey ? despesas.filter(d => inAdminMonth(d.data)) : despesas, [despesas, adminMonthKey]);
+  const amImportHistory = useMemo(() => adminMonthKey ? importHistory.filter(h => inAdminMonth(h.date)) : importHistory, [importHistory, adminMonthKey]);
+  const amShippingCosts = useMemo(() => {
+    if (!adminMonthKey) return shippingCosts;
+    const out = {};
+    Object.entries(shippingCosts).forEach(([id, e]) => { if (inAdminMonth(shipDateOf(e || {}, id))) out[id] = e; });
+    return out;
+  }, [shippingCosts, orders, adminMonthKey]);
+
+  // ── totals for admin (respeitam o filtro de mês) ──
+  const totalRevenue = useMemo(() => amOrders.reduce((s, o) => {
     if (o._supabase && o._total != null) return s + o._total;
     return s + (o.qty || 0) * (products.find(p => p.id === o.peptideId)?.price || 0);
-  }, 0), [orders, products]);
-  const totalUnits   = useMemo(() => orders.reduce((s, o) => s + (o.qty || 0), 0), [orders]);
-  const totalBuyers  = useMemo(() => new Set(orders.map(o => (o.buyerName || '').toLowerCase())).size, [orders]);
+  }, 0), [amOrders, products]);
+  const totalUnits   = useMemo(() => amOrders.reduce((s, o) => s + (o.qty || 0), 0), [amOrders]);
+  const totalBuyers  = useMemo(() => new Set(amOrders.map(o => (o.buyerName || '').toLowerCase())).size, [amOrders]);
 
   // ── cat groups ──
   const catGroups = CATEGORIES.filter(c => c.id !== "all").map(c => ({

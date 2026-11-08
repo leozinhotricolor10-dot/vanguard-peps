@@ -32,7 +32,7 @@
               // Stats pedidos confirmados
               const byCity={}, orderZone={motoboy:0,'sp-interior':0,correios:0};
               let totalOrders=0;
-              orders.forEach(o=>{
+              amOrders.forEach(o=>{
                 const addr=o._address||{};
                 const uf=normUF(addr.estado||'');
                 const city=addr.cidade?addr.cidade.trim():'';
@@ -46,7 +46,7 @@
               const topCities=Object.entries(byCity).sort((a,b)=>b[1]-a[1]).slice(0,10);
 
               // Stats pré-orders ativas (estimativa por DDD)
-              const activePO=preorders.filter(p=>p.status==='pending'||p.status==='notified');
+              const activePO=amPreorders.filter(p=>p.status==='pending'||p.status==='notified');
               const poZone={motoboy:0,'sp-interior':0,correios:0};
               activePO.forEach(po=>{ poZone[dddZone(po.whatsapp)]++; });
               const totalPO=activePO.length;
@@ -60,9 +60,9 @@
                 byProduct[k].reservas++;
               });
               const topPO=Object.entries(byProduct).sort((a,b)=>b[1].qty-a[1].qty).slice(0,10);
-              const pending=preorders.filter(p=>p.status==='pending').length;
-              const notified=preorders.filter(p=>p.status==='notified').length;
-              const completed=preorders.filter(p=>p.status==='completed').length;
+              const pending=amPreorders.filter(p=>p.status==='pending').length;
+              const notified=amPreorders.filter(p=>p.status==='notified').length;
+              const completed=amPreorders.filter(p=>p.status==='completed').length;
 
               const zoneStyle={
                 motoboy:      {color:'rgb(96,165,250)', bg:'rgba(59,130,246,0.12)', border:'rgba(59,130,246,0.35)', icon:'🛵', label:'RMSP — MOTOBOY',    sub:'Grande SP (~50km de SBC)'},

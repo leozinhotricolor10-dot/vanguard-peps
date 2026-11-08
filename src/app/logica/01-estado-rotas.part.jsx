@@ -173,6 +173,9 @@ function App() {
   const [despesas, setDespesas] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-expenses')||'[]'); } catch { return []; } });
   const [despesaForm, setDespesaForm] = useState({ desc:'', valor:'', categoria:'outros', data: new Date().toLocaleDateString('pt-BR') });
   const [shippingCosts, setShippingCosts] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-shipping-costs')||'{}'); } catch { return {}; } });
+  // Filtro de mês global do admin: 'all' | 'cur' | 'prev' | 'AAAA-MM' (lembrado em vg-admin-month)
+  const [adminMonth, setAdminMonthState] = useState(() => { try { return localStorage.getItem('vg-admin-month') || 'all'; } catch { return 'all'; } });
+  function setAdminMonth(v) { setAdminMonthState(v); try { localStorage.setItem('vg-admin-month', v); } catch {} }
   const [purchaseOrders, setPurchaseOrders] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-purchase-orders')||'[]'); } catch { return []; } });
   const [poForm, setPoForm] = useState({ productId:'', qty:'', note:'' });
   const [adminPwModal, setAdminPwModal] = useState(false);
