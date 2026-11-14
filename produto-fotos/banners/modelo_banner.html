@@ -1,0 +1,367 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Banner Vanguard Labs</title>
+<style>
+  :root{
+    --teal:#40e0d6; --teal-l:#96f0e8; --white:#f0f4f6; --grey:#c4ccd2;
+    --panel:rgba(3,12,16,.84); --line:rgba(64,224,214,.35); --line2:rgba(64,224,214,.18);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:#000}
+  body{width:1024px;height:1536px;overflow:hidden}
+  #banner{position:relative;width:1024px;height:1536px;overflow:hidden;background:#020709;
+    font-family:"Montserrat",sans-serif;color:var(--white);-webkit-font-smoothing:antialiased}
+  .abs{position:absolute}
+  .ico{font-family:"Segoe Fluent Icons","Segoe MDL2 Assets";font-style:normal;line-height:1;color:var(--teal);
+    text-shadow:0 0 8px rgba(64,224,214,.7)}
+  .txt{text-shadow:0 1px 3px rgba(0,0,0,.95),0 0 10px rgba(0,0,0,.8)}
+
+  /* ---------- fundo ---------- */
+  #fundo{position:absolute;inset:0;
+    background:
+      radial-gradient(ellipse 55% 30% at 57% 14%, rgba(64,224,214,.20), transparent 70%),
+      radial-gradient(ellipse 40% 30% at 12% 45%, rgba(64,224,214,.16), transparent 70%),
+      radial-gradient(ellipse 45% 25% at 92% 70%, rgba(40,170,200,.14), transparent 70%),
+      radial-gradient(ellipse 70% 20% at 50% 98%, rgba(64,224,214,.16), transparent 70%),
+      linear-gradient(180deg,#03141a 0%,#010608 45%,#020a0d 100%)}
+  #arte{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+  #arte-veu{position:absolute;inset:0;display:none;
+    background:linear-gradient(180deg,rgba(0,0,0,0) 0%,rgba(0,0,0,.05) 18%,rgba(0,0,0,.5) 42%,rgba(0,0,0,.55) 100%)}
+  #neon{position:absolute;inset:0}
+  .tem-arte #arte,.tem-arte #arte-veu{display:block}
+  .tem-arte #neon{opacity:.35}
+  #veu-texto{position:absolute;left:250px;top:40px;width:640px;height:400px;
+    background:radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,0,0,.7), transparent 75%)}
+
+  /* ---------- topo ---------- */
+  #logo{left:20px;top:20px;width:150px;text-align:center}
+  #logo img{height:54px;display:block;margin:0 auto 6px;filter:drop-shadow(0 0 8px rgba(64,224,214,.6))}
+  .marca{font-weight:600;font-size:21px;letter-spacing:1px;line-height:1.15}
+  .labs{display:flex;align-items:center;justify-content:center;gap:8px;font-weight:500;font-size:13px;
+    letter-spacing:4px;color:var(--teal-l)}
+  .labs:before,.labs:after{content:"";width:28px;height:1px;background:var(--teal)}
+  #lema{left:26px;top:144px;border-left:2px solid var(--teal);padding-left:9px;
+    font-family:"Barlow Condensed";font-weight:500;font-size:19px;line-height:24px}
+  #selo{left:385px;width:400px;top:84px;text-align:center}
+  #selo span{display:inline-block;padding:6px 22px;border:2px solid var(--teal);border-radius:18px;
+    background:rgba(0,18,22,.82);font-weight:700;font-size:16px;color:var(--teal-l);
+    box-shadow:0 0 12px rgba(64,224,214,.5)}
+  #titulo{left:285px;top:124px;width:600px;height:100px;display:flex;align-items:center;justify-content:center;
+    white-space:nowrap}
+  #titulo span{font-weight:900;font-style:italic;font-size:110px;line-height:1;letter-spacing:-1px;
+    background:linear-gradient(180deg,#fff 0%,#d6dce2 44%,#808a94 54%,#c4ccd4 74%,#fafcfc 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 2px 0 #05090c) drop-shadow(0 0 10px rgba(64,224,214,.55));padding:0 6px}
+  #subtitulo{left:285px;top:234px;width:600px;text-align:center;font-weight:500;font-size:23px;
+    letter-spacing:3px;white-space:nowrap}
+  #descricao{left:410px;top:280px;width:350px;height:128px;border-left:3px solid var(--teal);padding-left:13px;
+    font-size:17px;line-height:1.32;overflow:hidden;display:flex;align-items:center}
+
+  /* ---------- vial ---------- */
+  #vial-brilho{left:-30px;top:390px;width:360px;height:520px;
+    background:radial-gradient(ellipse 50% 50% at 50% 50%, rgba(64,224,214,.35), transparent 70%)}
+  .vial{object-fit:cover;object-position:50% 50%;mix-blend-mode:lighten;
+    -webkit-mask-image:radial-gradient(ellipse 48% 54% at 50% 52%, #000 72%, transparent 100%);
+    mask-image:radial-gradient(ellipse 48% 54% at 50% 52%, #000 72%, transparent 100%)}
+  #vial{left:-5px;top:362px;width:310px;height:580px}
+  /* com arte por tras: o frasco nao pode "clarear" sobre a arte (jaleco branco); usa a propria foto escura com bordas suaves */
+  .tem-arte #vial{mix-blend-mode:normal}
+  .tem-arte #vial-brilho{background:radial-gradient(ellipse 46% 52% at 50% 50%, rgba(0,0,0,.92) 45%, rgba(0,20,22,.6) 70%, transparent 100%)}
+  .tem-arte #veu-texto{background:radial-gradient(ellipse 50% 50% at 50% 50%, rgba(0,0,0,.8), transparent 80%)}
+  #veu-desc{left:390px;top:268px;width:400px;height:152px;border-radius:40px;background:rgba(0,0,0,.55);filter:blur(16px);display:none}
+  .tem-arte #veu-desc{display:block}
+
+  /* ---------- caixas ---------- */
+  .box{position:absolute;background:var(--panel);border:2px solid var(--teal);border-radius:14px;
+    box-shadow:0 0 14px rgba(64,224,214,.55),inset 0 0 18px rgba(64,224,214,.10);display:flex;flex-direction:column;overflow:hidden}
+  .hd{display:flex;align-items:center;gap:10px;padding:0 14px;min-height:58px;border-bottom:1px solid var(--line);
+    margin:0 12px;padding-left:2px}
+  .hd h2{font-weight:800;font-size:20px;line-height:1.15;letter-spacing:.2px}
+  .hd{overflow:hidden}
+  .hd small{font-weight:500;font-size:10px;color:var(--grey);margin-left:-6px;align-self:center;padding-top:5px;white-space:nowrap}
+  .circ{width:40px;height:40px;border-radius:50%;border:2px solid var(--teal);display:flex;align-items:center;justify-content:center;
+    background:#001418;box-shadow:0 0 10px rgba(64,224,214,.6);flex:none}
+  .circ .ico{font-size:21px}
+  .lista{flex:1;display:flex;flex-direction:column;padding:6px 14px 8px;min-height:0}
+  .lista li{list-style:none;flex:1 1 0;min-height:0;display:flex;align-items:center;gap:12px;overflow:hidden}
+  .lista li .t{flex:1;min-width:0}
+  .sep li+li{border-top:1px solid var(--line2)}
+  #mecanismo{left:292px;top:425px;width:360px;height:215px}
+  #mecanismo li{font-size:14px;line-height:1.2;gap:10px}
+  #mecanismo .ico{font-size:15px;width:18px;text-align:center}
+  #dosagem{left:292px;top:655px;width:360px;height:245px}
+  #dosagem li{font-size:15px;line-height:1.2}
+  #dosagem li .ico{font-size:21px;width:28px;text-align:center}
+  #dosagem b{font-weight:700}
+  #beneficios{left:664px;top:425px;width:348px;height:475px}
+  #beneficios .hd h2{font-size:18px}
+  #beneficios .hd>.ico{font-size:30px;width:40px;text-align:center}
+  #beneficios li{font-size:15px;line-height:1.2;gap:14px}
+  #beneficios li .ico{font-size:24px;width:34px;text-align:center}
+
+  #aplicacoes{left:12px;top:935px;width:640px;height:355px;padding-top:30px}
+  #aplic-tab{left:18px;top:912px;width:382px;height:46px;border:2px solid var(--teal);border-radius:23px;
+    background:rgba(0,16,20,.96);box-shadow:0 0 12px rgba(64,224,214,.55);display:flex;align-items:center;gap:12px;padding-left:2px}
+  #aplic-tab h2{font-weight:800;font-size:20px}
+  #aplic-tab .circ{width:40px;height:40px}
+  .cards{flex:1;display:flex;gap:0;padding:0 8px 10px;min-height:0}
+  .card{flex:1 1 0;min-width:0;display:flex;flex-direction:column;position:relative}
+  .card+.card{border-left:1px solid rgba(64,224,214,.28)}
+  .card .img{height:156px;margin:0 4px;position:relative;overflow:hidden;
+    -webkit-mask-image:linear-gradient(180deg,#000 55%,transparent 100%);mask-image:linear-gradient(180deg,#000 55%,transparent 100%)}
+  .card .img img{width:100%;height:100%;object-fit:cover;display:block}
+  .card .img .fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 45%, rgba(64,224,214,.35), rgba(0,20,24,.9) 65%)}
+  .card .img .fallback .ico{font-size:64px}
+  .card h3{height:48px;margin:-6px 4px 0;display:flex;align-items:center;justify-content:center;text-align:center;
+    font-family:"Barlow Condensed";font-weight:700;font-size:21px;line-height:1.05;overflow:hidden}
+  .card p{flex:1;min-height:0;margin:6px 6px 0;text-align:center;font-size:14px;line-height:1.28;color:var(--grey);overflow:hidden}
+
+  #stacks{left:664px;top:915px;width:348px;height:375px}
+  #stacks .hd h2{font-size:18px}
+  #stacks .hd>.ico{font-size:26px;width:34px;text-align:center}
+  .vials{display:flex;padding:8px 10px 0;position:relative}
+  .vials>div{flex:1 1 0;min-width:0;display:flex;flex-direction:column;align-items:center}
+  .vials .vial{width:110px;height:150px}
+  .vials .nome{height:40px;margin-top:4px;text-align:center;font-family:"Barlow Condensed";font-weight:600;font-size:16px;
+    line-height:1.08;overflow:hidden;padding:0 4px;width:100%}
+  .mais{position:absolute;top:52px;font-weight:900;font-size:34px;color:var(--teal);text-shadow:0 0 10px rgba(64,224,214,.8)}
+  #stacks-texto{flex:1;min-height:0;margin:10px 20px 12px;padding-top:10px;border-top:1px solid var(--line);text-align:center;
+    font-size:14px;line-height:1.3;color:var(--grey);overflow:hidden}
+
+  #aviso{left:56px;top:1304px;width:912px;height:86px;border-radius:20px;flex-direction:row;align-items:center;gap:20px;padding:0 24px}
+  #aviso>.ico{font-size:40px;flex:none}
+  #aviso-texto{flex:1;height:74px;font-size:13.5px;line-height:1.3;overflow:hidden;display:flex;align-items:center}
+  #aviso-texto b{color:var(--teal-l);font-weight:700}
+
+  #rodape{left:0;top:1400px;width:1024px;height:136px}
+  #logo2{left:30px;top:8px;width:160px;text-align:center}
+  #logo2 img{height:48px;display:block;margin:0 auto 6px;filter:drop-shadow(0 0 8px rgba(64,224,214,.6))}
+  #logo2 .marca{font-size:20px}
+  #logo2 .labs{font-size:12px}
+  #pilares{left:214px;top:12px;width:618px;height:103px;display:flex;border-left:1px solid rgba(64,224,214,.45);border-right:1px solid rgba(64,224,214,.45)}
+  #pilares>div{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px}
+  #pilares>div+div{border-left:1px solid rgba(64,224,214,.45)}
+  #pilares .ico{font-size:34px}
+  #pilares span{font-family:"Barlow Condensed";font-weight:600;font-size:18px;white-space:nowrap}
+  #frase{left:850px;top:12px;width:165px;font-family:"Barlow Condensed";font-weight:600;font-size:21px;line-height:25px}
+  #frase .d{color:var(--teal-l);font-weight:700}
+</style>
+</head>
+<body>
+<div id="banner">
+  <div id="fundo"></div>
+  <img id="arte" alt="">
+  <div id="arte-veu"></div>
+  <svg id="neon" width="1024" height="1536" viewBox="0 0 1024 1536"></svg>
+  <div id="veu-texto"></div>
+  <div id="veu-desc" class="abs"></div>
+
+  <div id="logo" class="abs txt"><img class="logo-v" alt=""><div class="marca">VANGUARD</div><div class="labs">LABS</div></div>
+  <div id="lema" class="abs txt"></div>
+  <div id="selo" class="abs"><span data-n="selo"></span></div>
+  <div id="titulo" class="abs" data-n="titulo"><span></span></div>
+  <div id="subtitulo" class="abs txt" data-n="subtitulo"></div>
+  <div id="descricao" class="abs txt fit" data-n="descricao" data-min="13"><span></span></div>
+
+  <div id="vial-brilho" class="abs"></div>
+  <img id="vial" class="abs vial" alt="">
+
+  <section id="mecanismo" class="box">
+    <div class="hd"><div class="circ"><i class="ico" data-i="engrenagem"></i></div><h2>MECANISMO DE AÇÃO</h2></div>
+    <ul class="lista"></ul>
+  </section>
+  <section id="dosagem" class="box">
+    <div class="hd"><div class="circ"><i class="ico" data-i="prancheta"></i></div><h2>DOSAGEM</h2><small>(REFERÊNCIA DA COMUNIDADE)</small></div>
+    <ul class="lista sep"></ul>
+  </section>
+  <section id="beneficios" class="box">
+    <div class="hd"><i class="ico" data-i="grafico"></i><h2>BENEFÍCIOS CITADOS NA COMUNIDADE*</h2></div>
+    <ul class="lista sep"></ul>
+  </section>
+
+  <section id="aplicacoes" class="box"><div class="cards"></div></section>
+  <div id="aplic-tab" class="abs"><div class="circ"><i class="ico" data-i="alvo"></i></div><h2>PRINCIPAIS APLICAÇÕES</h2></div>
+
+  <section id="stacks" class="box">
+    <div class="hd"><i class="ico" data-i="molecula"></i><h2>STACKS MAIS UTILIZADOS</h2></div>
+    <div class="vials"></div>
+    <div id="stacks-texto" class="fit" data-n="stacks-texto" data-min="11"></div>
+  </section>
+
+  <section id="aviso" class="box"><i class="ico" data-i="aviso"></i><div id="aviso-texto" class="fit" data-n="aviso" data-min="10.5"><span></span></div></section>
+
+  <div id="rodape" class="abs">
+    <div id="logo2" class="abs txt"><img class="logo-v" alt=""><div class="marca">VANGUARD</div><div class="labs">LABS</div></div>
+    <div id="pilares" class="abs"></div>
+    <div id="frase" class="abs txt"></div>
+  </div>
+</div>
+
+<script>
+/*__DADOS__*/
+(function(){
+"use strict";
+const D = window.DADOS;
+const ICONES = {
+  engrenagem:"", relogio:"", calendario:"", aviso:"", coracao:"", pulso:"",
+  lua:"", raio:"", escudo:"", check:"", alvo:"", grafico:"", termometro:"",
+  historico:"", folha:"", brilho:"", lampada:"", molecula:"", cubo:"",
+  prancheta:"", documento:"", capelo:"", pessoas:""
+};
+const PROB = [];
+const $ = s => document.querySelector(s);
+function pôrTexto(e, s){   // texto puro; palavras com hifen (IGF-1, BPC-157) nao quebram no meio
+  String(s).split(/(\S*\w-\w\S*)/).forEach((p, k) => {
+    if (!p) return;
+    if (k % 2){ const n = document.createElement("span"); n.style.whiteSpace = "nowrap"; n.textContent = p; e.appendChild(n); }
+    else e.appendChild(document.createTextNode(p));
+  });
+}
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) pôrTexto(e, txt); return e; };
+const ico = nome => { const i = el("i", "ico"); if (!ICONES[nome]) PROB.push("icone desconhecido: " + nome); i.textContent = ICONES[nome] || ""; return i; };
+function rich(alvo, texto){            // **trecho** vira destaque; todo o resto e texto puro (sem HTML)
+  texto.split("**").forEach((p, k) => { if (p) alvo.appendChild(k % 2 ? el("b", null, p) : document.createTextNode(p)); });
+}
+
+// ---------- preencher ----------
+document.querySelectorAll("[data-i]").forEach(i => { i.textContent = ICONES[i.dataset.i]; });
+document.querySelectorAll(".logo-v").forEach(i => { i.src = D._assets.logo; });
+(D.lema || ["CIÊNCIA","DISCIPLINA","RESULTADOS"]).forEach(t => $("#lema").appendChild(el("div", null, t)));
+$("#selo span").textContent = D.selo;
+$("#titulo span").textContent = D.titulo;
+$("#subtitulo").textContent = D.subtitulo;
+$("#descricao span").textContent = D.descricao;
+$("#vial").src = D._assets.vial;
+if (D._assets.fundo){ $("#arte").src = D._assets.fundo; $("#banner").classList.add("tem-arte"); }
+
+D.mecanismo.forEach((t, k) => { const li = el("li"); li.dataset.n = "mecanismo-" + (k+1); li.classList.add("fit"); li.dataset.min = 12;
+  li.append(ico("check"), el("span", "t txt", t)); $("#mecanismo .lista").appendChild(li); });
+D.dosagem.forEach((it, k) => { const li = el("li"); li.dataset.n = "dosagem-" + (k+1); li.classList.add("fit"); li.dataset.min = 12;
+  const t = el("span", "t txt"); t.append(el("b", null, it.rotulo + " "), document.createTextNode(it.texto));
+  li.append(ico(it.icone), t); $("#dosagem .lista").appendChild(li); });
+D.beneficios.forEach((it, k) => { const li = el("li"); li.dataset.n = "beneficio-" + (k+1); li.classList.add("fit"); li.dataset.min = 12;
+  li.append(ico(it.icone), el("span", "t txt", it.texto)); $("#beneficios .lista").appendChild(li); });
+
+const PADRAO_CARD = ["alvo","raio","lua","historico"];
+D.aplicacoes.slice(0,4).forEach((ap, k) => {
+  const c = el("div", "card"), im = el("div", "img");
+  const arte = (D._assets.cards || [])[k];
+  if (arte){ const i = el("img"); i.src = arte; im.appendChild(i); }
+  else { const f = el("div", "fallback"); f.appendChild(ico(ap.icone || PADRAO_CARD[k])); im.appendChild(f); }
+  const h = el("h3", "fit txt", ap.titulo); h.dataset.n = "aplicacao-" + (k+1) + "-titulo"; h.dataset.min = 16;
+  const p = el("p", "fit txt", ap.texto); p.dataset.n = "aplicacao-" + (k+1) + "-texto"; p.dataset.min = 11;
+  c.append(im, h, p); $("#aplicacoes .cards").appendChild(c);
+});
+
+const st = D.stacks.slice(0,3), vials = $(".vials");
+st.forEach((s, k) => { const d = el("div"), i = el("img", "vial"); i.src = D._assets.stacks[k];
+  const n = el("div", "nome fit txt", s.nome); n.dataset.n = "stack-" + (k+1); n.dataset.min = 12.5;
+  d.append(i, n); vials.appendChild(d); });
+for (let k = 1; k < st.length; k++){ const m = el("div", "mais", "+"); m.style.left = (10 + (328 / st.length) * k - 10) + "px"; vials.appendChild(m); }
+$("#stacks-texto").textContent = D.stacks_texto;
+
+let aviso = D.aviso;
+if (aviso.indexOf("**") < 0) aviso = aviso.replace("fins de pesquisa (Research Use Only)", "**fins de pesquisa (Research Use Only)**");
+rich($("#aviso-texto span"), aviso);
+
+(D.pilares || [["documento","CIÊNCIA"],["grafico","RESULTADOS"],["escudo","CONFIANÇA"],["folha","BEM-ESTAR"],["historico","LONGEVIDADE"]])
+  .forEach(([i, t], k) => { const d = el("div"); const s = el("span", "txt", t); s.dataset.n = "pilar-" + (k+1); d.append(ico(i), s); $("#pilares").appendChild(d); });
+const fr = D.frase || [["PEQUENAS","ATITUDES"],["MELHORES","RESULTADOS"]];
+fr.forEach((b, j) => b.forEach(t => $("#frase").appendChild(el("div", j ? "d" : null, t))));
+
+// ---------- fundo neon (SVG) ----------
+const svg = $("#neon"), NS = "http://www.w3.org/2000/svg";
+const add = (tag, at, pai) => { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); (pai || svg).appendChild(e); return e; };
+const defs = add("defs", {});
+const f = add("filter", {id:"glow", x:"-50%", y:"-50%", width:"200%", height:"200%"}, defs);
+add("feGaussianBlur", {stdDeviation:"4", result:"b"}, f);
+const mg = add("feMerge", {}, f); add("feMergeNode", {in:"b"}, mg); add("feMergeNode", {in:"SourceGraphic"}, mg);
+let semente = 7; const rnd = () => (semente = (semente * 16807) % 2147483647) / 2147483647;
+function helice(cx, y0, y1, amp, per, op, larg){
+  const g = add("g", {opacity:op, filter:"url(#glow)"});
+  for (const fase of [0, Math.PI]){
+    let d = ""; for (let y = y0; y <= y1; y += 4){ const x = cx + amp * Math.sin((y - y0) / per * 2 * Math.PI + fase); d += (d ? "L" : "M") + x.toFixed(1) + "," + y; }
+    add("path", {d, fill:"none", stroke:"#40e0d6", "stroke-width":larg}, g);
+  }
+  for (let y = y0 + 10; y < y1; y += per / 8){
+    const a = (y - y0) / per * 2 * Math.PI, x1 = cx + amp * Math.sin(a), x2 = cx + amp * Math.sin(a + Math.PI);
+    add("line", {x1, y1:y, x2, y2:y, stroke:"#96f0e8", "stroke-width":larg * .6, opacity:.55 * Math.abs(Math.cos(a)) + .15}, g);
+  }
+}
+function molecula(x, y, esc, op){
+  const g = add("g", {opacity:op, filter:"url(#glow)"});
+  const pts = [[0,0],[40,-22],[80,0],[40,38],[120,-24],[-38,-30]].map(([a,b]) => [x + a*esc, y + b*esc]);
+  [[0,1],[1,2],[2,3],[3,0],[2,4],[0,5]].forEach(([i,j]) => add("line", {x1:pts[i][0], y1:pts[i][1], x2:pts[j][0], y2:pts[j][1], stroke:"#40e0d6", "stroke-width":2*esc}, g));
+  pts.forEach(([a,b], k) => add("circle", {cx:a, cy:b, r:(k % 2 ? 7 : 10) * esc, fill:"#0b3a3c", stroke:"#96f0e8", "stroke-width":1.5*esc}, g));
+}
+helice(585, -40, 470, 70, 300, .55, 3);
+helice(70, 300, 1000, 46, 260, .28, 2.5);
+helice(985, 120, 900, 40, 240, .22, 2);
+helice(880, 1180, 1560, 60, 280, .25, 2.5);
+molecula(170, 60, .9, .30); molecula(820, 340, .8, .25); molecula(40, 1250, 1.1, .22); molecula(900, 960, .7, .18);
+for (let k = 0; k < 90; k++) add("circle", {cx:rnd()*1024, cy:rnd()*1536, r:.6 + rnd()*2.2, fill:"#96f0e8", opacity:.15 + rnd()*.5});
+for (let k = 0; k < 6; k++){ const y = 120 + rnd()*1300; add("line", {x1:0, y1:y, x2:1024, y2:y + (rnd() - .5)*120, stroke:"#40e0d6", "stroke-width":.6, opacity:.12}); }
+
+// ---------- encaixe e checagem ----------
+function vaza(e){
+  if (e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1) return true;
+  // conteudo centralizado vaza para cima e para baixo: mede a altura real do texto
+  const r = document.createRange(); r.selectNodeContents(e); const b = r.getBoundingClientRect(), c = e.getBoundingClientRect();
+  return b.height > e.clientHeight + 1 || b.top < c.top - 1 || b.bottom > c.bottom + 1;
+}
+function encaixar(e){
+  const min = parseFloat(e.dataset.min || 10); let s = parseFloat(getComputedStyle(e).fontSize);
+  while (vaza(e) && s > min){ s -= .5; e.style.fontSize = s + "px"; }
+  if (vaza(e)) PROB.push((e.dataset.n || e.id) + ": texto nao coube");
+}
+function encaixarLinha(cont, span, maxw, min){   // titulo / subtitulo / selo: uma linha so
+  let s = parseFloat(getComputedStyle(span).fontSize);
+  while (span.getBoundingClientRect().width > maxw && s > min){ s -= 1; span.style.fontSize = s + "px"; }
+  if (span.getBoundingClientRect().width > maxw + 1) PROB.push((cont.dataset.n || cont.id) + ": passou da largura");
+}
+function sobreposicao(){
+  const nos = [...document.querySelectorAll("[data-n]")];
+  const caixas = nos.map(n => { const r = document.createRange(); r.selectNodeContents(n); const b = r.getBoundingClientRect(); return {n, b}; })
+                    .filter(o => o.b.width > 0 && o.b.height > 0);
+  for (let a = 0; a < caixas.length; a++) for (let b = a + 1; b < caixas.length; b++){
+    const A = caixas[a], B = caixas[b];
+    if (A.n.contains(B.n) || B.n.contains(A.n)) continue;
+    const ix = Math.min(A.b.right, B.b.right) - Math.max(A.b.left, B.b.left);
+    const iy = Math.min(A.b.bottom, B.b.bottom) - Math.max(A.b.top, B.b.top);
+    if (ix > 1 && iy > 1) PROB.push("sobreposicao: " + A.n.dataset.n + " x " + B.n.dataset.n);
+  }
+  // nada pode sair do banner
+  caixas.forEach(o => { if (o.b.left < 0 || o.b.top < 0 || o.b.right > 1024 || o.b.bottom > 1536) PROB.push("fora do banner: " + o.n.dataset.n); });
+}
+function fontes(){
+  [["900 italic 20px Montserrat","Montserrat Black Italic"],["400 20px Montserrat","Montserrat"],["700 20px 'Barlow Condensed'","Barlow Condensed"]]
+    .forEach(([q, nome]) => { if (!document.fonts.check(q)) PROB.push("fonte nao encontrada: " + nome); });
+  // Montserrat precisa existir de verdade (e nao cair numa fonte reserva): compara a largura com a fonte generica
+  const c = document.createElement("canvas").getContext("2d"), amostra = "AÇÃO pré-clínicos ÁÉÍÓÚ ãõâêô";
+  c.font = "400 30px Montserrat, monospace"; const w1 = c.measureText(amostra).width;
+  c.font = "400 30px monospace"; const w2 = c.measureText(amostra).width;
+  if (Math.abs(w1 - w2) < 1) PROB.push("Montserrat nao instalada (texto cairia em outra fonte)");
+}
+const imagens = [...document.images].filter(i => i.getAttribute("src"));
+Promise.all([document.fonts.ready, ...imagens.map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; }))]).then(() => {
+  imagens.forEach(i => { if (!i.naturalWidth) PROB.push("imagem nao carregou: " + decodeURIComponent(i.src).split("/").pop()); });
+  encaixarLinha($("#titulo"), $("#titulo span"), 600, 40);
+  encaixarLinha($("#subtitulo"), $("#subtitulo"), 600, 14);
+  encaixarLinha($("#selo span"), $("#selo span"), 400, 11);
+  document.querySelectorAll(".hd small").forEach(sm => {
+    const h = sm.parentNode; let s = parseFloat(getComputedStyle(sm).fontSize);
+    while (h.scrollWidth > h.clientWidth + 1 && s > 8.5){ s -= .25; sm.style.fontSize = s + "px"; }
+  });
+  document.querySelectorAll(".fit").forEach(encaixar);
+  document.querySelectorAll(".box").forEach(b => { if (b.scrollHeight > b.clientHeight + 1) PROB.push("caixa transbordou: " + b.id); });
+  document.querySelectorAll(".hd").forEach(h => { if (h.scrollWidth > h.clientWidth + 1) PROB.push("cabecalho nao coube: " + h.parentNode.id); });
+  fontes(); sobreposicao();
+  window.PROBLEMAS = PROB; window.PRONTO = true;
+});
+})();
+</script>
+</body>
+</html>

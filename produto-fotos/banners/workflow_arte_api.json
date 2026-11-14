@@ -1,0 +1,392 @@
+{
+  "1": {
+    "class_type": "UNETLoader",
+    "inputs": {
+      "unet_name": "z_image_turbo_bf16.safetensors",
+      "weight_dtype": "default"
+    }
+  },
+  "2": {
+    "class_type": "CLIPLoader",
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "lumina2",
+      "device": "default"
+    }
+  },
+  "3": {
+    "class_type": "VAELoader",
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    }
+  },
+  "4": {
+    "class_type": "ModelSamplingAuraFlow",
+    "inputs": {
+      "model": [
+        "1",
+        0
+      ],
+      "shift": 3
+    }
+  },
+  "5": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "text": ""
+    }
+  },
+  "6": {
+    "class_type": "ConditioningZeroOut",
+    "inputs": {
+      "conditioning": [
+        "5",
+        0
+      ]
+    }
+  },
+  "10": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "text": "{{ARTE_FUNDO}}"
+    }
+  },
+  "11": {
+    "class_type": "EmptySD3LatentImage",
+    "inputs": {
+      "width": 1024,
+      "height": 1536,
+      "batch_size": 1
+    }
+  },
+  "12": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "4",
+        0
+      ],
+      "positive": [
+        "10",
+        0
+      ],
+      "negative": [
+        "6",
+        0
+      ],
+      "latent_image": [
+        "11",
+        0
+      ],
+      "seed": "{{SEED+0}}",
+      "steps": 8,
+      "cfg": 1.0,
+      "sampler_name": "res_multistep",
+      "scheduler": "simple",
+      "denoise": 1.0
+    }
+  },
+  "13": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "12",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "14": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "13",
+        0
+      ],
+      "filename_prefix": "vg_banner/{{SKU}}_fundo"
+    }
+  },
+  "20": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "text": "{{CARD1}}"
+    }
+  },
+  "21": {
+    "class_type": "EmptySD3LatentImage",
+    "inputs": {
+      "width": 640,
+      "height": 640,
+      "batch_size": 1
+    }
+  },
+  "22": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "4",
+        0
+      ],
+      "positive": [
+        "20",
+        0
+      ],
+      "negative": [
+        "6",
+        0
+      ],
+      "latent_image": [
+        "21",
+        0
+      ],
+      "seed": "{{SEED+1}}",
+      "steps": 8,
+      "cfg": 1.0,
+      "sampler_name": "res_multistep",
+      "scheduler": "simple",
+      "denoise": 1.0
+    }
+  },
+  "23": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "22",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "24": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "23",
+        0
+      ],
+      "filename_prefix": "vg_banner/{{SKU}}_card1"
+    }
+  },
+  "30": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "text": "{{CARD2}}"
+    }
+  },
+  "31": {
+    "class_type": "EmptySD3LatentImage",
+    "inputs": {
+      "width": 640,
+      "height": 640,
+      "batch_size": 1
+    }
+  },
+  "32": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "4",
+        0
+      ],
+      "positive": [
+        "30",
+        0
+      ],
+      "negative": [
+        "6",
+        0
+      ],
+      "latent_image": [
+        "31",
+        0
+      ],
+      "seed": "{{SEED+2}}",
+      "steps": 8,
+      "cfg": 1.0,
+      "sampler_name": "res_multistep",
+      "scheduler": "simple",
+      "denoise": 1.0
+    }
+  },
+  "33": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "32",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "34": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "33",
+        0
+      ],
+      "filename_prefix": "vg_banner/{{SKU}}_card2"
+    }
+  },
+  "40": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "text": "{{CARD3}}"
+    }
+  },
+  "41": {
+    "class_type": "EmptySD3LatentImage",
+    "inputs": {
+      "width": 640,
+      "height": 640,
+      "batch_size": 1
+    }
+  },
+  "42": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "4",
+        0
+      ],
+      "positive": [
+        "40",
+        0
+      ],
+      "negative": [
+        "6",
+        0
+      ],
+      "latent_image": [
+        "41",
+        0
+      ],
+      "seed": "{{SEED+3}}",
+      "steps": 8,
+      "cfg": 1.0,
+      "sampler_name": "res_multistep",
+      "scheduler": "simple",
+      "denoise": 1.0
+    }
+  },
+  "43": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "42",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "44": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "43",
+        0
+      ],
+      "filename_prefix": "vg_banner/{{SKU}}_card3"
+    }
+  },
+  "50": {
+    "class_type": "CLIPTextEncode",
+    "inputs": {
+      "clip": [
+        "2",
+        0
+      ],
+      "text": "{{CARD4}}"
+    }
+  },
+  "51": {
+    "class_type": "EmptySD3LatentImage",
+    "inputs": {
+      "width": 640,
+      "height": 640,
+      "batch_size": 1
+    }
+  },
+  "52": {
+    "class_type": "KSampler",
+    "inputs": {
+      "model": [
+        "4",
+        0
+      ],
+      "positive": [
+        "50",
+        0
+      ],
+      "negative": [
+        "6",
+        0
+      ],
+      "latent_image": [
+        "51",
+        0
+      ],
+      "seed": "{{SEED+4}}",
+      "steps": 8,
+      "cfg": 1.0,
+      "sampler_name": "res_multistep",
+      "scheduler": "simple",
+      "denoise": 1.0
+    }
+  },
+  "53": {
+    "class_type": "VAEDecode",
+    "inputs": {
+      "samples": [
+        "52",
+        0
+      ],
+      "vae": [
+        "3",
+        0
+      ]
+    }
+  },
+  "54": {
+    "class_type": "SaveImage",
+    "inputs": {
+      "images": [
+        "53",
+        0
+      ],
+      "filename_prefix": "vg_banner/{{SKU}}_card4"
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "sku": "TSM5",
+  "foto": "tsm5-v2.webp",
+  "seed": 777,
+
+  "selo": "PEPTÍDEOS DE LONGEVIDADE",
+  "titulo": "TESAMORELIN",
+  "subtitulo": "ANÁLOGO DE GHRH",
+  "descricao": "Peptídeo análogo do hormônio liberador do GH (GHRH), estudado pela capacidade de estimular a liberação natural do hormônio do crescimento pela hipófise.",
+
+  "mecanismo": [
+    "Liga-se aos receptores de GHRH na hipófise.",
+    "Estimula a liberação pulsátil e natural de GH.",
+    "Eleva de forma indireta os níveis de IGF-1.",
+    "Estudado na redução de gordura visceral."
+  ],
+
+  "dosagem": [
+    {"icone": "alvo", "rotulo": "Dose:", "texto": "1 – 2 mg/dia"},
+    {"icone": "pulso", "rotulo": "Aplicação:", "texto": "Subcutânea"},
+    {"icone": "calendario", "rotulo": "Protocolo:", "texto": "5 dias ON / 2 dias OFF"},
+    {"icone": "relogio", "rotulo": "Horário:", "texto": "À noite, antes de dormir (em jejum)"}
+  ],
+
+  "beneficios": [
+    {"icone": "alvo", "texto": "Redução da gordura visceral abdominal"},
+    {"icone": "raio", "texto": "Melhora da composição corporal"},
+    {"icone": "lua", "texto": "Sono mais profundo e reparador"},
+    {"icone": "coracao", "texto": "Recuperação muscular após os treinos"},
+    {"icone": "termometro", "texto": "Suporte aos níveis de GH e IGF-1"},
+    {"icone": "brilho", "texto": "Mais disposição no dia a dia"},
+    {"icone": "historico", "texto": "Suporte ao declínio de GH relacionado à idade"}
+  ],
+
+  "stacks": [
+    {"foto": "tsm5-v2.webp", "nome": "TESAMORELIN"},
+    {"foto": "cp10-v2.webp", "nome": "CJC-1295 + IPAMORELIN"},
+    {"foto": "bb20-v2.webp", "nome": "BPC-157 + TB-500"}
+  ],
+  "stacks_texto": "Combinações citadas pela comunidade em protocolos de GH, composição corporal e recuperação.",
+
+  "aplicacoes": [
+    {
+      "titulo": "GORDURA VISCERAL",
+      "texto": "Estudado na redução da gordura abdominal profunda.",
+      "arte": "close-up photo of a fit man's lean abdomen and waist, measuring tape loosely around the waist, dark moody studio, teal cyan rim light, black background"
+    },
+    {
+      "titulo": "COMPOSIÇÃO CORPORAL",
+      "texto": "Auxilia na preservação da massa magra.",
+      "arte": "athletic muscular man torso doing a dumbbell curl in a dark gym, dramatic teal cyan rim lighting, black background, sweat, cinematic"
+    },
+    {
+      "titulo": "SONO E RECUPERAÇÃO",
+      "texto": "Relatos de sono mais profundo e melhor recuperação.",
+      "arte": "man sleeping peacefully in bed at night, head on white pillow, dark bedroom, soft blue and teal moonlight, calm, cinematic"
+    },
+    {
+      "titulo": "LONGEVIDADE",
+      "texto": "Presente em protocolos de suporte hormonal ao longo do tempo.",
+      "arte": "glowing cyan DNA double helix floating in dark space, bokeh particles, neon teal light, black background, scientific macro render"
+    }
+  ],
+
+  "aviso": "* Este material reúne informações de uso e relatos da comunidade, com base em estudos pré-clínicos e clínicos e em experiências de entusiastas. Não representa recomendação médica. Produto destinado exclusivamente a fins de pesquisa (Research Use Only).",
+
+  "arte_fundo": "vertical dark scientific advertising poster background, pure black background, glowing cyan turquoise neon light, top left corner: confident young female scientist with dark hair in a bun wearing a white lab coat and stethoscope, upper body portrait looking at camera; top right corner: athletic shirtless muscular man with eyes closed and head tilted up, dramatic teal rim light; floating glowing teal DNA double helix strands and molecule ball-and-stick structures, bokeh particles, center and lower two thirds mostly empty dark black space with faint teal haze and thin neon lines, cinematic, photorealistic, high contrast"
+}
