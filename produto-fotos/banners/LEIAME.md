@@ -28,6 +28,21 @@ Se existir arte do ComfyUI para aquele produto (pasta `arte\`), ela entra automa
 O programa confere sozinho se todo texto coube, se nada ficou por cima de outra coisa, se as fontes e as fotos
 carregaram. Se aparecer `ATENCAO - revise antes de usar`, encurte o texto indicado.
 
+### Versão enxuta para celular (stories 1080x1920)
+
+Uma imagem só, letra grande, pouco texto: nome, 4 benefícios, dosagem em 3 linhas e o aviso curto.
+
+```
+python banner_html.py dados/tsm5.json --enxuto
+```
+
+Sai em `saida\<produto>_enxuto.png` e `saida\<produto>_enxuto.webp` (1080x1920). `--sem-arte` também funciona aqui.
+
+Os textos curtos ficam no bloco `"enxuto"` do JSON (`beneficios`, `dosagem`, `aviso`). Se o bloco não existir,
+o programa usa os 4 primeiros benefícios e as 3 primeiras linhas de dosagem do banner completo.
+Nesta versão a letra **não diminui**: se o programa disser `nao coube (encurte o texto)`, encurte a frase no JSON.
+Ele também avisa se alguma letra ficar menor que o mínimo para celular ou cair perto das bordas do stories.
+
 ---
 
 ## Jeito alternativo: `banner.py` (desenho por código, exige arte do ComfyUI)

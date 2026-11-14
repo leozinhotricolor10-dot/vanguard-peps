@@ -64,5 +64,20 @@
 
   "aviso": "* Este material reúne informações de uso e relatos da comunidade, com base em estudos pré-clínicos e clínicos e em experiências de entusiastas. Não representa recomendação médica. Produto destinado exclusivamente a fins de pesquisa (Research Use Only).",
 
+  "enxuto": {
+    "beneficios": [
+      {"icone": "alvo", "texto": "Menos gordura visceral"},
+      {"icone": "raio", "texto": "Melhor composição corporal"},
+      {"icone": "lua", "texto": "Sono mais profundo"},
+      {"icone": "coracao", "texto": "Recuperação muscular"}
+    ],
+    "dosagem": [
+      {"rotulo": "Dose:", "texto": "1 – 2 mg/dia"},
+      {"rotulo": "Aplicação:", "texto": "Subcutânea"},
+      {"rotulo": "Protocolo:", "texto": "5 dias ON / 2 OFF"}
+    ],
+    "aviso": "**Research Use Only.** Não é recomendação médica."
+  },
+
   "arte_fundo": "vertical dark scientific advertising poster background, pure black background, glowing cyan turquoise neon light, top left corner: confident young female scientist with dark hair in a bun wearing a white lab coat and stethoscope, upper body portrait looking at camera; top right corner: athletic shirtless muscular man with eyes closed and head tilted up, dramatic teal rim light; floating glowing teal DNA double helix strands and molecule ball-and-stick structures, bokeh particles, center and lower two thirds mostly empty dark black space with faint teal haze and thin neon lines, cinematic, photorealistic, high contrast"
 }

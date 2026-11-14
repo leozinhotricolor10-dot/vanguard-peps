@@ -26,6 +26,7 @@ FOTOS = ROOT / "assets" / "produtos"
 ARTE = HERE / "arte"
 SAIDA = HERE / "saida"
 MODELO = HERE / "modelo_banner.html"
+MODELO_ENXUTO = HERE / "modelo_enxuto.html"
 LOGO_V = HERE / "assets" / "logo_v.png"
 NAVEGADORES = [r"C:\Program Files\Google\Chrome\Application\chrome.exe",
                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
@@ -53,7 +54,7 @@ def foto(nome):
     return p.as_uri()
 
 
-def montar_html(d, usar_arte):
+def montar_html(d, usar_arte, modelo=MODELO, sufixo="banner"):
     sku = d["sku"].lower()
     assets = {"logo": LOGO_V.as_uri(), "vial": foto(d["foto"]),
               "stacks": [foto(s["foto"]) for s in d["stacks"][:3]], "fundo": None, "cards": []}
@@ -65,14 +66,14 @@ def montar_html(d, usar_arte):
                            for i in range(1, 5)]
     dados = dict(d, _assets=assets)
     js = "window.DADOS = " + json.dumps(dados, ensure_ascii=True).replace("</", "<\\/") + ";"
-    html = MODELO.read_text(encoding="utf-8").replace("/*__DADOS__*/", js)
+    html = modelo.read_text(encoding="utf-8").replace("/*__DADOS__*/", js)
     SAIDA.mkdir(exist_ok=True)
-    out = SAIDA / ("%s_banner.html" % sku)
+    out = SAIDA / ("%s_%s.html" % (sku, sufixo))
     out.write_text(html, encoding="utf-8")
     return out, assets
 
 
-def exportar(html_path, png_path):
+def exportar(html_path, png_path, largura=1024, altura=1536, escala=2):
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         exe = next((n for n in NAVEGADORES if os.path.exists(n)), None)
@@ -80,7 +81,7 @@ def exportar(html_path, png_path):
             raise SystemExit("Nenhum Chrome/Edge encontrado.")
         nav = p.chromium.launch(executable_path=exe, headless=True,
                                 args=["--allow-file-access-from-files", "--font-render-hinting=none"])
-        pg = nav.new_page(viewport={"width": 1024, "height": 1536}, device_scale_factor=2)
+        pg = nav.new_page(viewport={"width": largura, "height": altura}, device_scale_factor=escala)
         erros = []
         pg.on("pageerror", lambda e: erros.append(str(e)))
         pg.goto(html_path.as_uri())
@@ -100,6 +101,7 @@ def main():
     ap.add_argument("--sem-arte", action="store_true", help="ignora a arte do ComfyUI (fundo neon em CSS/SVG)")
     ap.add_argument("--gerar-arte", action="store_true", help="gera arte nova no ComfyUI antes (se estiver aberto)")
     ap.add_argument("--seed", type=int)
+    ap.add_argument("--enxuto", action="store_true", help="versao stories 1080x1920 com pouco texto e letra grande")
     a = ap.parse_args()
 
     cam = Path(a.dados)
@@ -118,13 +120,20 @@ def main():
         else:
             print("Aviso: ComfyUI fora do ar em %s; seguindo sem arte nova." % banner.COMFY)
 
-    html, assets = montar_html(d, not a.sem_arte)
     sku = d["sku"].lower()
-    png = SAIDA / ("%s_banner_html.png" % sku)
-    problemas = exportar(html, png)
     from PIL import Image
-    webp = SAIDA / ("%s_banner_html.webp" % sku)
-    Image.open(png).convert("RGB").resize((1024, 1536), Image.LANCZOS).save(webp, "WEBP", quality=90, method=6)
+    if a.enxuto:   # stories 9:16, letra grande para celular
+        html, assets = montar_html(d, not a.sem_arte, MODELO_ENXUTO, "enxuto")
+        png = SAIDA / ("%s_enxuto.png" % sku)
+        problemas = exportar(html, png, 1080, 1920, 1)
+        webp = SAIDA / ("%s_enxuto.webp" % sku)
+        Image.open(png).convert("RGB").save(webp, "WEBP", quality=90, method=6)
+    else:
+        html, assets = montar_html(d, not a.sem_arte)
+        png = SAIDA / ("%s_banner_html.png" % sku)
+        problemas = exportar(html, png)
+        webp = SAIDA / ("%s_banner_html.webp" % sku)
+        Image.open(png).convert("RGB").resize((1024, 1536), Image.LANCZOS).save(webp, "WEBP", quality=90, method=6)
     print("Fundo: %s" % ("arte do ComfyUI" if assets["fundo"] else "neon em CSS/SVG (sem arte)"))
     print("Banner: %s\n        %s\n        %s" % (png, webp, html))
     if problemas:

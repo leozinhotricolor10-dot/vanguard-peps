@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Banner enxuto Vanguard Labs</title>
+<style>
+  /* Stories 1080x1920. Zona segura: conteudo entre y=250 e y=1620. Fontes de conteudo >= 40px (aviso >= 30px).
+     Aqui a fonte NAO encolhe: se o texto nao couber, o exportador avisa e o texto deve ser cortado no JSON. */
+  :root{--teal:#40e0d6;--teal-l:#96f0e8;--white:#f2f6f8;--grey:#c4ccd2;--panel:rgba(3,12,16,.86)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:#000}
+  body{width:1080px;height:1920px;overflow:hidden}
+  #banner{position:relative;width:1080px;height:1920px;overflow:hidden;background:#020709;
+    font-family:"Montserrat",sans-serif;color:var(--white);-webkit-font-smoothing:antialiased}
+  .abs{position:absolute}
+  .ico{font-family:"Segoe Fluent Icons","Segoe MDL2 Assets";font-style:normal;line-height:1;color:var(--teal);
+    text-shadow:0 0 12px rgba(64,224,214,.75)}
+  .txt{text-shadow:0 2px 4px rgba(0,0,0,.95),0 0 14px rgba(0,0,0,.85)}
+
+  #fundo{position:absolute;inset:0;background:
+      radial-gradient(ellipse 60% 22% at 50% 17%, rgba(64,224,214,.22), transparent 70%),
+      radial-gradient(ellipse 45% 25% at 22% 47%, rgba(64,224,214,.22), transparent 70%),
+      radial-gradient(ellipse 50% 18% at 80% 50%, rgba(40,170,200,.12), transparent 70%),
+      radial-gradient(ellipse 70% 14% at 50% 94%, rgba(64,224,214,.16), transparent 70%),
+      linear-gradient(180deg,#03141a 0%,#010608 45%,#020a0d 100%)}
+  #arte{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
+  #arte-veu{position:absolute;inset:0;display:none;
+    background:linear-gradient(180deg,rgba(0,0,0,.35) 0%,rgba(0,0,0,.45) 25%,rgba(0,0,0,.72) 40%,rgba(0,0,0,.8) 100%)}
+  #neon{position:absolute;inset:0}
+  .tem-arte #arte,.tem-arte #arte-veu{display:block}
+  .tem-arte #neon{opacity:.3}
+
+  /* topo: so a logo na faixa de 0-250 */
+  #logo{left:0;top:62px;width:1080px;display:flex;align-items:center;justify-content:center;gap:22px}
+  #logo img{height:96px;filter:drop-shadow(0 0 12px rgba(64,224,214,.6))}
+  .marca{font-weight:600;font-size:52px;letter-spacing:2px;line-height:1}
+  .labs{display:flex;align-items:center;gap:12px;font-weight:500;font-size:28px;letter-spacing:8px;color:var(--teal-l);margin-top:10px}
+  .labs:after{content:"";width:70px;height:2px;background:var(--teal)}
+
+  #selo{left:40px;width:1000px;top:266px;text-align:center}
+  #selo span{display:inline-block;padding:10px 36px;border:3px solid var(--teal);border-radius:40px;background:rgba(0,18,22,.85);
+    font-weight:700;font-size:40px;color:var(--teal-l);box-shadow:0 0 18px rgba(64,224,214,.55);white-space:nowrap}
+  #titulo{left:20px;top:350px;width:1040px;height:180px;display:flex;align-items:center;justify-content:center;white-space:nowrap}
+  #titulo span{font-weight:900;font-style:italic;font-size:170px;line-height:1;letter-spacing:-2px;padding:0 10px;
+    background:linear-gradient(180deg,#fff 0%,#d6dce2 44%,#808a94 54%,#c4ccd4 74%,#fafcfc 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 3px 0 #05090c) drop-shadow(0 0 16px rgba(64,224,214,.55))}
+  #subtitulo{left:40px;top:536px;width:1000px;text-align:center;font-weight:600;font-size:46px;letter-spacing:5px;white-space:nowrap}
+
+  /* vial + beneficios */
+  #vial-brilho{left:-60px;top:600px;width:600px;height:680px;
+    background:radial-gradient(ellipse 50% 50% at 50% 50%, rgba(64,224,214,.38), transparent 70%)}
+  .tem-arte #vial-brilho{background:radial-gradient(ellipse 46% 50% at 50% 50%, rgba(0,0,0,.9) 45%, rgba(0,20,22,.6) 70%, transparent 100%)}
+  /* enquadra so o frasco dentro da foto padronizada 800x1200 */
+  #vial{left:-10px;top:606px;width:470px;height:640px;object-fit:contain;object-view-box:inset(14% 19% 15% 19%);mix-blend-mode:lighten;
+    -webkit-mask-image:radial-gradient(ellipse 48% 54% at 50% 52%, #000 72%, transparent 100%);
+    mask-image:radial-gradient(ellipse 48% 54% at 50% 52%, #000 72%, transparent 100%)}
+  .tem-arte #vial{mix-blend-mode:normal}
+  #beneficios{left:450px;top:626px;width:600px;height:590px;display:flex;flex-direction:column;list-style:none}
+  #beneficios li{flex:1 1 0;min-height:0;display:flex;align-items:center;gap:22px;overflow:hidden}
+  #beneficios li+li{border-top:2px solid rgba(64,224,214,.25)}
+  #beneficios .circ{width:84px;height:84px;flex:none;border-radius:50%;border:3px solid var(--teal);background:rgba(0,20,24,.9);
+    display:flex;align-items:center;justify-content:center;box-shadow:0 0 14px rgba(64,224,214,.55)}
+  #beneficios .circ .ico{font-size:44px}
+  #beneficios .t{flex:1;min-width:0;font-weight:600;font-size:46px;line-height:1.12}
+
+  /* dosagem */
+  #dosagem{left:40px;top:1240px;width:1000px;height:300px;border:3px solid var(--teal);border-radius:26px;background:var(--panel);
+    box-shadow:0 0 20px rgba(64,224,214,.55),inset 0 0 24px rgba(64,224,214,.10);padding:14px 36px 12px;display:flex;flex-direction:column}
+  #dosagem .hd{display:flex;align-items:baseline;justify-content:space-between;border-bottom:2px solid rgba(64,224,214,.35);padding-bottom:10px;white-space:nowrap}
+  #dosagem h2{font-weight:800;font-size:48px;line-height:1.1}
+  #dosagem .ref{font-weight:500;font-size:40px;color:var(--grey)}
+  #dosagem ul{flex:1;display:flex;flex-direction:column;list-style:none;min-height:0}
+  #dosagem li{flex:1 1 0;min-height:0;display:flex;align-items:center;font-size:46px;line-height:1.1;white-space:nowrap;overflow:hidden}
+  #dosagem b{font-weight:700;color:var(--teal-l);margin-right:16px}
+
+  #aviso{left:40px;top:1556px;width:1000px;height:62px;display:flex;align-items:center;justify-content:center;gap:16px;
+    font-size:32px;line-height:1.15;color:var(--grey);text-align:center}
+  #aviso .ico{font-size:36px}
+  #aviso b{color:var(--teal-l);font-weight:700}
+
+  #rodape{left:0;top:1672px;width:1080px;display:flex;align-items:center;justify-content:center;gap:16px}
+  #rodape img{height:60px;filter:drop-shadow(0 0 10px rgba(64,224,214,.6))}
+  #rodape .marca{font-size:40px}
+  #rodape .labs{font-size:22px;margin-top:6px;letter-spacing:7px}
+</style>
+</head>
+<body>
+<div id="banner">
+  <div id="fundo"></div>
+  <img id="arte" alt="">
+  <div id="arte-veu"></div>
+  <svg id="neon" width="1080" height="1920" viewBox="0 0 1080 1920"></svg>
+
+  <div id="logo" class="abs txt"><img class="logo-v" alt=""><div><div class="marca">VANGUARD</div><div class="labs">LABS</div></div></div>
+  <div id="selo" class="abs"><span data-n="selo" data-min="40"></span></div>
+  <div id="titulo" class="abs" data-n="titulo"><span></span></div>
+  <div id="subtitulo" class="abs txt" data-n="subtitulo" data-min="40"></div>
+
+  <div id="vial-brilho" class="abs"></div>
+  <img id="vial" class="abs" alt="">
+  <ul id="beneficios" class="abs"></ul>
+
+  <section id="dosagem" class="abs">
+    <div class="hd"><h2 data-n="dosagem-h" data-min="40">DOSAGEM</h2><span class="ref" data-n="dosagem-ref" data-min="40">ref. da comunidade</span></div>
+    <ul></ul>
+  </section>
+
+  <div id="aviso" class="abs txt" data-n="aviso" data-min="30"><i class="ico">&#xE7BA;</i><span></span></div>
+  <div id="rodape" class="abs txt"><img class="logo-v" alt=""><div><div class="marca">VANGUARD</div><div class="labs">LABS</div></div></div>
+</div>
+
+<script>
+/*__DADOS__*/
+(function(){
+"use strict";
+const D = window.DADOS, E = D.enxuto || {};
+const ICONES = {
+  engrenagem:"", relogio:"", calendario:"", aviso:"", coracao:"", pulso:"",
+  lua:"", raio:"", escudo:"", check:"", alvo:"", grafico:"", termometro:"",
+  historico:"", folha:"", brilho:"", lampada:"", molecula:"", cubo:"",
+  prancheta:"", documento:"", capelo:"", pessoas:""
+};
+const PROB = [];
+const $ = s => document.querySelector(s);
+function pôrTexto(e, s){
+  String(s).split(/(\S*\w-\w\S*)/).forEach((p, k) => {
+    if (!p) return;
+    if (k % 2){ const n = document.createElement("span"); n.style.whiteSpace = "nowrap"; n.textContent = p; e.appendChild(n); }
+    else e.appendChild(document.createTextNode(p));
+  });
+}
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) pôrTexto(e, txt); return e; };
+const ico = nome => { const i = el("i", "ico"); if (!ICONES[nome]) PROB.push("icone desconhecido: " + nome); i.textContent = ICONES[nome] || ""; return i; };
+function rich(alvo, texto){ texto.split("**").forEach((p, k) => { if (p) alvo.appendChild(k % 2 ? el("b", null, p) : document.createTextNode(p)); }); }
+
+// ---------- dados (campos "enxuto" com fallback para os do banner completo) ----------
+document.querySelectorAll(".logo-v").forEach(i => { i.src = D._assets.logo; });
+$("#selo span").textContent = E.selo || D.selo;
+$("#titulo span").textContent = E.titulo || D.titulo;
+$("#subtitulo").textContent = E.subtitulo || D.subtitulo;
+$("#vial").src = D._assets.vial;
+if (D._assets.fundo){ $("#arte").src = D._assets.fundo; $("#banner").classList.add("tem-arte"); }
+
+(E.beneficios || D.beneficios).slice(0, 4).forEach((it, k) => {
+  const li = el("li"); li.dataset.n = "beneficio-" + (k+1); li.dataset.min = 44; li.classList.add("fit");
+  const c = el("div", "circ"); c.appendChild(ico(it.icone));
+  li.append(c, el("span", "t txt", it.texto)); $("#beneficios").appendChild(li);
+});
+(E.dosagem || D.dosagem).slice(0, 3).forEach((it, k) => {
+  const li = el("li", "fit txt"); li.dataset.n = "dosagem-" + (k+1); li.dataset.min = 44;
+  li.append(el("b", null, it.rotulo), document.createTextNode(it.texto)); $("#dosagem ul").appendChild(li);
+});
+rich($("#aviso span"), E.aviso || "**Research Use Only.** Não é recomendação médica.");
+
+// ---------- fundo neon ----------
+const svg = $("#neon"), NS = "http://www.w3.org/2000/svg";
+const add = (tag, at, pai) => { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); (pai || svg).appendChild(e); return e; };
+const defs = add("defs", {}), f = add("filter", {id:"glow", x:"-50%", y:"-50%", width:"200%", height:"200%"}, defs);
+add("feGaussianBlur", {stdDeviation:"5", result:"b"}, f);
+const mg = add("feMerge", {}, f); add("feMergeNode", {in:"b"}, mg); add("feMergeNode", {in:"SourceGraphic"}, mg);
+let semente = 11; const rnd = () => (semente = (semente * 16807) % 2147483647) / 2147483647;
+function helice(cx, y0, y1, amp, per, op, larg){
+  const g = add("g", {opacity:op, filter:"url(#glow)"});
+  for (const fase of [0, Math.PI]){
+    let d = ""; for (let y = y0; y <= y1; y += 4){ const x = cx + amp * Math.sin((y - y0) / per * 2 * Math.PI + fase); d += (d ? "L" : "M") + x.toFixed(1) + "," + y; }
+    add("path", {d, fill:"none", stroke:"#40e0d6", "stroke-width":larg}, g);
+  }
+  for (let y = y0 + 10; y < y1; y += per / 8){
+    const a = (y - y0) / per * 2 * Math.PI;
+    add("line", {x1:cx + amp * Math.sin(a), y1:y, x2:cx + amp * Math.sin(a + Math.PI), y2:y, stroke:"#96f0e8", "stroke-width":larg * .6, opacity:.55 * Math.abs(Math.cos(a)) + .15}, g);
+  }
+}
+function molecula(x, y, esc, op){
+  const g = add("g", {opacity:op, filter:"url(#glow)"});
+  const pts = [[0,0],[40,-22],[80,0],[40,38],[120,-24],[-38,-30]].map(([a,b]) => [x + a*esc, y + b*esc]);
+  [[0,1],[1,2],[2,3],[3,0],[2,4],[0,5]].forEach(([i,j]) => add("line", {x1:pts[i][0], y1:pts[i][1], x2:pts[j][0], y2:pts[j][1], stroke:"#40e0d6", "stroke-width":2*esc}, g));
+  pts.forEach(([a,b], k) => add("circle", {cx:a, cy:b, r:(k % 2 ? 7 : 10) * esc, fill:"#0b3a3c", stroke:"#96f0e8", "stroke-width":1.5*esc}, g));
+}
+helice(540, 220, 640, 110, 420, .35, 4);
+helice(60, 700, 1500, 50, 300, .25, 3);
+helice(1030, 560, 1400, 46, 280, .2, 2.5);
+helice(900, 1560, 1960, 70, 320, .22, 3);
+molecula(120, 300, 1.1, .25); molecula(880, 300, 1, .22); molecula(80, 1600, 1.2, .2);
+for (let k = 0; k < 110; k++) add("circle", {cx:rnd()*1080, cy:rnd()*1920, r:.8 + rnd()*2.6, fill:"#96f0e8", opacity:.15 + rnd()*.5});
+
+// ---------- checagem (aqui nada encolhe, so avisa) ----------
+function vaza(e){
+  if (e.scrollHeight > e.clientHeight + 1 || e.scrollWidth > e.clientWidth + 1) return true;
+  const r = document.createRange(); r.selectNodeContents(e); const b = r.getBoundingClientRect(), c = e.getBoundingClientRect();
+  return b.height > e.clientHeight + 1 || b.top < c.top - 1 || b.bottom > c.bottom + 1 || b.right > c.right + 1;
+}
+function larguraUmaLinha(span, maxw, min, nome){   // so o titulo pode reduzir (nome comprido), sem passar do minimo
+  let s = parseFloat(getComputedStyle(span).fontSize);
+  while (span.getBoundingClientRect().width > maxw && s > min){ s -= 2; span.style.fontSize = s + "px"; }
+  if (span.getBoundingClientRect().width > maxw + 1) PROB.push(nome + ": passou da largura (encurte o texto)");
+}
+function tamanhos(){       // regra de legibilidade: mede a fonte real de cada texto
+  document.querySelectorAll("[data-min]").forEach(e => {
+    const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT); let t, menor = 999;
+    while ((t = w.nextNode())){
+      if (!t.nodeValue.trim() || t.parentElement.closest(".ico")) continue;
+      menor = Math.min(menor, parseFloat(getComputedStyle(t.parentElement).fontSize));
+    }
+    if (menor < parseFloat(e.dataset.min)) PROB.push(e.dataset.n + ": fonte " + menor + "px abaixo do minimo " + e.dataset.min + "px");
+    e.dataset.fonte = menor;
+  });
+}
+function zonas(){          // conteudo entre y=250 e y=1620 (a logo do topo e o rodape ficam fora)
+  document.querySelectorAll("[data-n]").forEach(e => {
+    const r = document.createRange(); r.selectNodeContents(e); const b = r.getBoundingClientRect();
+    if (b.top < 250 || b.bottom > 1620) PROB.push(e.dataset.n + ": fora da zona segura (y " + Math.round(b.top) + "-" + Math.round(b.bottom) + ")");
+  });
+}
+function sobreposicao(){
+  const cx = [...document.querySelectorAll("[data-n]")].map(n => { const r = document.createRange(); r.selectNodeContents(n); return {n, b:r.getBoundingClientRect()}; });
+  for (let a = 0; a < cx.length; a++) for (let b = a + 1; b < cx.length; b++){
+    const A = cx[a], B = cx[b]; if (A.n.contains(B.n) || B.n.contains(A.n)) continue;
+    const ix = Math.min(A.b.right, B.b.right) - Math.max(A.b.left, B.b.left), iy = Math.min(A.b.bottom, B.b.bottom) - Math.max(A.b.top, B.b.top);
+    if (ix > 1 && iy > 1) PROB.push("sobreposicao: " + A.n.dataset.n + " x " + B.n.dataset.n);
+  }
+  // texto nao pode ficar por cima do frasco
+  const v = $("#vial").getBoundingClientRect(), vx = v.left + v.width * .25, vr = v.right - v.width * .25;
+  cx.forEach(o => { if (o.b.left < vr && o.b.right > vx && o.b.top < v.bottom - 60 && o.b.bottom > v.top + 60) PROB.push("texto sobre o frasco: " + o.n.dataset.n); });
+}
+function fontes(){
+  const c = document.createElement("canvas").getContext("2d"), am = "AÇÃO pré-clínicos ÁÉÍÓÚ ãõâêô";
+  c.font = "400 30px Montserrat, monospace"; const w1 = c.measureText(am).width; c.font = "400 30px monospace";
+  if (Math.abs(w1 - c.measureText(am).width) < 1) PROB.push("Montserrat nao instalada");
+}
+const imagens = [...document.images].filter(i => i.getAttribute("src"));
+Promise.all([document.fonts.ready, ...imagens.map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; }))]).then(() => {
+  imagens.forEach(i => { if (!i.naturalWidth) PROB.push("imagem nao carregou: " + decodeURIComponent(i.src).split("/").pop()); });
+  larguraUmaLinha($("#titulo span"), 1040, 110, "titulo");
+  [["#selo span","selo"],["#subtitulo","subtitulo"],["#aviso","aviso"]].forEach(([s, n]) => { if (vaza($(s))) PROB.push(n + ": nao coube (encurte o texto)"); });
+  const hd = $("#dosagem .hd"), hr = hd.getBoundingClientRect();
+  [...hd.children].forEach(c => { const r = c.getBoundingClientRect(); if (r.right > hr.right + 1) PROB.push("dosagem-h: nao coube (encurte o texto)"); });
+  const h2 = $("#dosagem h2").getBoundingClientRect(), rf = $("#dosagem .ref").getBoundingClientRect();
+  if (h2.right > rf.left - 20) PROB.push("dosagem-h: titulo encostou em 'ref. da comunidade'");
+  document.querySelectorAll(".fit").forEach(e => { if (vaza(e)) PROB.push(e.dataset.n + ": nao coube (encurte o texto)"); });
+  if ($("#subtitulo").scrollWidth > 1000) PROB.push("subtitulo: passou da largura (encurte o texto)");
+  tamanhos(); zonas(); sobreposicao(); fontes();
+  window.PROBLEMAS = PROB; window.PRONTO = true;
+});
+})();
+</script>
+</body>
+</html>
