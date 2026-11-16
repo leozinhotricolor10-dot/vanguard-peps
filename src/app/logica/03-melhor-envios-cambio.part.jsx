@@ -77,7 +77,7 @@
       const addr = order._address || order.address || {};
       const fromCep = sender.postal_code.replace(/\D/g,'');
       const toCep = (addr.cep||'').replace(/\D/g,'');
-      const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width: parseFloat(declLarg)||6, height: parseFloat(declAlt)||5, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3, insurance_value: parseFloat(declValor)||order._total||100, quantity: parseInt(declQtd)||1 }], services:'1,2,3,7,8,9,15', options:{ receipt:false, own_hand:false, collect:false } };
+      const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width: parseFloat(declLarg)||6, height: parseFloat(declAlt)||5, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3, insurance_value: ME_DECLARED_ITEM.unitary_value, quantity: ME_DECLARED_ITEM.quantity }], services:'1,2,3,7,8,9,15', options:{ receipt:false, own_hand:false, collect:false } };
       const calcRes = await callME('/me/shipment/calculate', 'POST', calcBody, meEnv);
       const availableRaw = Array.isArray(calcRes) ? calcRes.filter(s=>!s.error && s.price) : [];
       if (!availableRaw.length) throw new Error('[CALC] Nenhum serviço disponível para esta rota.\n' + JSON.stringify(calcRes));
@@ -87,7 +87,7 @@
       setMeServices(available);
       const jetService = available.find(isJet);
       setSelectedService(jetService || null);
-      setDeclValor(String(order._total || ''));
+      setDeclNome(ME_DECLARED_ITEM.name); setDeclQtd(String(ME_DECLARED_ITEM.quantity)); setDeclValor(String(ME_DECLARED_ITEM.unitary_value));
       setEditingRem(false);
       setEtiquetaStep('select');
       fetchMeBalance();
@@ -118,9 +118,9 @@
         service: service.id,
         from: { name: sender.name, phone: sender.phone.replace(/\D/g,''), email: sender.email, document: sender.document.replace(/\D/g,''), address: sender.address, number: sender.number, complement: sender.complement||'', district: sender.district, city: sender.city, state_abbr: normUF(sender.state), country_id: 'BR', postal_code: fromCep, note: '' },
         to: { name: order.buyerName||'Cliente', phone: (order._phone||'').replace(/\D/g,''), email: toEmail, document: (order._cpf||'').replace(/\D/g,''), address: addr.rua||'', number: addr.numero||'', complement: addr.complemento||'', district: addr.bairro||'', city: addr.cidade||'', state_abbr: normUF(addr.estado), country_id: 'BR', postal_code: toCep, note: '' },
-        products: [{ name: declNome||'Peptídeo', quantity: parseInt(declQtd)||1, unitary_value: parseFloat(declValor)||order._total||100, weight: parseFloat(declPeso)||0.3 }],
+        products: [{ name: ME_DECLARED_ITEM.name, quantity: ME_DECLARED_ITEM.quantity, unitary_value: ME_DECLARED_ITEM.unitary_value, weight: parseFloat(declPeso)||0.3 }],
         volumes: [{ height: parseFloat(declAlt)||5, width: parseFloat(declLarg)||6, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3 }],
-        options: { insurance_value: parseFloat(declValor)||order._total||100, receipt: false, own_hand: false, reverse: false, non_commercial: true, tags: [{ tag: order._code||order.id, url: null }] },
+        options: { insurance_value: ME_DECLARED_ITEM.unitary_value, receipt: false, own_hand: false, reverse: false, non_commercial: true, tags: [{ tag: order._code||order.id, url: null }] },
       };
       const cartRes = await callME('/me/cart', 'POST', cartBody, meEnv);
       if (!cartRes.id) { const errs = cartRes.errors ? Object.entries(cartRes.errors).map(([k,v])=>`${k}: ${Array.isArray(v)?v[0]:v}`).join('\n') : null; throw new Error(errs || cartRes.message || 'Erro ao criar envio'); }
@@ -173,7 +173,7 @@
       const addr = order._address || order.address || {};
       const fromCep = s.postal_code.replace(/\D/g,'');
       const toCep = (addr.cep||'').replace(/\D/g,'');
-      const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width: parseFloat(declLarg)||6, height: parseFloat(declAlt)||5, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3, insurance_value: parseFloat(declValor)||order._total||100, quantity: parseInt(declQtd)||1 }], services:'1,2,3,7,8,9,15', options:{ receipt:false, own_hand:false, collect:false } };
+      const calcBody = { from: { postal_code: fromCep }, to: { postal_code: toCep }, products: [{ id:'1', width: parseFloat(declLarg)||6, height: parseFloat(declAlt)||5, length: parseFloat(declComp)||12, weight: parseFloat(declPeso)||0.3, insurance_value: ME_DECLARED_ITEM.unitary_value, quantity: ME_DECLARED_ITEM.quantity }], services:'1,2,3,7,8,9,15', options:{ receipt:false, own_hand:false, collect:false } };
       const calcRes = await callME('/me/shipment/calculate', 'POST', calcBody, meEnv);
       const availableRaw = Array.isArray(calcRes) ? calcRes.filter(s=>!s.error && s.price) : [];
       if (!availableRaw.length) throw new Error('[CALC] Nenhum serviço disponível para esta rota.\n' + JSON.stringify(calcRes));
@@ -183,7 +183,7 @@
       setMeServices(available);
       const jetService = available.find(isJet);
       setSelectedService(jetService || null);
-      setDeclValor(String(order._total || ''));
+      setDeclNome(ME_DECLARED_ITEM.name); setDeclQtd(String(ME_DECLARED_ITEM.quantity)); setDeclValor(String(ME_DECLARED_ITEM.unitary_value));
       setEtiquetaStep('select');
     } catch(e) {
       setEtiquetaError(e.message);

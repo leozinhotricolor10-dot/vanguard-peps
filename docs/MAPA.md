@@ -21,7 +21,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/novo/sorteio-palco.jsx` | 137 | 10 |
 | `src/novo/componentes.jsx` | 189 | 11 |
 | `src/novo/loja.jsx` | 668 | 44 |
-| `src/app/logica/01-estado-rotas.part.jsx` | 336 | 24 |
+| `src/app/logica/01-estado-rotas.part.jsx` | 338 | 24 |
 | `src/app/logica/02-notificacoes-status.part.jsx` | 160 | 9 |
 | `src/app/logica/03-melhor-envios-cambio.part.jsx` | 277 | 17 |
 | `src/app/logica/04-supabase-sync.part.jsx` | 376 | 20 |
@@ -57,7 +57,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/07-produto.part.jsx` | 94 | 7 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **12339** | |
+| **total** | **12341** | |
 
 ## Conteúdo (nome:linha)
 
@@ -101,7 +101,7 @@ nvFmt:1 · NvIcon:3 · NV_ICONS:6 · NvMarquee:21 · NvProdImg:96 · NvComboImg:
 NovaLoja:1
 
 ### `src/app/logica/01-estado-rotas.part.jsx` — lógica 1/8: abre function App(), useState/useEffect iniciais e rotas por hash
-parseHash:7 · setView:24 · toastTimerRef:63 · adminLockRef:68 · adminPwRef:69 · openEditCustomer:115 · editCustomerCep:119 · saveEditCustomer:128 · MANUAL_ORDER_EMPTY:147 · setAdminMonth:178 · detailActionsRef:184 · persistDespesas:185 · persistShippingCosts:186 · persistPurchaseOrders:187 · addPurchaseOrder:188 · receivePurchaseOrder:196 · removePurchaseOrder:204 · callSendersApi:217 · setMeEnv:244 · recoverPoolFromME:252 · fetchMeBalance:274 · setCartBundles:313 · toggleWaAuto:326
+parseHash:7 · setView:24 · toastTimerRef:63 · adminLockRef:68 · adminPwRef:69 · openEditCustomer:115 · editCustomerCep:119 · saveEditCustomer:128 · MANUAL_ORDER_EMPTY:147 · setAdminMonth:178 · detailActionsRef:184 · persistDespesas:185 · persistShippingCosts:186 · persistPurchaseOrders:187 · addPurchaseOrder:188 · receivePurchaseOrder:196 · removePurchaseOrder:204 · callSendersApi:217 · setMeEnv:244 · recoverPoolFromME:252 · fetchMeBalance:274 · ME_DECLARED_ITEM:290 · setCartBundles:315 · toggleWaAuto:328
 
 ### `src/app/logica/02-notificacoes-status.part.jsx` — lógica 2/8: notificações, artigos, status do pedido, rastreio e WhatsApp de status
 addNotif:7 · markAllRead:18 · clearNotifs:22 · timeAgo:24 · loadArticles:32 · persistArticles:34 · statusLabel:36 · setOrderStatus:46 · markExtraviado:62 · openStatusWhatsApp:71 · isMotoboyOrder:88 · cycleStatus:93 · persistOrders:118 · fetchTrackingFromME:122 · saveTrackingManual:141 · sendTrackingWhatsApp:151

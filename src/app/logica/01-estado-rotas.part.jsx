@@ -286,9 +286,11 @@ function App() {
       setMeBalance({ error: e.message });
     }
   }
-  const [declNome, setDeclNome] = useState('Peptídeo');
-  const [declQtd, setDeclQtd] = useState('1');
-  const [declValor, setDeclValor] = useState('');
+  // Declaração da etiqueta ME: sempre fixa (ignora os produtos do pedido)
+  const ME_DECLARED_ITEM = { name: 'Item pessoal', quantity: 1, unitary_value: 200 };
+  const [declNome, setDeclNome] = useState(ME_DECLARED_ITEM.name);
+  const [declQtd, setDeclQtd] = useState(String(ME_DECLARED_ITEM.quantity));
+  const [declValor, setDeclValor] = useState(String(ME_DECLARED_ITEM.unitary_value));
   const [freteDestCep, setFreteDestCep] = useState('');
   const [freteResults, setFreteResults] = useState(null);
   const [freteLoading, setFreteLoading] = useState(false);

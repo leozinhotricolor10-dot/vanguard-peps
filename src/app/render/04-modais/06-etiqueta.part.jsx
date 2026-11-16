@@ -101,15 +101,15 @@
               <div style={{display:'flex',gap:8,marginBottom:8}}>
                 <div style={{flex:3}}>
                   <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:4}}>Nome do conteúdo</div>
-                  <input value={declNome} onChange={e=>setDeclNome(e.target.value)} placeholder="Ex: Suplemento" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
+                  <input value={declNome} readOnly placeholder="Ex: Suplemento" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
                 </div>
                 <div style={{flex:1}}>
                   <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:4}}>Qtd</div>
-                  <input type="number" min="1" step="1" value={declQtd} onChange={e=>setDeclQtd(e.target.value)} placeholder="1" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
+                  <input type="number" value={declQtd} readOnly placeholder="1" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
                 </div>
                 <div style={{flex:2}}>
                   <div style={{fontSize:'0.62rem',color:'var(--muted)',marginBottom:4}}>Valor declarado (R$)</div>
-                  <input type="number" min="0" step="0.01" value={declValor} onChange={e=>setDeclValor(e.target.value)} placeholder="0.00" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
+                  <input type="number" value={declValor} readOnly placeholder="0.00" style={{width:'100%',padding:'8px 10px',background:'var(--surface)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text)',fontSize:'0.8rem',boxSizing:'border-box'}} />
                 </div>
               </div>
               <div style={{fontSize:'0.68rem',color:'var(--muted)',marginBottom:6,letterSpacing:'0.5px',textTransform:'uppercase'}}>📦 Embalagem</div>
