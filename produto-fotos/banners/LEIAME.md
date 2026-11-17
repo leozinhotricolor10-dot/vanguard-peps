@@ -43,6 +43,30 @@ o programa usa os 4 primeiros benefícios e as 3 primeiras linhas de dosagem do 
 Nesta versão a letra **não diminui**: se o programa disser `nao coube (encurte o texto)`, encurte a frase no JSON.
 Ele também avisa se alguma letra ficar menor que o mínimo para celular ou cair perto das bordas do stories.
 
+### Banner de promoção (Black Friday, grade de produtos com DE / POR)
+
+```
+python banner_html.py dados/promo_blackfriday.json --promo
+```
+
+Sai em `saida\promo_blackfriday.png` / `.webp`. Se houver mais produtos do que cabem numa imagem, gera também
+`promo_blackfriday_2.png`, `_3.png`... (largura 1080; altura de 1350 a 1920 conforme a grade).
+
+**Como mudar o desconto:** troque o número em `"percentual": 40` (ex.: `30` ou `50`). O preço "POR" é
+calculado sozinho (preço cheio menos o desconto, arredondado para o real) e o selo "-40%" muda junto.
+
+**Desconto diferente num produto só:** ponha `"percentual": 50` dentro daquele produto (o selo dele vira "-50%").
+Use quando o site já tem uma promoção maior que a da campanha, para a Black Friday nunca ficar mais cara.
+O campo `"promo_atual"` guarda a promo que o site já aplica; se ela for maior que a da campanha e o produto
+não tiver `"percentual"` próprio, o programa para e avisa.
+
+**Como mudar a lista:** cada produto em `"produtos"` tem `sku`, `nome`, `mg`, `foto` e `preco` (preço cheio
+em reais, igual ao do site). Para tirar um produto sem apagar a linha, ponha `"fora": true`. Para pôr mais
+ou menos produtos por imagem, mude `"por_imagem"` (padrão 9).
+
+O programa **não gera** o banner se faltar preço ou foto de algum produto: ele lista o que falta.
+Também avisa se um nome passar de 2 linhas, se a letra ficar menor que 36 px ou se a imagem passar de 1920 px.
+
 ---
 
 ## Jeito alternativo: `banner.py` (desenho por código, exige arte do ComfyUI)

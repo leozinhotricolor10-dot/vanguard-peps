@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Promo Vanguard Labs</title>
+<style>
+  /* Largura 1080. Altura: 1350 (feed 4:5) ou mais, ate 1920, conforme a grade.
+     Regra de celular: nome e preco >= 36px; preco POR maior que o DE. A fonte NAO encolhe: se nao couber, o exportador avisa. */
+  :root{--teal:#40e0d6;--teal-l:#96f0e8;--white:#f2f6f8;--grey:#b9c3ca;--panel:rgba(3,14,18,.88)}
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:#000}
+  body{width:1080px}
+  #banner{position:relative;width:1080px;min-height:1350px;overflow:hidden;background:#020709;
+    font-family:"Montserrat",sans-serif;color:var(--white);-webkit-font-smoothing:antialiased;
+    display:flex;flex-direction:column;padding:30px 36px 30px}
+  .ico{font-family:"Segoe Fluent Icons","Segoe MDL2 Assets";font-style:normal;line-height:1;color:var(--teal);
+    text-shadow:0 0 12px rgba(64,224,214,.75)}
+  .txt{text-shadow:0 2px 4px rgba(0,0,0,.95)}
+  #fundo{position:absolute;inset:0;z-index:0;background:
+      radial-gradient(ellipse 60% 14% at 50% 12%, rgba(64,224,214,.25), transparent 70%),
+      radial-gradient(ellipse 40% 30% at 0% 50%, rgba(64,224,214,.14), transparent 70%),
+      radial-gradient(ellipse 40% 30% at 100% 70%, rgba(40,170,200,.12), transparent 70%),
+      linear-gradient(180deg,#03141a 0%,#010608 40%,#020a0d 100%)}
+  #neon{position:absolute;inset:0;z-index:0}
+  #conteudo{position:relative;z-index:1;display:flex;flex-direction:column;flex:1}
+
+  /* cabecalho */
+  #logo{display:flex;align-items:center;justify-content:center;gap:18px}
+  #logo img{height:66px;filter:drop-shadow(0 0 12px rgba(64,224,214,.6))}
+  .marca{font-weight:600;font-size:42px;letter-spacing:2px;line-height:1}
+  .labs{display:flex;align-items:center;gap:12px;font-weight:500;font-size:24px;letter-spacing:8px;color:var(--teal-l);margin-top:8px}
+  .labs:after{content:"";width:60px;height:2px;background:var(--teal)}
+  #peptides{text-align:center;margin-top:8px;font-weight:500;font-size:30px;letter-spacing:12px;color:var(--grey)}
+  #faixa{margin:16px 0 8px;border:3px solid var(--teal);border-radius:30px;background:rgba(0,18,22,.85);
+    box-shadow:0 0 22px rgba(64,224,214,.55),inset 0 0 24px rgba(64,224,214,.12);
+    display:flex;align-items:center;justify-content:center;gap:22px;padding:12px 18px;white-space:nowrap}
+  #titulo{font-weight:900;font-style:italic;font-size:84px;line-height:1;letter-spacing:-1px;padding:0 6px;
+    background:linear-gradient(180deg,#fff 0%,#d6dce2 44%,#808a94 54%,#c4ccd4 74%,#fafcfc 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 3px 0 #05090c) drop-shadow(0 0 14px rgba(64,224,214,.5))}
+  #off{background:var(--teal);color:#021012;border-radius:22px;padding:8px 22px;text-align:center;line-height:.95;
+    font-weight:900;box-shadow:0 0 24px rgba(64,224,214,.8)}
+  #off .n{display:block;font-size:64px;letter-spacing:-2px}
+  #off .o{display:block;font-size:36px;letter-spacing:6px}
+  #sub{text-align:center;font-weight:500;font-size:36px;color:var(--teal-l);margin-bottom:16px}
+
+  /* grade */
+  #grade{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-content:start}
+  .card{position:relative;border:2px solid rgba(64,224,214,.85);border-radius:20px;background:var(--panel);
+    box-shadow:0 0 14px rgba(64,224,214,.4),inset 0 0 18px rgba(64,224,214,.08);
+    display:flex;flex-direction:column;align-items:center;padding:10px 12px 12px;min-width:0}
+  .card .vial{align-self:flex-start;margin-left:6px;width:120px;height:150px;object-fit:contain;object-view-box:inset(14% 19% 15% 19%);mix-blend-mode:lighten;
+    -webkit-mask-image:radial-gradient(ellipse 50% 54% at 50% 52%, #000 72%, transparent 100%);
+    mask-image:radial-gradient(ellipse 50% 54% at 50% 52%, #000 72%, transparent 100%)}
+  .selo{position:absolute;top:10px;right:10px;background:var(--teal);color:#021012;font-weight:900;font-size:36px;
+    line-height:1;padding:8px 10px;border-radius:14px;box-shadow:0 0 14px rgba(64,224,214,.7)}
+  .nome{width:100%;text-align:center;font-weight:800;font-size:36px;line-height:1.08;margin-top:2px}
+  .mg{width:100%;text-align:center;font-weight:600;font-size:36px;line-height:1.15;color:var(--teal-l)}
+  .de{margin-top:4px;font-weight:600;font-size:36px;line-height:1.1;color:var(--grey);white-space:nowrap;
+    text-decoration:line-through;text-decoration-color:#ff4d6d;text-decoration-thickness:3px}
+  .por{margin-top:6px;width:100%;background:var(--teal);color:#021012;border-radius:18px;text-align:center;padding:6px 6px 8px;
+    box-shadow:0 0 16px rgba(64,224,214,.7);white-space:nowrap}
+  .por .l{display:block;font-weight:800;font-size:36px;line-height:1.05}
+  .por .v{display:block;font-weight:900;font-size:56px;line-height:1.02;letter-spacing:-1px}
+  .card .espaco{flex:1}
+
+  /* modo 2 colunas (poucos produtos): card horizontal, vial grande */
+  #grade.horiz{grid-template-columns:repeat(2,1fr);gap:12px}
+  .horiz .card{flex-direction:row;align-items:stretch;padding:8px 14px 8px 4px;gap:6px}
+  .horiz .esq{flex:none;width:150px;position:relative;display:flex;align-items:center;justify-content:center}
+  .horiz .selo{position:absolute;left:6px;bottom:4px;top:auto;right:auto;z-index:2}
+  .horiz .card .vial{align-self:center;margin:0;width:150px;height:200px;object-view-box:inset(13% 21% 13% 21%)}
+  .horiz .dir{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center}
+  .horiz .nome,.horiz .mg{text-align:left;margin:0}
+  .horiz .de{margin-top:4px}
+  .horiz .por{display:flex;align-items:baseline;justify-content:center;gap:12px;padding:2px 10px 4px;margin-top:4px}
+  .compacto #rodape{margin-top:14px}
+  .compacto #sub{margin-bottom:12px}
+  .horiz .por .l,.horiz .por .v{display:inline}
+
+  /* rodape */
+  #rodape{margin-top:18px;display:flex;gap:18px}
+  #rodape>div{border:2px solid var(--teal);border-radius:24px;background:rgba(0,18,22,.85);box-shadow:0 0 16px rgba(64,224,214,.45);
+    display:flex;align-items:center;gap:18px;padding:14px 22px}
+  #rodape .ico{font-size:52px}
+  #site{flex:1.45}
+  #site .a{font-weight:500;font-size:30px;line-height:1.1;color:var(--grey)}
+  #site .b{font-weight:800;font-size:44px;line-height:1.1;color:var(--teal-l)}
+  #duvida{flex:1}
+  #duvida .t{font-weight:700;font-size:36px;line-height:1.1}
+  #pagina{position:absolute;right:40px;top:44px;z-index:2;font-weight:700;font-size:30px;color:var(--grey)}
+</style>
+</head>
+<body>
+<div id="banner">
+  <div id="fundo"></div>
+  <svg id="neon" width="1080" height="1920" viewBox="0 0 1080 1920"></svg>
+  <div id="pagina" class="txt"></div>
+  <div id="conteudo">
+    <div id="logo" class="txt"><img class="logo-v" alt=""><div><div class="marca">VANGUARD</div><div class="labs">LABS</div></div></div>
+    <div id="peptides" class="txt" data-n="peptides" data-min="30">VANGUARD PEPTIDES</div>
+    <div id="faixa"><span id="titulo" data-n="titulo" data-min="36"></span><div id="off" data-n="off" data-min="36"><span class="n"></span><span class="o">OFF</span></div></div>
+    <div id="sub" class="txt" data-n="sub" data-min="36"></div>
+    <div id="grade"></div>
+    <div class="espaco" style="flex:1"></div>
+    <div id="rodape">
+      <div id="site"><i class="ico">&#xE7BF;</i><div><div class="a" data-n="site-a" data-min="30"></div><div class="b" data-n="site-b" data-min="36"></div></div></div>
+      <div id="duvida"><i class="ico">&#xE8F2;</i><div class="t" data-n="duvida" data-min="36"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/*__DADOS__*/
+(function(){
+"use strict";
+const D = window.DADOS, PROB = [];
+const $ = s => document.querySelector(s);
+function pôrTexto(e, s){ String(s).split(/(\S*\w-\w\S*)/).forEach((p, k) => { if (!p) return; if (k % 2){ const n = document.createElement("span"); n.style.whiteSpace = "nowrap"; n.textContent = p; e.appendChild(n); } else e.appendChild(document.createTextNode(p)); }); }
+const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) pôrTexto(e, txt); return e; };
+const brl = v => "R$ " + Number(v).toLocaleString("pt-BR", {maximumFractionDigits:0});
+
+document.querySelectorAll(".logo-v").forEach(i => { i.src = D._assets.logo; });
+$("#titulo").textContent = D.titulo || "BLACK FRIDAY";
+$("#off .n").textContent = D.percentual + "%";
+$("#sub").textContent = D.subtitulo || "Preços por ampola";
+$("#site .a").textContent = D.site_texto || "Catálogo completo em";
+$("#site .b").textContent = D.site || "vanguardpep.com";
+$("#duvida .t").textContent = D.contato || "Dúvidas? É só chamar!";
+if (D._pagina && D._paginas > 1) $("#pagina").textContent = D._pagina + "/" + D._paginas;
+
+const COLS = D.colunas === 2 ? 2 : 3;
+if (COLS === 2){ $("#grade").classList.add("horiz"); $("#banner").classList.add("compacto"); }
+D._itens.forEach((p, k) => {
+  const c = el("div", "card");
+  const v = el("img", "vial"); v.src = p._foto; v.alt = "";
+  const s = el("div", "selo", "-" + (p._pct || D.percentual) + "%"); s.dataset.n = "selo-" + (k+1); s.dataset.min = 36;
+  const n = el("div", "nome txt", p.nome); n.dataset.n = "nome-" + (k+1); n.dataset.min = 36;
+  const m = el("div", "mg txt", p.mg); m.dataset.n = "mg-" + (k+1); m.dataset.min = 36;
+  const de = el("div", "de", "DE " + brl(p.preco)); de.dataset.n = "de-" + (k+1); de.dataset.min = 36;
+  const por = el("div", "por"); por.dataset.n = "por-" + (k+1); por.dataset.min = 36;
+  por.append(el("span", "l", "POR"), el("span", "v", brl(p._por)));
+  if (COLS === 2){
+    const esq = el("div", "esq"), dir = el("div", "dir");
+    esq.append(s, v); dir.append(n, m, de, por); c.append(esq, dir);
+  } else c.append(s, v, n, m, el("div", "espaco"), de, por);
+  $("#grade").appendChild(c);
+});
+// ultima linha incompleta fica centralizada
+const resto = COLS === 3 ? D._itens.length % 3 : 0;
+if (COLS === 2 && D._itens.length % 2){ const u = $("#grade").lastChild; u.style.gridColumn = "1 / span 2"; u.style.width = "50%"; u.style.justifySelf = "center"; }
+if (resto){ const cards = $("#grade").children; const pri = cards[cards.length - resto];
+  pri.style.gridColumnStart = resto === 1 ? 2 : 1; if (resto === 2){ $("#grade").style.gridTemplateColumns = "repeat(6,1fr)";
+    [...cards].forEach((c, i) => { c.style.gridColumn = "span 2"; });
+    cards[cards.length - 2].style.gridColumn = "2 / span 2"; cards[cards.length - 1].style.gridColumn = "4 / span 2"; } }
+
+// fundo neon
+const svg = $("#neon"), NS = "http://www.w3.org/2000/svg";
+const add = (tag, at, pai) => { const e = document.createElementNS(NS, tag); for (const k in at) e.setAttribute(k, at[k]); (pai || svg).appendChild(e); return e; };
+const f = add("filter", {id:"glow", x:"-50%", y:"-50%", width:"200%", height:"200%"}, add("defs", {}));
+add("feGaussianBlur", {stdDeviation:"5"}, f);
+let semente = 23; const rnd = () => (semente = (semente * 16807) % 2147483647) / 2147483647;
+function helice(cx, y0, y1, amp, per, op, larg){
+  const g = add("g", {opacity:op});
+  for (const fase of [0, Math.PI]){
+    let d = ""; for (let y = y0; y <= y1; y += 4){ const x = cx + amp * Math.sin((y - y0) / per * 2 * Math.PI + fase); d += (d ? "L" : "M") + x.toFixed(1) + "," + y; }
+    add("path", {d, fill:"none", stroke:"#40e0d6", "stroke-width":larg}, g);
+    add("path", {d, fill:"none", stroke:"#40e0d6", "stroke-width":larg * 3, filter:"url(#glow)", opacity:.6}, g);
+  }
+  for (let y = y0 + 10; y < y1; y += per / 8){ const a = (y - y0) / per * 2 * Math.PI;
+    add("line", {x1:cx + amp * Math.sin(a), y1:y, x2:cx + amp * Math.sin(a + Math.PI), y2:y, stroke:"#96f0e8", "stroke-width":larg * .6, opacity:.5}, g); }
+}
+helice(1000, -20, 420, 60, 300, .45, 3); helice(70, -20, 330, 45, 260, .3, 2.5); helice(40, 900, 1940, 40, 300, .18, 2); helice(1050, 1000, 1940, 40, 300, .15, 2);
+for (let k = 0; k < 120; k++) add("circle", {cx:rnd()*1080, cy:rnd()*1920, r:.8 + rnd()*2.4, fill:"#96f0e8", opacity:.12 + rnd()*.45});
+
+// checagem
+function vaza(e){
+  if (e.scrollWidth > e.clientWidth + 1) return true;
+  const r = document.createRange(); r.selectNodeContents(e); const b = r.getBoundingClientRect(), c = e.getBoundingClientRect();
+  return b.right > c.right + 1 || b.left < c.left - 1;
+}
+const imagens = [...document.images].filter(i => i.getAttribute("src"));
+Promise.all([document.fonts.ready, ...imagens.map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; }))]).then(() => {
+  imagens.forEach(i => { if (!i.naturalWidth) PROB.push("imagem nao carregou: " + decodeURIComponent(i.src).split("/").pop()); });
+  document.querySelectorAll("[data-n]").forEach(e => {
+    if (vaza(e)) PROB.push(e.dataset.n + ": nao coube na largura (encurte o texto)");
+    const w = document.createTreeWalker(e, NodeFilter.SHOW_TEXT); let t, menor = 999;
+    while ((t = w.nextNode())) if (t.nodeValue.trim()) menor = Math.min(menor, parseFloat(getComputedStyle(t.parentElement).fontSize));
+    if (menor < parseFloat(e.dataset.min)) PROB.push(e.dataset.n + ": fonte " + menor + "px abaixo do minimo " + e.dataset.min + "px");
+  });
+  // nome com no maximo 2 linhas
+  document.querySelectorAll(".nome").forEach(n => { if (n.getBoundingClientRect().height > 36 * 1.08 * 2 + 2) PROB.push(n.dataset.n + ": nome com mais de 2 linhas (encurte)"); });
+  // POR maior que DE
+  const de = $(".de"), por = $(".por .v");
+  if (de && por && parseFloat(getComputedStyle(por).fontSize) <= parseFloat(getComputedStyle(de).fontSize)) PROB.push("preco POR nao esta maior que o DE");
+  // faixa do titulo
+  const fx = $("#faixa"); if (fx.scrollWidth > fx.clientWidth + 1) PROB.push("titulo: faixa nao coube (encurte o titulo)");
+  // sobreposicao entre textos
+  const cx = [...document.querySelectorAll("[data-n]")].map(n => ({n, b:n.getBoundingClientRect()}));
+  for (let a = 0; a < cx.length; a++) for (let b = a + 1; b < cx.length; b++){
+    const A = cx[a], B = cx[b]; if (A.n.contains(B.n) || B.n.contains(A.n)) continue;
+    const ix = Math.min(A.b.right, B.b.right) - Math.max(A.b.left, B.b.left), iy = Math.min(A.b.bottom, B.b.bottom) - Math.max(A.b.top, B.b.top);
+    if (ix > 1 && iy > 1) PROB.push("sobreposicao: " + A.n.dataset.n + " x " + B.n.dataset.n);
+  }
+  const altura = Math.ceil($("#banner").getBoundingClientRect().height);
+  if (altura > 1920) PROB.push("imagem com " + altura + "px de altura (maximo 1920): diminua 'por_imagem' no JSON");
+  const c = document.createElement("canvas").getContext("2d"), am = "AÇÃO ÁÉÍÓÚ ãõ"; c.font = "400 30px Montserrat, monospace";
+  const w1 = c.measureText(am).width; c.font = "400 30px monospace"; if (Math.abs(w1 - c.measureText(am).width) < 1) PROB.push("Montserrat nao instalada");
+  window.ALTURA = altura; window.PROBLEMAS = PROB; window.PRONTO = true;
+});
+})();
+</script>
+</body>
+</html>

@@ -27,6 +27,7 @@ ARTE = HERE / "arte"
 SAIDA = HERE / "saida"
 MODELO = HERE / "modelo_banner.html"
 MODELO_ENXUTO = HERE / "modelo_enxuto.html"
+MODELO_PROMO = HERE / "modelo_promo.html"
 LOGO_V = HERE / "assets" / "logo_v.png"
 NAVEGADORES = [r"C:\Program Files\Google\Chrome\Application\chrome.exe",
                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
@@ -73,6 +74,74 @@ def montar_html(d, usar_arte, modelo=MODELO, sufixo="banner"):
     return out, assets
 
 
+def preco_por(preco, pct):
+    """Preco com desconto, arredondado para o real (0,50 sobe)."""
+    from decimal import Decimal, ROUND_HALF_UP
+    v = Decimal(str(preco)) * (Decimal(100) - Decimal(str(pct))) / Decimal(100)
+    return int(v.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+
+def gerar_promo(cam, d, saida):
+    """Banner de promocao (grade de produtos com DE/POR). Divide em varias imagens conforme 'por_imagem'."""
+    from PIL import Image
+    pct = d.get("percentual")
+    if not isinstance(pct, (int, float)) or not 0 < pct < 100:
+        raise SystemExit("'percentual' invalido no JSON (ex.: 40).")
+    erros, itens = [], []
+    for p in d["produtos"]:
+        if p.get("fora"):
+            print("Fora: %-7s %s %s (%s)" % (p.get("sku"), p.get("nome"), p.get("mg"), p.get("motivo", "marcado fora")))
+            continue
+        if not isinstance(p.get("preco"), (int, float)) or p["preco"] <= 0:
+            erros.append("%s: preco cheio nao preenchido" % p.get("sku"))
+            continue
+        f = FOTOS / p["foto"]
+        if not f.exists():
+            erros.append("%s: foto %s nao encontrada" % (p.get("sku"), p["foto"]))
+            continue
+        pi = p.get("percentual", pct)                       # percentual proprio do produto (opcional)
+        if not isinstance(pi, (int, float)) or not 0 < pi < 100:
+            erros.append("%s: 'percentual' do produto invalido" % p.get("sku"))
+            continue
+        promo = p.get("promo_atual") or 0                   # promo que o site ja aplica hoje
+        if promo > pi and "percentual" not in p:
+            erros.append("%s: a promo atual do site (%s%%) e maior que a da campanha (%s%%) - ponha \"percentual\": %s neste produto"
+                         % (p.get("sku"), promo, pi, promo))
+            continue
+        itens.append(dict(p, _foto=f.as_uri(), _por=preco_por(p["preco"], pi), _pct=pi))
+    if erros:
+        print("Nao gerei o banner - corrija o JSON (%s):" % cam.name)
+        for e in erros:
+            print("  - " + e)
+        sys.exit(1)
+    if not itens:
+        raise SystemExit("Nenhum produto na lista.")
+    n = max(1, int(d.get("por_imagem", 9)))
+    paginas = -(-len(itens) // n)
+    por_pag = -(-len(itens) // paginas)                       # divide igual entre as imagens
+    base = cam.stem
+    saida.mkdir(parents=True, exist_ok=True)
+    print("Produtos: %d | desconto %s%% | %d imagem(ns)" % (len(itens), pct, paginas))
+    print("  %-8s %-18s %-15s %6s %6s %5s" % ("SKU", "nome", "mg", "DE", "POR", "%"))
+    for it in itens:
+        print("  %-8s %-18s %-15s %6s %6s %4s%%" % (it["sku"], it["nome"], it["mg"], it["preco"], it["_por"], it["_pct"]))
+    todos = []
+    for i in range(paginas):
+        lote = itens[i * por_pag:(i + 1) * por_pag]
+        dd = dict(d, _itens=lote, _pagina=i + 1, _paginas=paginas, _assets={"logo": LOGO_V.as_uri()})
+        js = "window.DADOS = " + json.dumps(dd, ensure_ascii=True).replace("</", "<\\/") + ";"
+        sufixo = "" if i == 0 else "_%d" % (i + 1)
+        html = saida / ("%s%s.html" % (base, sufixo))
+        html.write_text(MODELO_PROMO.read_text(encoding="utf-8").replace("/*__DADOS__*/", js), encoding="utf-8")
+        png = saida / ("%s%s.png" % (base, sufixo))
+        probs = exportar(html, png, 1080, 1920, 1)
+        Image.open(png).convert("RGB").save(png.with_suffix(".webp"), "WEBP", quality=90, method=6)
+        w, h = Image.open(png).size
+        print("Imagem %d: %s (%dx%d)" % (i + 1, png, w, h))
+        todos += ["imagem %d: %s" % (i + 1, p) for p in probs]
+    return todos
+
+
 def exportar(html_path, png_path, largura=1024, altura=1536, escala=2):
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
@@ -102,6 +171,8 @@ def main():
     ap.add_argument("--gerar-arte", action="store_true", help="gera arte nova no ComfyUI antes (se estiver aberto)")
     ap.add_argument("--seed", type=int)
     ap.add_argument("--enxuto", action="store_true", help="versao stories 1080x1920 com pouco texto e letra grande")
+    ap.add_argument("--promo", action="store_true", help="banner de promocao (grade DE/POR), ex.: dados/promo_blackfriday.json")
+    ap.add_argument("--saida", help="pasta de saida (padrao: saida/)")
     a = ap.parse_args()
 
     cam = Path(a.dados)
@@ -109,6 +180,16 @@ def main():
         cam = HERE / a.dados
     d = json.loads(cam.read_text(encoding="utf-8"))
     garantir_logo()
+
+    if a.promo:
+        problemas = gerar_promo(cam, d, Path(a.saida) if a.saida else SAIDA)
+        if problemas:
+            print("\nATENCAO - revise antes de usar:")
+            for p in problemas:
+                print("  - " + p)
+            sys.exit(2)
+        print("Checagem automatica: todo o texto coube, fontes >= minimo, sem sobreposicao, fotos carregadas.")
+        return
 
     if (a.gerar_arte or a.seed is not None) and not a.sem_arte:
         sys.path.insert(0, str(HERE))
