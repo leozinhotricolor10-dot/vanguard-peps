@@ -264,7 +264,7 @@
         const isPix = checkout.pagamento === 'pix';
         const freight = isPix ? { value: 0, label: 'Frete grátis', reason: 'Frete grátis no PIX' } : freightRaw;
         const couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round(myTotal * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal)) : 0;
-        const pointsDiscount = Math.floor(appliedPoints / 100) * (pointsConfig.redeem || 5);
+        const pointsDiscount = PONTOS_VG_VISIVEL ? Math.floor(appliedPoints / 100) * (pointsConfig.redeem || 5) : 0;
         const totalFinal = myTotal - couponDiscount - pointsDiscount + freight.value;
         const isFree = freight.value === 0;
         return (
@@ -484,7 +484,7 @@
                         </div>
                     }
                   </div>
-                  <div className="checkout-section">
+                  {PONTOS_VG_VISIVEL && <div className="checkout-section">
                     <div className="checkout-section-title">⭐ Vanguard Points</div>
                     {pointsBalance === null
                       ? <div style={{fontSize:'0.75rem',color:'var(--muted)'}}>CPF informado no passo 1 será usado para verificar seu saldo.</div>
@@ -505,7 +505,7 @@
                             </div>
                         : <div style={{fontSize:'0.75rem',color:'var(--muted)'}}>{(pointsBalance.points??0) > 0 ? `Você tem ${pointsBalance.points??0} pts — mínimo 100 pts para resgatar.` : 'Nenhum ponto acumulado neste CPF ainda.'}</div>
                     }
-                  </div>
+                  </div>}
                   <div className="checkout-nav">
                     <button className="checkout-nav-back" onClick={()=>setCheckoutStep(2)}>← Voltar</button>
                     <button className="checkout-nav-next" onClick={()=>{

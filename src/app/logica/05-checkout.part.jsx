@@ -62,8 +62,8 @@
       let freight = isPix ? { value: 0, label: 'Frete grátis', reason: 'Frete grátis no PIX' } : freightRaw;
       let subtotalFinal = myTotal;
       let couponDiscount = appliedCoupon ? (appliedCoupon.type === 'percent' ? Math.round(myTotal * appliedCoupon.value / 100) : Math.min(appliedCoupon.value, myTotal)) : 0;
-      let pointsUsed = Math.floor(appliedPoints / 100) * 100;
-      let pointsDiscount = Math.floor(appliedPoints / 100) * (pointsConfig.redeem || 5);
+      let pointsUsed = PONTOS_VG_VISIVEL ? Math.floor(appliedPoints / 100) * 100 : 0;
+      let pointsDiscount = PONTOS_VG_VISIVEL ? Math.floor(appliedPoints / 100) * (pointsConfig.redeem || 5) : 0;
       let bundleDiscount = bundleInfo.total;
       const noteOf = list => list.filter(b => b.discount > 0).map(b => `Combo ${b.name}: -R$ ${b.discount.toLocaleString('pt-BR')}`).join(' | ');
       let bundleNote = noteOf(bundleInfo.applied);

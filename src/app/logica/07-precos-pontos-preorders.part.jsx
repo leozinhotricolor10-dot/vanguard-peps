@@ -32,6 +32,7 @@
   // Ref para cancelar checkPoints stale em caso de digitação rápida
   const _checkPointsReq = React.useRef(0);
   async function checkPoints(cpf) {
+    if (!PONTOS_VG_VISIVEL) { setPointsBalance(null); return; } // pontos ocultos: nem consulta o saldo
     const clean = (cpf||'').replace(/\D/g,'');
     if (clean.length < 11) { setPointsBalance(null); return; }
     const reqId = ++_checkPointsReq.current;

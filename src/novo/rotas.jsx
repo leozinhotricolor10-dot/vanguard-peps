@@ -4,6 +4,9 @@ const NV_SLUG = (window.location.pathname.match(/^\/p\/([^/]+)/) || [])[1] ? dec
 // ROLLBACK: trocar NOVO_NO_INICIO para false (e dar push) faz "/" voltar ao layout antigo;
 // /novo e /p/<código> continuam no novo. O layout antigo fica sempre em /antigo/ (rota de segurança).
 const NOVO_NO_INICIO = true;
+// Pontos VG: false = o cliente não vê nem resgata pontos (checkout, loja nova e antiga). A regra vai mudar;
+// quando chegar, voltar para true. Admin e servidor (create-order) não são afetados.
+const PONTOS_VG_VISIVEL = false;
 const IS_ANTIGO = /^\/antigo(\/|$)/.test(window.location.pathname);
 // Loja nova em "/" (com NOVO_NO_INICIO), em /novo e nas páginas de produto /p/<código>
 const IS_NOVO = !IS_ANTIGO && (NOVO_NO_INICIO || /\/novo\/?$/.test(window.location.pathname) || !!NV_SLUG);

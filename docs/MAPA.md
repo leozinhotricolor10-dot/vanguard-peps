@@ -14,7 +14,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/core/faq.jsx` | 35 | 2 |
 | `src/views/calc.jsx` | 451 | 20 |
 | `src/views/portal.jsx` | 177 | 11 |
-| `src/novo/rotas.jsx` | 68 | 4 |
+| `src/novo/rotas.jsx` | 71 | 5 |
 | `src/novo/css.jsx` | 178 | 17 |
 | `src/novo/admin-shell.jsx` | 221 | 16 |
 | `src/novo/sorteio-admin.jsx` | 588 | 37 |
@@ -27,7 +27,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/logica/04-supabase-sync.part.jsx` | 376 | 20 |
 | `src/app/logica/05-checkout.part.jsx` | 199 | 10 |
 | `src/app/logica/06-pedido-manual.part.jsx` | 267 | 13 |
-| `src/app/logica/07-precos-pontos-preorders.part.jsx` | 327 | 15 |
+| `src/app/logica/07-precos-pontos-preorders.part.jsx` | 328 | 15 |
 | `src/app/logica/08-carrinho-admin.part.jsx` | 526 | 27 |
 | `src/app/render/00-casca-portal-manual.part.jsx` | 631 | 48 |
 | `src/app/render/01-loja-antiga.part.jsx` | 676 | 42 |
@@ -57,7 +57,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/07-produto.part.jsx` | 94 | 7 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **12341** | |
+| **total** | **12345** | |
 
 ## Conteúdo (nome:linha)
 
@@ -80,7 +80,7 @@ formatDose:1 · SyringeViz:15 · CalcView:95
 PortalView:1
 
 ### `src/novo/rotas.jsx`
-NV_SLUG:3 · NOVO_NO_INICIO:6 · IS_ANTIGO:7 · IS_NOVO:9 · NV_HOME:10 · nvSlugOf:15 · NV_HASH_SCREENS:17 · nvStateFromUrl:18 · nvBundleFull:28 · NV_ART_TAGS:34 · nvArticleBody:35 · nvReadMin:52 · calcBundleDiscount:54
+NV_SLUG:3 · NOVO_NO_INICIO:6 · PONTOS_VG_VISIVEL:9 · IS_ANTIGO:10 · IS_NOVO:12 · NV_HOME:13 · nvSlugOf:18 · NV_HASH_SCREENS:20 · nvStateFromUrl:21 · nvBundleFull:31 · NV_ART_TAGS:37 · nvArticleBody:38 · nvReadMin:55 · calcBundleDiscount:57
 
 ### `src/novo/css.jsx`
 NOVO_CSS:1
@@ -119,7 +119,7 @@ calcFreight:3 · fetchCep:10 · validateCheckout:27 · saveCheckoutData:43 · up
 pastCustomers:3 · fillManualFromCustomer:16 · releaseOrderStock:30 · reserveOrderStock:40 · itemsSavingRef:62 · stockDiffOfEdit:63 · saveOrderItemsEdit:75 · createManualOrder:116 · parseAndFillManualOrder:163
 
 ### `src/app/logica/07-precos-pontos-preorders.part.jsx` — lógica 7/8: preço efetivo, cupons, pontos, pré-orders, availableStock, toast/nome
-effectivePrice:2 · persistCoupons:8 · persistCustomers:9 · awardPoints:11 · _checkPointsReq:33 · checkPoints:34 · applyCouponCode:60 · generateToken:76 · savePreorder:82 · removePreorder:144 · persistPreorders:152 · availableStock:175 · inStockPublic:223 · notifyPreorder:234 · sendReminder:255 · checkPreorderExpiry:270 · cancelPreorderByToken:291 · reducePreorderQty:296 · showToast:305 · saveName:311 · handleWelcomeConfirm:313 · handleNameConfirm:321
+effectivePrice:2 · persistCoupons:8 · persistCustomers:9 · awardPoints:11 · _checkPointsReq:33 · checkPoints:34 · applyCouponCode:61 · generateToken:77 · savePreorder:83 · removePreorder:145 · persistPreorders:153 · availableStock:176 · inStockPublic:224 · notifyPreorder:235 · sendReminder:256 · checkPreorderExpiry:271 · cancelPreorderByToken:292 · reducePreorderQty:297 · showToast:306 · saveName:312 · handleWelcomeConfirm:314 · handleNameConfirm:322
 
 ### `src/app/logica/08-carrinho-admin.part.jsx` — lógica 8/8: carrinho, combos/packs, login admin, totais, helpers do admin novo (nva*)
 myOrders:3 · myTotal:4 · bundleInfo:7 · addBundleToCart:14 · openModal:51 · addPackToCart:57 · quickAdd:80 · versionTap:101 · handleAddToCart:109 · updateQtyInCart:151 · removeFromCart:216 · openSenderPool:240 · handleAdminUnlock:245 · submitAdminPassword:255 · adminRemove:305 · copyWhatsApp:330 · adminDateOf:357 · adminMonthKeyOf:368 · adminMonthLabel:373 · adminMonthKey:374 · inAdminMonth:380 · shipDateOf:382 · adminMonthOptions:384 · amOrders:396 · amPreorders:397 · amDespesas:398 · amImportHistory:399 · amShippingCosts:400 · totalRevenue:408 · totalUnits:412 · totalBuyers:413 · peptideCartQty:421 · nvaPick:458 · NVA_ST:469 · NVA_NEXT:470 · nvaAdvance:471 · nvaWhats:478 · nvaRemove:484 · nvaSteps:489 · nvaWhen:513 · nvaItemsText:523

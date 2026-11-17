@@ -53,7 +53,7 @@ function NovaLoja(P) {
   const bundleDiscount = (bundleInfo && bundleInfo.total) || 0;
   // Pontos VG: mesma regra do App (cada 100 pts = R$ pointsConfig.redeem)
   const ptsValue = pts => Math.floor((pts || 0) / 100) * ((pointsConfig && pointsConfig.redeem) || 5);
-  const pointsDiscount = ptsValue(appliedPoints);
+  const pointsDiscount = PONTOS_VG_VISIVEL ? ptsValue(appliedPoints) : 0;
   const totalFinal = myTotal - couponDiscount - bundleDiscount - pointsDiscount + freight.value;
   // CPF salvo de visita anterior: consulta o saldo ao abrir o checkout
   React.useEffect(() => {
@@ -461,7 +461,7 @@ function NovaLoja(P) {
                     style={{ flex: 1, minWidth: 0, height: 48, padding: '0 14px', borderRadius: 12, border: '1px solid rgba(0,229,195,.18)', background: 'var(--bg3)', color: 'var(--tx)', fontSize: 15, outline: 'none' }} />
                   <button onClick={applyCouponCode} style={{ height: 48, padding: '0 16px', borderRadius: 12, border: '1px solid rgba(0,229,195,.35)', background: 'transparent', color: 'var(--ac)', fontWeight: 700, cursor: 'pointer' }}>Aplicar</button>
                 </div>}
-            {(() => {
+            {PONTOS_VG_VISIVEL && (() => {
               const bal = pointsBalance ? (pointsBalance.points || 0) : 0;
               if (pointsBalance == null) return <span style={{ fontSize: 13, color: 'var(--mu2)' }}>Tem pontos VG? Informe o CPF acima para ver o saldo.</span>;
               if (appliedPoints > 0) return (
