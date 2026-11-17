@@ -53,6 +53,7 @@ CATALOGO = [
     ("RT20", "Retatrutide", "20MG"),
     ("RT30", "Retatrutide", "30MG"),
     ("RT50", "Retatrutide", "50MG"),
+    ("RT60", "Retatrutide", "60MG"),
     ("SLK5", "Selank", "5MG"),
     ("SNAP10", "SNAP-8", "10MG"),
     ("TR60", "Tirzepatide", "60MG"),
