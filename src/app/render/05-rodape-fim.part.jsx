@@ -1,4 +1,4 @@
-// @fragmento do App() — render: rodapé, bottom nav mobile, loading, boas-vindas, nome; fecha o return e a function App(). Antes: 07-produto.part.jsx | depois: src/main.jsx. Não é JS válido sozinho: tools/montar.js junta na ordem de src/manifest.json (esta linha é descartada).
+// @fragmento do App() — render: rodapé, bottom nav mobile, loading, boas-vindas, nome; fecha o return e a function App(). Antes: 08-cotacao.part.jsx | depois: src/main.jsx. Não é JS válido sozinho: tools/montar.js junta na ordem de src/manifest.json (esta linha é descartada).
       {/* RODAPÉ */}
       <footer className="site-footer">
         <div className="footer-disclaimer">

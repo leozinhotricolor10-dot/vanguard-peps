@@ -1,4 +1,4 @@
-// @fragmento do App() — render modais: adicionar ao carrinho (produto, layout antigo). Antes: 06-etiqueta.part.jsx | depois: 05-rodape-fim.part.jsx. Não é JS válido sozinho: tools/montar.js junta na ordem de src/manifest.json (esta linha é descartada).
+// @fragmento do App() — render modais: adicionar ao carrinho (produto, layout antigo). Antes: 06-etiqueta.part.jsx | depois: 08-cotacao.part.jsx. Não é JS válido sozinho: tools/montar.js junta na ordem de src/manifest.json (esta linha é descartada).
       {/* ADD TO CART MODAL */}
       {modal && (
         <div className="modal-overlay" onClick={()=>setModal(null)}>

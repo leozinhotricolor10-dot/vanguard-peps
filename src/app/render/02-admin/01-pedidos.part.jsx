@@ -43,6 +43,7 @@
                   const link = window.location.origin + window.location.pathname + '?pedido';
                   navigator.clipboard.writeText(link).then(()=>showToast('Link copiado ✓ — envie ao cliente pelo WhatsApp','success')).catch(()=>{ prompt('Copie o link:', link); });
                 }}>📋 Link Pedido Manual</button>
+                <button className="admin-action-btn" onClick={()=>setQuoteOpen(true)} style={{borderColor:'rgba(37,211,102,0.45)',color:'#25d366',background:'rgba(37,211,102,0.08)'}}>🧾 Gerar cotação</button>
                 <button className="admin-action-btn" onClick={()=>{ setManualOrder(MANUAL_ORDER_EMPTY); setManualCustomerSearch(''); setManualAddItemId(''); setManualOrderModal(true); }} style={{borderColor:'rgba(0,229,195,0.5)',color:'var(--accent)',background:'rgba(0,229,195,0.08)'}}>＋ Pedido Manual</button>
                 <button className="admin-action-btn danger" onClick={clearAllOrders}>🗑️ Limpar tudo</button>
               </div>

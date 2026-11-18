@@ -316,6 +316,7 @@ function App() {
   const [pointsBalance, setPointsBalance] = useState(null); // null | {cpf,points,...}
   const [pointsConfig, setPointsConfig] = useState(() => { try { return JSON.parse(localStorage.getItem('vg-points-config')||'null') || { rate: 1, redeem: 5 }; } catch { return { rate: 1, redeem: 5 }; } });
   const [pixModal, setPixModal] = useState(null); // order | null
+  const [quoteOpen, setQuoteOpen] = useState(false); // modal de cotação (aba Pedidos)
   const [pixCode, setPixCode] = useState('');
   const [clientList, setClientList] = useState([]); // aba Clientes
   const [adjustModal, setAdjustModal] = useState(null);

@@ -20,8 +20,9 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/novo/sorteio-admin.jsx` | 588 | 37 |
 | `src/novo/sorteio-palco.jsx` | 137 | 10 |
 | `src/novo/componentes.jsx` | 189 | 11 |
+| `src/novo/cotacao-admin.jsx` | 270 | 18 |
 | `src/novo/loja.jsx` | 668 | 44 |
-| `src/app/logica/01-estado-rotas.part.jsx` | 338 | 24 |
+| `src/app/logica/01-estado-rotas.part.jsx` | 339 | 24 |
 | `src/app/logica/02-notificacoes-status.part.jsx` | 160 | 9 |
 | `src/app/logica/03-melhor-envios-cambio.part.jsx` | 277 | 17 |
 | `src/app/logica/04-supabase-sync.part.jsx` | 376 | 20 |
@@ -32,7 +33,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/00-casca-portal-manual.part.jsx` | 631 | 48 |
 | `src/app/render/01-loja-antiga.part.jsx` | 676 | 42 |
 | `src/app/render/02-admin/00-cabecalho.part.jsx` | 118 | 11 |
-| `src/app/render/02-admin/01-pedidos.part.jsx` | 440 | 38 |
+| `src/app/render/02-admin/01-pedidos.part.jsx` | 441 | 38 |
 | `src/app/render/02-admin/02-estoque.part.jsx` | 240 | 20 |
 | `src/app/render/02-admin/03-produtos.part.jsx` | 229 | 20 |
 | `src/app/render/02-admin/04-artigos.part.jsx` | 86 | 6 |
@@ -55,9 +56,10 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/05-pix.part.jsx` | 65 | 5 |
 | `src/app/render/04-modais/06-etiqueta.part.jsx` | 188 | 22 |
 | `src/app/render/04-modais/07-produto.part.jsx` | 94 | 7 |
+| `src/app/render/04-modais/08-cotacao.part.jsx` | 3 | 1 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **12345** | |
+| **total** | **12620** | |
 
 ## Conteúdo (nome:linha)
 
@@ -97,11 +99,14 @@ sorteioNomePalco:5 · SORTEIO_PALCO_CSS:13 · sorteioFonte:47 · SorteioPalco:52
 ### `src/novo/componentes.jsx`
 nvFmt:1 · NvIcon:3 · NV_ICONS:6 · NvMarquee:21 · NvProdImg:96 · NvComboImg:110 · NvInstallBanner:122 · SORTEIO:154 · NvSorteio:161
 
+### `src/novo/cotacao-admin.jsx`
+COTACAO_LS:7 · COTACAO_MAX:8 · cotacaoLoad:9 · cotacaoSave:12 · cotacaoNum:16 · cotacaoR2:23 · cotacaoWaPhone:26 · cotacaoCalc:32 · cotacaoMensagem:42 · cotacaoCopiar:55 · CotacaoModal:69
+
 ### `src/novo/loja.jsx`
 NovaLoja:1
 
 ### `src/app/logica/01-estado-rotas.part.jsx` — lógica 1/8: abre function App(), useState/useEffect iniciais e rotas por hash
-parseHash:7 · setView:24 · toastTimerRef:63 · adminLockRef:68 · adminPwRef:69 · openEditCustomer:115 · editCustomerCep:119 · saveEditCustomer:128 · MANUAL_ORDER_EMPTY:147 · setAdminMonth:178 · detailActionsRef:184 · persistDespesas:185 · persistShippingCosts:186 · persistPurchaseOrders:187 · addPurchaseOrder:188 · receivePurchaseOrder:196 · removePurchaseOrder:204 · callSendersApi:217 · setMeEnv:244 · recoverPoolFromME:252 · fetchMeBalance:274 · ME_DECLARED_ITEM:290 · setCartBundles:315 · toggleWaAuto:328
+parseHash:7 · setView:24 · toastTimerRef:63 · adminLockRef:68 · adminPwRef:69 · openEditCustomer:115 · editCustomerCep:119 · saveEditCustomer:128 · MANUAL_ORDER_EMPTY:147 · setAdminMonth:178 · detailActionsRef:184 · persistDespesas:185 · persistShippingCosts:186 · persistPurchaseOrders:187 · addPurchaseOrder:188 · receivePurchaseOrder:196 · removePurchaseOrder:204 · callSendersApi:217 · setMeEnv:244 · recoverPoolFromME:252 · fetchMeBalance:274 · ME_DECLARED_ITEM:290 · setCartBundles:315 · toggleWaAuto:329
 
 ### `src/app/logica/02-notificacoes-status.part.jsx` — lógica 2/8: notificações, artigos, status do pedido, rastreio e WhatsApp de status
 addNotif:7 · markAllRead:18 · clearNotifs:22 · timeAgo:24 · loadArticles:32 · persistArticles:34 · statusLabel:36 · setOrderStatus:46 · markExtraviado:62 · openStatusWhatsApp:71 · isMotoboyOrder:88 · cycleStatus:93 · persistOrders:118 · fetchTrackingFromME:122 · saveTrackingManual:141 · sendTrackingWhatsApp:151
@@ -134,7 +139,7 @@ HERO BANNER — full width, fora do grid:2 · SIDEBAR:28 · MAIN:59 · CATALOG:6
 ADMIN:2 · 🔔 Bell icon:19 · TABS:100
 
 ### `src/app/render/02-admin/01-pedidos.part.jsx` — render admin: aba PEDIDOS
-TAB: PEDIDOS:2 · LISTA DE AVISOS DE REPOSIÇÃO:408
+TAB: PEDIDOS:2 · LISTA DE AVISOS DE REPOSIÇÃO:409
 
 ### `src/app/render/02-admin/02-estoque.part.jsx` — render admin: aba ESTOQUE
 TAB: ESTOQUE:2 · ── DIAGNÓSTICO DE ESTOQUE ──:4 · Lotes de origem:153 · PEDIDOS DE REPOSIÇÃO:172 · Form:177 · List:197
@@ -201,6 +206,9 @@ ETIQUETA MODAL:2 · STEP: settings / pool manager:18 · STEP: select service:52 
 
 ### `src/app/render/04-modais/07-produto.part.jsx` — render modais: adicionar ao carrinho (produto, layout antigo)
 ADD TO CART MODAL:2
+
+### `src/app/render/04-modais/08-cotacao.part.jsx` — render modais: cotação para cliente (aba Pedidos do admin, componente CotacaoModal em src/novo/cotacao-admin.jsx)
+COTAÇÃO MODAL:2
 
 ### `src/app/render/05-rodape-fim.part.jsx` — render: rodapé, bottom nav mobile, loading, boas-vindas, nome; fecha o return e a function App()
 RODAPÉ:2 · ── MOBILE BOTTOM NAV ──:24 · ── LOADING OVERLAY ──:48 · ── WELCOME MODAL (primeira visita) ──:57 · ── NAME MODAL (mobile sem nome) ──:78

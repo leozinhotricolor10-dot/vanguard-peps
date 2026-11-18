@@ -17,6 +17,7 @@
     "src/novo/sorteio-admin.jsx",
     "src/novo/sorteio-palco.jsx",
     "src/novo/componentes.jsx",
+    "src/novo/cotacao-admin.jsx",
     "src/novo/loja.jsx",
     "src/app/logica/01-estado-rotas.part.jsx",
     "src/app/logica/02-notificacoes-status.part.jsx",
@@ -52,6 +53,7 @@
     "src/app/render/04-modais/05-pix.part.jsx",
     "src/app/render/04-modais/06-etiqueta.part.jsx",
     "src/app/render/04-modais/07-produto.part.jsx",
+    "src/app/render/04-modais/08-cotacao.part.jsx",
     "src/app/render/05-rodape-fim.part.jsx",
     "src/main.jsx"
   ]
