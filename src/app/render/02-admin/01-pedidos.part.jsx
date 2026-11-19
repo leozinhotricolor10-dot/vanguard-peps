@@ -51,7 +51,8 @@
                 const adminOrders = sb ? amOrders.filter(o => o._supabase) : amOrders;
                 const adminSearchLower = adminSearch.trim().toLowerCase();
                 const filteredOrders = adminOrders
-                  .filter(o => adminStatusFilter === 'all' || orderStage(o) === adminStatusFilter)
+                  .filter(o => adminStatusFilter === 'all'
+                    || (adminStatusFilter === 'sem_etiqueta' ? (orderStage(o) === 'pago' && !isMotoboyOrder(o)) : orderStage(o) === adminStatusFilter))
                   .filter(o => {
                     if (!adminSearchLower) return true;
                     const name = (o.buyerName||'').toLowerCase();
@@ -98,15 +99,15 @@
                       {id:'enviado',label:'📦 Enviado',count:statusCounts.enviado},
                       {id:'entregue',label:'🎉 Entregue',count:statusCounts.entregue},
                       {id:'extraviado',label:'⚠️ Extraviado',count:statusCounts.extraviado},
-                    ].map(f=>(
+                    ].map(f=>{ const on = adminStatusFilter===f.id || (f.id==='pago' && adminStatusFilter==='sem_etiqueta'); return (
                       <button key={f.id} onClick={()=>{ setAdminStatusFilter(f.id); setAdminPage(1); }}
                         style={{padding:'5px 12px',borderRadius:20,border:'1px solid',cursor:'pointer',fontSize:'0.72rem',fontFamily:"'Space Mono',monospace",
-                          borderColor: adminStatusFilter===f.id ? 'var(--accent)' : 'var(--border)',
-                          background: adminStatusFilter===f.id ? 'rgba(0,229,195,0.1)' : 'transparent',
-                          color: adminStatusFilter===f.id ? 'var(--accent)' : 'var(--muted)'}}>
+                          borderColor: on ? 'var(--accent)' : 'var(--border)',
+                          background: on ? 'rgba(0,229,195,0.1)' : 'transparent',
+                          color: on ? 'var(--accent)' : 'var(--muted)'}}>
                         {f.label} <span style={{opacity:0.7}}>({f.count})</span>
                       </button>
-                    ))}
+                    ); })}
                   </div>
                 {(adminSearch || adminStatusFilter !== 'all') && (
                   <div style={{fontFamily:"'Space Mono',monospace",fontSize:'0.65rem',color:'var(--muted)',marginBottom:8,paddingLeft:2}}>

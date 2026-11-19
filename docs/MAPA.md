@@ -33,7 +33,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/00-casca-portal-manual.part.jsx` | 631 | 48 |
 | `src/app/render/01-loja-antiga.part.jsx` | 676 | 42 |
 | `src/app/render/02-admin/00-cabecalho.part.jsx` | 118 | 11 |
-| `src/app/render/02-admin/01-pedidos.part.jsx` | 443 | 38 |
+| `src/app/render/02-admin/01-pedidos.part.jsx` | 444 | 38 |
 | `src/app/render/02-admin/02-estoque.part.jsx` | 240 | 20 |
 | `src/app/render/02-admin/03-produtos.part.jsx` | 229 | 20 |
 | `src/app/render/02-admin/04-artigos.part.jsx` | 86 | 6 |
@@ -59,7 +59,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/08-cotacao.part.jsx` | 3 | 1 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **12741** | |
+| **total** | **12742** | |
 
 ## Conteúdo (nome:linha)
 
@@ -139,7 +139,7 @@ HERO BANNER — full width, fora do grid:2 · SIDEBAR:28 · MAIN:59 · CATALOG:6
 ADMIN:2 · 🔔 Bell icon:19 · TABS:100
 
 ### `src/app/render/02-admin/01-pedidos.part.jsx` — render admin: aba PEDIDOS
-TAB: PEDIDOS:2 · LISTA DE AVISOS DE REPOSIÇÃO:411
+TAB: PEDIDOS:2 · LISTA DE AVISOS DE REPOSIÇÃO:412
 
 ### `src/app/render/02-admin/02-estoque.part.jsx` — render admin: aba ESTOQUE
 TAB: ESTOQUE:2 · ── DIAGNÓSTICO DE ESTOQUE ──:4 · Lotes de origem:153 · PEDIDOS DE REPOSIÇÃO:172 · Form:177 · List:197

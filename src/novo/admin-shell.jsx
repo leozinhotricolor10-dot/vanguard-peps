@@ -28,9 +28,9 @@ const NVA_GROUPS = [
   ] },
 ];
 const NVA_ITEMS = NVA_GROUPS.flatMap(g => g.items.map(i => ({ ...i, group: g.id })));
-// Item ativo: "Etiquetas" é a aba Pedidos filtrada em "pago"
+// Item ativo: "Etiquetas" é a aba Pedidos filtrada em "sem_etiqueta" (pagos sem etiqueta, sem motoboy)
 function nvaActiveItem(adminTab, sec, statusFilter) {
-  if (adminTab === 'pedidos' && sec === 'etiquetas' && statusFilter === 'pago') return 'etiquetas';
+  if (adminTab === 'pedidos' && sec === 'etiquetas' && statusFilter === 'sem_etiqueta') return 'etiquetas';
   const it = NVA_ITEMS.find(i => i.tab === adminTab || (i.tabs && i.tabs.some(t => t.tab === adminTab)));
   return it ? it.id : 'pedidos';
 }

@@ -457,7 +457,7 @@
   } : {};
   function nvaPick(it) {
     if (it.action === 'senders') { openSenderPool(); return; }
-    if (it.id === 'etiquetas') setAdminStatusFilter('pago');
+    if (it.id === 'etiquetas') setAdminStatusFilter('sem_etiqueta'); // pagos que ainda precisam de etiqueta (sem motoboy)
     else if (it.id === 'pedidos' && nvaActive !== 'pedidos') setAdminStatusFilter('all'); // vindo de outra seção, sem o filtro de Etiquetas
     setNvaSec(it.id);
     setAdminTab(it.tab);
