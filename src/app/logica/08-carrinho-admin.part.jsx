@@ -466,7 +466,17 @@
   // ── Pedidos no /novo: próximo passo de cada pedido ──
   // Só chama as funções que o admin antigo já usa (cycleStatus, gerarEtiqueta, modal PIX,
   // sendTrackingWhatsApp, adminRemove); a única coisa nova é a confirmação antes de agir.
-  const NVA_ST = { pendente: 'Aguardando', pago: 'Pago', enviado: 'Enviado', entregue: 'Entregue', extraviado: 'Extraviado' };
+  const NVA_ST = { pendente: 'Aguardando', pago: 'Pago', etiqueta: 'Etiqueta gerada', enviado: 'Enviado', entregue: 'Entregue', extraviado: 'Extraviado' };
+  // Etapa da esteira (só no front): "etiqueta" = pago, não motoboy, já com etiqueta gerada.
+  // No banco o status continua "pago"; motoboy pula essa etapa (Pago -> Enviado).
+  function orderStage(order) {
+    const st = order.status || 'pendente';
+    if (st === 'pago' && order.label_url && !isMotoboyOrder(order)) return 'etiqueta';
+    return st;
+  }
+  function orderSteps(order) {
+    return isMotoboyOrder(order) ? ['pendente', 'pago', 'enviado', 'entregue'] : ['pendente', 'pago', 'etiqueta', 'enviado', 'entregue'];
+  }
   const NVA_NEXT = { pendente: 'pago', pago: 'enviado', enviado: 'entregue' };
   function nvaAdvance(order) {
     const next = NVA_NEXT[order.status || 'pendente'];

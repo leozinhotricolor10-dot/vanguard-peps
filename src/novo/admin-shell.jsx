@@ -91,6 +91,7 @@ const NOVO_ADMIN_CSS = `
 .nvp-pill{display:inline-block;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700;white-space:nowrap}
 .nvp-st-pendente{background:rgba(255,107,53,.14);color:#ffb38f}
 .nvp-st-pago{background:rgba(0,229,195,.14);color:#5ff3dc}
+.nvp-st-etiqueta{background:rgba(255,200,60,.14);color:#ffd166}
 .nvp-st-enviado{background:rgba(0,168,255,.14);color:#7cc9ff}
 .nvp-st-entregue{background:rgba(169,191,203,.12);color:#c7d6de}
 .nvp-st-extraviado{background:rgba(255,80,80,.14);color:#ff8a8a}
@@ -120,7 +121,7 @@ const NOVO_ADMIN_CSS = `
   .nvp-row .nvp-sec button{min-height:24px}
   .nvp-panel{display:flex;flex-direction:column;gap:14px;position:sticky;top:20px;padding:18px;border-radius:16px;background:#0a1219;border:1px solid rgba(0,229,195,.14);min-width:0}
   .nvp-ph{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:16px}
-  .nvp-prog{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+  .nvp-prog{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:4px}
   .nvp-prog span{height:5px;border-radius:3px;background:#1d3140}
   .nvp-prog span.on{background:#00e5c3}
   .nvp-sect{display:flex;flex-direction:column;gap:4px;padding-top:12px;border-top:1px solid rgba(0,229,195,.1);font-size:13px;color:#c7d6de;overflow-wrap:anywhere}

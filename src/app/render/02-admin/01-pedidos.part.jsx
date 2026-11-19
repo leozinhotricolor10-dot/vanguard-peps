@@ -51,7 +51,7 @@
                 const adminOrders = sb ? amOrders.filter(o => o._supabase) : amOrders;
                 const adminSearchLower = adminSearch.trim().toLowerCase();
                 const filteredOrders = adminOrders
-                  .filter(o => adminStatusFilter === 'all' || (o.status||'pendente') === adminStatusFilter)
+                  .filter(o => adminStatusFilter === 'all' || orderStage(o) === adminStatusFilter)
                   .filter(o => {
                     if (!adminSearchLower) return true;
                     const name = (o.buyerName||'').toLowerCase();
@@ -67,7 +67,8 @@
                   });
                 const statusCounts = {
                   pendente: adminOrders.filter(o=>(o.status||'pendente')==='pendente').length,
-                  pago: adminOrders.filter(o=>o.status==='pago').length,
+                  pago: adminOrders.filter(o=>orderStage(o)==='pago').length,
+                  etiqueta: adminOrders.filter(o=>orderStage(o)==='etiqueta').length,
                   enviado: adminOrders.filter(o=>o.status==='enviado').length,
                   entregue: adminOrders.filter(o=>o.status==='entregue').length,
                   extraviado: adminOrders.filter(o=>o.status==='extraviado').length,
@@ -93,6 +94,7 @@
                       {id:'all',label:'Todos',count:adminOrders.length},
                       {id:'pendente',label:'🟡 Pendente',count:statusCounts.pendente},
                       {id:'pago',label:'✅ Pago',count:statusCounts.pago},
+                      {id:'etiqueta',label:'🏷️ Etiqueta',count:statusCounts.etiqueta},
                       {id:'enviado',label:'📦 Enviado',count:statusCounts.enviado},
                       {id:'entregue',label:'🎉 Entregue',count:statusCounts.entregue},
                       {id:'extraviado',label:'⚠️ Extraviado',count:statusCounts.extraviado},
@@ -240,7 +242,7 @@
                     if (window.matchMedia && window.matchMedia('(min-width:1100px)').matches) setNvaSelOrder(order.id);
                     else setOrderDetail(order);
                   };
-                  const pill = order => { const st = order.status || 'pendente'; return <span className={'nvp-pill nvp-st-' + st}>{NVA_ST[st] || st}</span>; };
+                  const pill = order => { const st = orderStage(order); return <span className={'nvp-pill nvp-st-' + st}>{NVA_ST[st] || st}</span>; };
                   return (
                     <div className="nvp-wrap">
                       <div className="nvp-list">
@@ -276,15 +278,15 @@
                       </div>
                       {sel && (() => {
                         const { main, sec } = nvaSteps(sel);
-                        const st = sel.status || 'pendente';
-                        const stepIdx = ['pendente', 'pago', 'enviado', 'entregue'].indexOf(st);
+                        const steps = orderSteps(sel);
+                        const stepIdx = steps.indexOf(orderStage(sel));
                         const a = sel._address || {};
                         const line1 = [a.rua, a.numero, a.complemento].filter(Boolean).join(', ') + (a.bairro ? ' — ' + a.bairro : '');
                         const line2 = [a.cidade && (a.cidade + (a.estado ? '/' + a.estado : '')), a.cep].filter(Boolean).join(' · ');
                         return (
                           <aside className="nvp-panel" aria-label="Detalhes do pedido">
                             <div className="nvp-ph"><code>{sel._code || '#' + sel.id}</code>{pill(sel)}</div>
-                            {stepIdx >= 0 && <div className="nvp-prog" aria-hidden="true">{[0, 1, 2, 3].map(i => <span key={i} className={i <= stepIdx ? 'on' : ''} />)}</div>}
+                            {stepIdx >= 0 && <div className="nvp-prog" aria-hidden="true">{steps.map((s, i) => <span key={s} title={NVA_ST[s]} className={i <= stepIdx ? 'on' : ''} />)}</div>}
                             <div className="nvp-sect">
                               <span className="nvp-lbl">Cliente</span>
                               <b>{sel.buyerName || 'Cliente'}</b>
