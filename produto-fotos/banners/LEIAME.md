@@ -64,6 +64,12 @@ não tiver `"percentual"` próprio, o programa para e avisa.
 em reais, igual ao do site). Para tirar um produto sem apagar a linha, ponha `"fora": true`. Para pôr mais
 ou menos produtos por imagem, mude `"por_imagem"` (padrão 9).
 
+**Tags de categoria:** cada produto pode ter até 2 tags, ex.: `"tags": ["Pele", "Regeneração"]` (só texto, sem
+emoji). Elas aparecem em pílulas no card. Para tirar, apague o campo `"tags"` daquele produto.
+**Linha "PARA:":** `"para": "dormir melhor e relaxar"` (até ~32 letras, só texto) aparece no pé do card como
+"PARA: dormir melhor e relaxar". Sem o campo, o card sai sem essa linha.
+A linha de categorias do topo vem de `"legenda": ["Emagrecimento", "Sono", ...]`; apague o campo para esconder.
+
 O programa **não gera** o banner se faltar preço ou foto de algum produto: ele lista o que falta.
 Também avisa se um nome passar de 2 linhas, se a letra ficar menor que 36 px ou se a imagem passar de 1920 px.
 

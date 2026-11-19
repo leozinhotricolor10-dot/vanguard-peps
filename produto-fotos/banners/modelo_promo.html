@@ -74,6 +74,25 @@
   .horiz .nome,.horiz .mg{text-align:left;margin:0}
   .horiz .de{margin-top:4px}
   .horiz .por{display:flex;align-items:baseline;justify-content:center;gap:12px;padding:2px 10px 4px;margin-top:4px}
+  /* tags de categoria (opcionais): >= 30px */
+  .tags{display:flex;flex-wrap:wrap;gap:6px 8px;margin-top:6px}
+  .tag{font-weight:600;font-size:30px;line-height:1.1;padding:2px 12px 4px;border:2px solid var(--teal);border-radius:20px;
+    color:var(--teal-l);background:rgba(0,30,34,.75);box-shadow:0 0 8px rgba(64,224,214,.4);white-space:nowrap}
+  #grade:not(.horiz) .tags{justify-content:center}
+  /* linha "PARA:" (opcional): >= 30px, largura inteira do card */
+  .para{font-weight:500;font-size:30px;line-height:1.15;color:var(--white);margin-top:6px;width:100%}
+  .para b{font-weight:800;color:var(--teal-l);margin-right:8px}
+  .horiz .card.tem-para{flex-wrap:wrap}
+  .horiz .card.tem-para .para{flex-basis:100%;padding:6px 4px 2px 10px;border-top:1px solid rgba(64,224,214,.3);margin-top:4px}
+  #grade:not(.horiz) .para{text-align:center}
+  /* carimbo ESGOTADO (opcional): campo "esgotado": true no produto; o card escurece e o carimbo vai por cima */
+  .card.esgotado > *:not(.carimbo){opacity:.38;filter:saturate(.4)}
+  .carimbo{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-10deg);z-index:5;
+    padding:4px 20px 8px;border:6px solid #ff3b5c;border-radius:14px;background:rgba(20,0,6,.82);
+    color:#ff3b5c;font-weight:900;font-size:58px;line-height:1;letter-spacing:3px;white-space:nowrap;
+    box-shadow:0 0 22px rgba(255,59,92,.65),inset 0 0 14px rgba(255,59,92,.35);text-shadow:0 0 12px rgba(255,59,92,.6)}
+  #legenda{text-align:center;font-weight:600;font-size:30px;color:var(--white);margin:-4px 0 14px;white-space:nowrap}
+  #legenda .p{color:var(--teal);padding:0 8px}
   .compacto #rodape{margin-top:14px}
   .compacto #sub{margin-bottom:12px}
   .horiz .por .l,.horiz .por .v{display:inline}
@@ -101,6 +120,7 @@
     <div id="peptides" class="txt" data-n="peptides" data-min="30">VANGUARD PEPTIDES</div>
     <div id="faixa"><span id="titulo" data-n="titulo" data-min="36"></span><div id="off" data-n="off" data-min="36"><span class="n"></span><span class="o">OFF</span></div></div>
     <div id="sub" class="txt" data-n="sub" data-min="36"></div>
+    <div id="legenda" class="txt" data-n="legenda" data-min="30" style="display:none"></div>
     <div id="grade"></div>
     <div class="espaco" style="flex:1"></div>
     <div id="rodape">
@@ -127,6 +147,10 @@ $("#sub").textContent = D.subtitulo || "Preços por ampola";
 $("#site .a").textContent = D.site_texto || "Catálogo completo em";
 $("#site .b").textContent = D.site || "vanguardpep.com";
 $("#duvida .t").textContent = D.contato || "Dúvidas? É só chamar!";
+if (Array.isArray(D.legenda) && D.legenda.length){   // legenda de filtro opcional
+  const lg = $("#legenda"); lg.style.display = "block";
+  D.legenda.forEach((t, i) => { if (i) lg.appendChild(el("span", "p", "·")); lg.appendChild(document.createTextNode(t)); });
+}
 if (D._pagina && D._paginas > 1) $("#pagina").textContent = D._pagina + "/" + D._paginas;
 
 const COLS = D.colunas === 2 ? 2 : 3;
@@ -140,10 +164,21 @@ D._itens.forEach((p, k) => {
   const de = el("div", "de", "DE " + brl(p.preco)); de.dataset.n = "de-" + (k+1); de.dataset.min = 36;
   const por = el("div", "por"); por.dataset.n = "por-" + (k+1); por.dataset.min = 36;
   por.append(el("span", "l", "POR"), el("span", "v", brl(p._por)));
+  const tg = el("div", "tags");
+  (p.tags || []).slice(0, 2).forEach((t, i) => { const x = el("span", "tag", t); x.dataset.n = "tag-" + (k+1) + "-" + (i+1); x.dataset.min = 30; tg.appendChild(x); });
+  if ((p.tags || []).length > 2) PROB.push(p.sku + ": mais de 2 tags (so as 2 primeiras aparecem)");
+  const comTags = tg.childNodes.length ? [tg] : [];
+  const comPara = [];
+  if (p.para){
+    const pa = el("div", "para txt"); pa.dataset.n = "para-" + (k+1); pa.dataset.min = 30;
+    pa.append(el("b", null, "PARA:")); pôrTexto(pa, p.para); comPara.push(pa); c.classList.add("tem-para");
+    if (p.para.length > 40) PROB.push(p.sku + ": texto 'para' longo (" + p.para.length + " letras; ideal ate ~32)");
+  }
   if (COLS === 2){
     const esq = el("div", "esq"), dir = el("div", "dir");
-    esq.append(s, v); dir.append(n, m, de, por); c.append(esq, dir);
-  } else c.append(s, v, n, m, el("div", "espaco"), de, por);
+    esq.append(s, v); dir.append(n, m, ...comTags, de, por); c.append(esq, dir, ...comPara);
+  } else c.append(s, v, n, m, ...comTags, ...comPara, el("div", "espaco"), de, por);
+  if (p.esgotado){ c.classList.add("esgotado"); c.appendChild(el("div", "carimbo", "ESGOTADO")); }
   $("#grade").appendChild(c);
 });
 // ultima linha incompleta fica centralizada
