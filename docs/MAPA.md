@@ -16,7 +16,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/views/portal.jsx` | 177 | 11 |
 | `src/novo/rotas.jsx` | 71 | 5 |
 | `src/novo/css.jsx` | 178 | 17 |
-| `src/novo/admin-shell.jsx` | 221 | 16 |
+| `src/novo/admin-shell.jsx` | 226 | 17 |
 | `src/novo/sorteio-admin.jsx` | 588 | 37 |
 | `src/novo/sorteio-palco.jsx` | 137 | 10 |
 | `src/novo/componentes.jsx` | 189 | 11 |
@@ -59,7 +59,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/08-cotacao.part.jsx` | 3 | 1 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **12632** | |
+| **total** | **12637** | |
 
 ## Conteúdo (nome:linha)
 
@@ -88,7 +88,7 @@ NV_SLUG:3 · NOVO_NO_INICIO:6 · PONTOS_VG_VISIVEL:9 · IS_ANTIGO:10 · IS_NOVO:
 NOVO_CSS:1
 
 ### `src/novo/admin-shell.jsx`
-NVA_GROUPS:5 · NVA_ITEMS:30 · nvaActiveItem:32 · NOVO_ADMIN_CSS:38 · NovaAdminShell:162 · NovaAdminSub:194 · NovaAdminInnerTabs:208
+NVA_GROUPS:5 · NVA_ITEMS:30 · nvaActiveItem:32 · NOVO_ADMIN_CSS:38 · NovaAdminShell:167 · NovaAdminSub:199 · NovaAdminInnerTabs:213
 
 ### `src/novo/sorteio-admin.jsx`
 SORTEIO_STATUS_OK:10 · SORTEIO_LS:11 · SORTEIO_LS_MIGRADO:12 · SORTEIO_ERRO_TABELA:13 · SORTEIO_MESES:14 · sorteioMesSP:17 · sorteioMesLabel:23 · sorteioChaveCliente:28 · sorteioRand:39 · sorteioEscolhe:46 · sorteioLoad:52 · sorteioSave:55 · sorteioDeLinha:57 · sorteioParaLinha:61 · sorteioJunta:66 · sorteioTextoLista:72 · sorteioBRL:86 · SORTEIO_EXTRAS_LS:89 · SORTEIO_ERRO_EXTRAS:90 · sorteioExtrasLoad:91 · sorteioExtrasSave:94 · sorteioLimpaNome:96 · sorteioParseLista:102 · sorteioNorm:116 · sorteioNomeBate:121 · sorteioParecePlaceholder:129 · SorteioAdmin:133

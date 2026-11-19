@@ -252,7 +252,7 @@
                           const items = nvaItemsText(order);
                           const tot = parseFloat(order._total) || 0;
                           return (
-                            <div key={order.id} className={'nvp-row' + (sel && sel.id === order.id ? ' on' : '')}>
+                            <div key={order.id} className={'nvp-row' + (sel && sel.id === order.id ? ' on' : '') + (['pendente', 'pago'].includes(order.status || 'pendente') ? ' nvp-alert' : '')}>
                               <button className="nvp-head" onClick={() => pick(order)} aria-label={`Abrir pedido ${order._code || order.id} de ${order.buyerName || 'cliente'}`}>
                                 <span className="nvp-who">
                                   <b>{order.buyerName || 'Cliente'}</b>

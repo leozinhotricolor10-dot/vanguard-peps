@@ -78,6 +78,11 @@ const NOVO_ADMIN_CSS = `
 .nvp-head{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"who tot" "who st";gap:4px 10px;align-items:start;min-width:0;padding:0;border:none;background:none;color:#e2eaf0;font-family:'DM Sans',sans-serif;text-align:left;cursor:pointer}
 .nvp-head .nvp-who{grid-area:who}.nvp-head .nvp-tot{grid-area:tot;justify-self:end}.nvp-head .nvp-stc{grid-area:st;justify-self:end}
 .nvp-row .nvp-next{height:46px;border-radius:12px;font-size:14px}
+@keyframes nvp-alerta{0%,100%{background:rgba(255,59,59,.07);box-shadow:inset 4px 0 0 #ff3b3b}50%{background:rgba(255,59,59,.26);box-shadow:inset 4px 0 0 #ff3b3b,0 0 18px rgba(255,59,59,.35)}}
+@keyframes nvp-alerta-pill{50%{opacity:.35}}
+.nvp-list .nvp-row.nvp-alert{border-color:rgba(255,59,59,.6);animation:nvp-alerta 1.1s ease-in-out infinite}
+.nvp-list .nvp-row.nvp-alert .nvp-pill{background:#ff3b3b;color:#fff;animation:nvp-alerta-pill 1.1s steps(1) infinite}
+.nvp-list .nvp-row.nvp-alert .nvp-who b{color:#ff8a8a}
 .nvp-who{display:flex;flex-direction:column;gap:2px;min-width:0}
 .nvp-who b{font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .nvp-who small{font-size:12px;color:#a9bfcb;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
