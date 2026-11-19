@@ -453,11 +453,11 @@
   const nvaActive = nvaActiveItem(adminTab, nvaSec, adminStatusFilter);
   const nvaBadges = novoAdmin ? {
     pedidos: orders.filter(o => o._supabase && (o.status || 'pendente') === 'pendente').length,
-    etiquetas: orders.filter(o => o._supabase && o.status === 'pago' && !o.label_url && !isMotoboyOrder(o)).length,
+    etiquetas: orders.filter(o => o._supabase && orderStage(o) === 'gerar_etiqueta').length,
   } : {};
   function nvaPick(it) {
     if (it.action === 'senders') { openSenderPool(); return; }
-    if (it.id === 'etiquetas') setAdminStatusFilter('sem_etiqueta'); // pagos que ainda precisam de etiqueta (sem motoboy)
+    if (it.id === 'etiquetas') setAdminStatusFilter('gerar_etiqueta'); // pagos que ainda precisam de etiqueta (sem motoboy)
     else if (it.id === 'pedidos' && nvaActive !== 'pedidos') setAdminStatusFilter('all'); // vindo de outra seção, sem o filtro de Etiquetas
     setNvaSec(it.id);
     setAdminTab(it.tab);
@@ -466,16 +466,22 @@
   // ── Pedidos no /novo: próximo passo de cada pedido ──
   // Só chama as funções que o admin antigo já usa (cycleStatus, gerarEtiqueta, modal PIX,
   // sendTrackingWhatsApp, adminRemove); a única coisa nova é a confirmação antes de agir.
-  const NVA_ST = { pendente: 'Aguardando', pago: 'Pago', etiqueta: 'Etiqueta gerada', enviado: 'Enviado', entregue: 'Entregue', extraviado: 'Extraviado' };
-  // Etapa da esteira (só no front): "etiqueta" = pago, não motoboy, já com etiqueta gerada.
-  // No banco o status continua "pago"; motoboy pula essa etapa (Pago -> Enviado).
+  // Etapas da esteira (só no front; no banco seguem pendente/pago/enviado/entregue/extraviado).
+  // "pago" é só um marco na barra: o pedido pago cai direto em Gerar Etiqueta ou Pendente Envio.
+  // Chaves pago/enviado também servem para a confirmação de mudança de status (nvaAdvance).
+  const NVA_ST = { pendente: 'Pendente', pago: 'Pago', gerar_etiqueta: 'Gerar Etiqueta', pendente_envio: 'Pendente Envio', transito: 'Em trânsito', enviado: 'Enviado', entregue: 'Entregue', extraviado: 'Extraviado' };
+  // pago sem etiqueta (não motoboy) -> gerar_etiqueta; pago com etiqueta ou motoboy -> pendente_envio;
+  // enviado -> transito (rótulo só no admin)
   function orderStage(order) {
     const st = order.status || 'pendente';
-    if (st === 'pago' && order.label_url && !isMotoboyOrder(order)) return 'etiqueta';
+    if (st === 'pago') return (order.label_url || isMotoboyOrder(order)) ? 'pendente_envio' : 'gerar_etiqueta';
+    if (st === 'enviado') return 'transito';
     return st;
   }
+  // Etapas que ainda pedem ação antes do envio (linha piscando em vermelho)
+  const NVA_ALERT = ['pendente', 'gerar_etiqueta', 'pendente_envio'];
   function orderSteps(order) {
-    return isMotoboyOrder(order) ? ['pendente', 'pago', 'enviado', 'entregue'] : ['pendente', 'pago', 'etiqueta', 'enviado', 'entregue'];
+    return isMotoboyOrder(order) ? ['pendente', 'pago', 'pendente_envio', 'transito', 'entregue'] : ['pendente', 'pago', 'gerar_etiqueta', 'pendente_envio', 'transito', 'entregue'];
   }
   const NVA_NEXT = { pendente: 'pago', pago: 'enviado', enviado: 'entregue' };
   function nvaAdvance(order) {

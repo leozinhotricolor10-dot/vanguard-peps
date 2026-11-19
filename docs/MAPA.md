@@ -29,11 +29,11 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/logica/05-checkout.part.jsx` | 199 | 10 |
 | `src/app/logica/06-pedido-manual.part.jsx` | 315 | 17 |
 | `src/app/logica/07-precos-pontos-preorders.part.jsx` | 328 | 15 |
-| `src/app/logica/08-carrinho-admin.part.jsx` | 536 | 28 |
+| `src/app/logica/08-carrinho-admin.part.jsx` | 542 | 29 |
 | `src/app/render/00-casca-portal-manual.part.jsx` | 631 | 48 |
 | `src/app/render/01-loja-antiga.part.jsx` | 676 | 42 |
 | `src/app/render/02-admin/00-cabecalho.part.jsx` | 118 | 11 |
-| `src/app/render/02-admin/01-pedidos.part.jsx` | 444 | 38 |
+| `src/app/render/02-admin/01-pedidos.part.jsx` | 437 | 38 |
 | `src/app/render/02-admin/02-estoque.part.jsx` | 240 | 20 |
 | `src/app/render/02-admin/03-produtos.part.jsx` | 229 | 20 |
 | `src/app/render/02-admin/04-artigos.part.jsx` | 86 | 6 |
@@ -59,7 +59,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/08-cotacao.part.jsx` | 3 | 1 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **12742** | |
+| **total** | **12741** | |
 
 ## Conteúdo (nome:linha)
 
@@ -127,7 +127,7 @@ pastCustomers:3 · fillManualFromCustomer:16 · releaseOrderStock:30 · reserveO
 effectivePrice:2 · persistCoupons:8 · persistCustomers:9 · awardPoints:11 · _checkPointsReq:33 · checkPoints:34 · applyCouponCode:61 · generateToken:77 · savePreorder:83 · removePreorder:145 · persistPreorders:153 · availableStock:176 · inStockPublic:224 · notifyPreorder:235 · sendReminder:256 · checkPreorderExpiry:271 · cancelPreorderByToken:292 · reducePreorderQty:297 · showToast:306 · saveName:312 · handleWelcomeConfirm:314 · handleNameConfirm:322
 
 ### `src/app/logica/08-carrinho-admin.part.jsx` — lógica 8/8: carrinho, combos/packs, login admin, totais, helpers do admin novo (nva*)
-myOrders:3 · myTotal:4 · bundleInfo:7 · addBundleToCart:14 · openModal:51 · addPackToCart:57 · quickAdd:80 · versionTap:101 · handleAddToCart:109 · updateQtyInCart:151 · removeFromCart:216 · openSenderPool:240 · handleAdminUnlock:245 · submitAdminPassword:255 · adminRemove:305 · copyWhatsApp:330 · adminDateOf:357 · adminMonthKeyOf:368 · adminMonthLabel:373 · adminMonthKey:374 · inAdminMonth:380 · shipDateOf:382 · adminMonthOptions:384 · amOrders:396 · amPreorders:397 · amDespesas:398 · amImportHistory:399 · amShippingCosts:400 · totalRevenue:408 · totalUnits:412 · totalBuyers:413 · peptideCartQty:421 · nvaPick:458 · NVA_ST:469 · orderStage:472 · orderSteps:477 · NVA_NEXT:480 · nvaAdvance:481 · nvaWhats:488 · nvaRemove:494 · nvaSteps:499 · nvaWhen:523 · nvaItemsText:533
+myOrders:3 · myTotal:4 · bundleInfo:7 · addBundleToCart:14 · openModal:51 · addPackToCart:57 · quickAdd:80 · versionTap:101 · handleAddToCart:109 · updateQtyInCart:151 · removeFromCart:216 · openSenderPool:240 · handleAdminUnlock:245 · submitAdminPassword:255 · adminRemove:305 · copyWhatsApp:330 · adminDateOf:357 · adminMonthKeyOf:368 · adminMonthLabel:373 · adminMonthKey:374 · inAdminMonth:380 · shipDateOf:382 · adminMonthOptions:384 · amOrders:396 · amPreorders:397 · amDespesas:398 · amImportHistory:399 · amShippingCosts:400 · totalRevenue:408 · totalUnits:412 · totalBuyers:413 · peptideCartQty:421 · nvaPick:458 · NVA_ST:472 · orderStage:475 · orderSteps:483 · NVA_NEXT:486 · nvaAdvance:487 · nvaWhats:494 · nvaRemove:500 · nvaSteps:505 · nvaWhen:529 · nvaItemsText:539
 
 ### `src/app/render/00-casca-portal-manual.part.jsx` — render: return(, toast, casca do layout novo (NovaLoja/NovaAdminShell, tag de versão), portal de pré-order, formulário de pedido manual, checkout, nav antiga (tag de versão)
 ── CUSTOMER PORTAL ──:24 · ── MANUAL ORDER VIEW ──:39 · Produtos:138 · Dados pessoais:165 · Endereço:178 · Pagamento:196 · Observações:212 · Resumo:218 · CHECKOUT MODAL:261 · STEPPER:275 · PASSO 1 — Dados Pessoais:304 · PASSO 2 — Endereço:353 · PASSO 3 — Pagamento + Descontos:418 · PASSO 4 — Revisão + Enviar:520 · NAV:602
@@ -139,7 +139,7 @@ HERO BANNER — full width, fora do grid:2 · SIDEBAR:28 · MAIN:59 · CATALOG:6
 ADMIN:2 · 🔔 Bell icon:19 · TABS:100
 
 ### `src/app/render/02-admin/01-pedidos.part.jsx` — render admin: aba PEDIDOS
-TAB: PEDIDOS:2 · LISTA DE AVISOS DE REPOSIÇÃO:412
+TAB: PEDIDOS:2 · LISTA DE AVISOS DE REPOSIÇÃO:405
 
 ### `src/app/render/02-admin/02-estoque.part.jsx` — render admin: aba ESTOQUE
 TAB: ESTOQUE:2 · ── DIAGNÓSTICO DE ESTOQUE ──:4 · Lotes de origem:153 · PEDIDOS DE REPOSIÇÃO:172 · Form:177 · List:197

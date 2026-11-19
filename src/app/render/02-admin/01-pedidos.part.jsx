@@ -51,8 +51,7 @@
                 const adminOrders = sb ? amOrders.filter(o => o._supabase) : amOrders;
                 const adminSearchLower = adminSearch.trim().toLowerCase();
                 const filteredOrders = adminOrders
-                  .filter(o => adminStatusFilter === 'all'
-                    || (adminStatusFilter === 'sem_etiqueta' ? (orderStage(o) === 'pago' && !isMotoboyOrder(o)) : orderStage(o) === adminStatusFilter))
+                  .filter(o => adminStatusFilter === 'all' || orderStage(o) === adminStatusFilter)
                   .filter(o => {
                     if (!adminSearchLower) return true;
                     const name = (o.buyerName||'').toLowerCase();
@@ -66,14 +65,8 @@
                     const q = adminSearchLower.replace(/\D/g,'');
                     return name.includes(adminSearchLower) || code.includes(adminSearchLower) || productNames.includes(adminSearchLower) || (q && (cpf.includes(q) || phone.includes(q)));
                   });
-                const statusCounts = {
-                  pendente: adminOrders.filter(o=>(o.status||'pendente')==='pendente').length,
-                  pago: adminOrders.filter(o=>orderStage(o)==='pago').length,
-                  etiqueta: adminOrders.filter(o=>orderStage(o)==='etiqueta').length,
-                  enviado: adminOrders.filter(o=>o.status==='enviado').length,
-                  entregue: adminOrders.filter(o=>o.status==='entregue').length,
-                  extraviado: adminOrders.filter(o=>o.status==='extraviado').length,
-                };
+                const statusCounts = {};
+                adminOrders.forEach(o => { const st = orderStage(o); statusCounts[st] = (statusCounts[st] || 0) + 1; });
                 if (adminOrders.length === 0) return (
                   <div style={{textAlign:"center",color:"var(--muted)",padding:40,fontSize:"0.85rem"}}>{adminMonthKey ? `Nenhum pedido em ${adminMonthLabel(adminMonthKey)} — troque o período no topo para ver outros meses` : 'Nenhum pedido ainda'}</div>
                 );
@@ -93,13 +86,13 @@
                   <div className="nvp-filters" style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
                     {[
                       {id:'all',label:'Todos',count:adminOrders.length},
-                      {id:'pendente',label:'🟡 Pendente',count:statusCounts.pendente},
-                      {id:'pago',label:'✅ Pago',count:statusCounts.pago},
-                      {id:'etiqueta',label:'🏷️ Etiqueta',count:statusCounts.etiqueta},
-                      {id:'enviado',label:'📦 Enviado',count:statusCounts.enviado},
-                      {id:'entregue',label:'🎉 Entregue',count:statusCounts.entregue},
-                      {id:'extraviado',label:'⚠️ Extraviado',count:statusCounts.extraviado},
-                    ].map(f=>{ const on = adminStatusFilter===f.id || (f.id==='pago' && adminStatusFilter==='sem_etiqueta'); return (
+                      {id:'pendente',label:'🟡 Pendente',count:statusCounts.pendente||0},
+                      {id:'gerar_etiqueta',label:'🏷️ Gerar Etiqueta',count:statusCounts.gerar_etiqueta||0},
+                      {id:'pendente_envio',label:'📦 Pendente Envio',count:statusCounts.pendente_envio||0},
+                      {id:'transito',label:'🚚 Em trânsito',count:statusCounts.transito||0},
+                      {id:'entregue',label:'🎉 Entregue',count:statusCounts.entregue||0},
+                      {id:'extraviado',label:'⚠️ Extraviado',count:statusCounts.extraviado||0},
+                    ].map(f=>{ const on = adminStatusFilter===f.id; return (
                       <button key={f.id} onClick={()=>{ setAdminStatusFilter(f.id); setAdminPage(1); }}
                         style={{padding:'5px 12px',borderRadius:20,border:'1px solid',cursor:'pointer',fontSize:'0.72rem',fontFamily:"'Space Mono',monospace",
                           borderColor: on ? 'var(--accent)' : 'var(--border)',
@@ -255,7 +248,7 @@
                           const items = nvaItemsText(order);
                           const tot = parseFloat(order._total) || 0;
                           return (
-                            <div key={order.id} className={'nvp-row' + (sel && sel.id === order.id ? ' on' : '') + (['pendente', 'pago'].includes(order.status || 'pendente') ? ' nvp-alert' : '')}>
+                            <div key={order.id} className={'nvp-row' + (sel && sel.id === order.id ? ' on' : '') + (NVA_ALERT.includes(orderStage(order)) ? ' nvp-alert' : '')}>
                               <button className="nvp-head" onClick={() => pick(order)} aria-label={`Abrir pedido ${order._code || order.id} de ${order.buyerName || 'cliente'}`}>
                                 <span className="nvp-who">
                                   <b>{order.buyerName || 'Cliente'}</b>

@@ -28,9 +28,9 @@ const NVA_GROUPS = [
   ] },
 ];
 const NVA_ITEMS = NVA_GROUPS.flatMap(g => g.items.map(i => ({ ...i, group: g.id })));
-// Item ativo: "Etiquetas" é a aba Pedidos filtrada em "sem_etiqueta" (pagos sem etiqueta, sem motoboy)
+// Item ativo: "Etiquetas" é a aba Pedidos filtrada em "gerar_etiqueta" (pagos sem etiqueta, sem motoboy)
 function nvaActiveItem(adminTab, sec, statusFilter) {
-  if (adminTab === 'pedidos' && sec === 'etiquetas' && statusFilter === 'sem_etiqueta') return 'etiquetas';
+  if (adminTab === 'pedidos' && sec === 'etiquetas' && statusFilter === 'gerar_etiqueta') return 'etiquetas';
   const it = NVA_ITEMS.find(i => i.tab === adminTab || (i.tabs && i.tabs.some(t => t.tab === adminTab)));
   return it ? it.id : 'pedidos';
 }
@@ -90,10 +90,10 @@ const NOVO_ADMIN_CSS = `
 .nvp-tot{font-family:'Space Mono',monospace;font-size:13px;font-weight:700;white-space:nowrap}
 .nvp-pill{display:inline-block;padding:4px 10px;border-radius:8px;font-size:12px;font-weight:700;white-space:nowrap}
 .nvp-st-pendente{background:rgba(255,107,53,.14);color:#ffb38f}
-.nvp-st-pago{background:rgba(0,229,195,.14);color:#5ff3dc}
-.nvp-st-etiqueta{background:rgba(255,200,60,.14);color:#ffd166}
-.nvp-st-enviado{background:rgba(0,168,255,.14);color:#7cc9ff}
-.nvp-st-entregue{background:rgba(169,191,203,.12);color:#c7d6de}
+.nvp-st-gerar_etiqueta{background:rgba(255,200,60,.14);color:#ffd166}
+.nvp-st-pendente_envio{background:rgba(180,130,255,.16);color:#c9a8ff}
+.nvp-st-transito{background:rgba(0,168,255,.14);color:#7cc9ff}
+.nvp-st-entregue{background:rgba(0,229,195,.14);color:#5ff3dc}
 .nvp-st-extraviado{background:rgba(255,80,80,.14);color:#ff8a8a}
 .nvp-acts{display:flex;flex-direction:column;gap:6px;min-width:0}
 .nvp-next{height:36px;padding:0 12px;border-radius:10px;border:1px solid rgba(0,229,195,.3);background:transparent;color:#00e5c3;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
