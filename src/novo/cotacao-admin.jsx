@@ -41,13 +41,25 @@ function cotacaoCalc(lines, discVal, discMode, pixPct) {
 }
 function cotacaoMensagem({ name, lines, calc, discMode, showPix }) {
   const nome = String(name || '').trim();
-  const itens = lines.filter(l => l.qty > 0).map(l => `• ${l.qty}x ${l.name} — ${nvFmt(cotacaoNum(l.price) * l.qty)}`);
+  const ativos = lines.filter(l => l.qty > 0);
+  const temDesc = calc.discount > 0 && calc.subtotal > 0;
+  const ratio = temDesc ? calc.total / calc.subtotal : 1;
+  let acumulado = 0;
+  const itens = ativos.map((l, i) => {
+    const orig = cotacaoR2(cotacaoNum(l.price) * l.qty);
+    if (!temDesc) return `• ${l.qty}x ${l.name} — ${nvFmt(orig)}`;
+    // último item absorve o arredondamento para a soma bater com o total
+    const comDesc = i === ativos.length - 1 ? cotacaoR2(calc.total - acumulado) : cotacaoR2(orig * ratio);
+    acumulado = cotacaoR2(acumulado + comDesc);
+    return `• ${l.qty}x ${l.name} — ~${nvFmt(orig)}~ *${nvFmt(comDesc)}*`;
+  });
   const out = [`Olá${nome ? ' ' + nome : ''}! Segue sua cotação Vanguard Peptides:`, '', ...itens, ''];
-  if (calc.discount > 0) {
-    out.push(`Subtotal: ${nvFmt(calc.subtotal)}`);
+  if (temDesc) {
     out.push(`Desconto: -${nvFmt(calc.discount)}${discMode === '%' ? ` (${String(calc.pct).replace('.', ',')}%)` : ''}`);
+    out.push(`Total: ~${nvFmt(calc.subtotal)}~ *${nvFmt(calc.total)}*`);
+  } else {
+    out.push(`*Total: ${nvFmt(calc.total)}*`);
   }
-  out.push(`*Total: ${nvFmt(calc.total)}*`);
   if (showPix && calc.pixPct > 0) out.push(`No PIX: ${nvFmt(calc.pix)}`);
   out.push('', 'Cotação válida por 48h. Qualquer dúvida é só chamar!');
   return out.join('\n');

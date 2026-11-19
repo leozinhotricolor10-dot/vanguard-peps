@@ -20,7 +20,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/novo/sorteio-admin.jsx` | 588 | 37 |
 | `src/novo/sorteio-palco.jsx` | 137 | 10 |
 | `src/novo/componentes.jsx` | 189 | 11 |
-| `src/novo/cotacao-admin.jsx` | 270 | 18 |
+| `src/novo/cotacao-admin.jsx` | 282 | 19 |
 | `src/novo/loja.jsx` | 668 | 44 |
 | `src/app/logica/01-estado-rotas.part.jsx` | 339 | 24 |
 | `src/app/logica/02-notificacoes-status.part.jsx` | 160 | 9 |
@@ -59,7 +59,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/08-cotacao.part.jsx` | 3 | 1 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **12620** | |
+| **total** | **12632** | |
 
 ## Conteúdo (nome:linha)
 
@@ -100,7 +100,7 @@ sorteioNomePalco:5 · SORTEIO_PALCO_CSS:13 · sorteioFonte:47 · SorteioPalco:52
 nvFmt:1 · NvIcon:3 · NV_ICONS:6 · NvMarquee:21 · NvProdImg:96 · NvComboImg:110 · NvInstallBanner:122 · SORTEIO:154 · NvSorteio:161
 
 ### `src/novo/cotacao-admin.jsx`
-COTACAO_LS:7 · COTACAO_MAX:8 · cotacaoLoad:9 · cotacaoSave:12 · cotacaoNum:16 · cotacaoR2:23 · cotacaoWaPhone:26 · cotacaoCalc:32 · cotacaoMensagem:42 · cotacaoCopiar:55 · CotacaoModal:69
+COTACAO_LS:7 · COTACAO_MAX:8 · cotacaoLoad:9 · cotacaoSave:12 · cotacaoNum:16 · cotacaoR2:23 · cotacaoWaPhone:26 · cotacaoCalc:32 · cotacaoMensagem:42 · cotacaoCopiar:67 · CotacaoModal:81
 
 ### `src/novo/loja.jsx`
 NovaLoja:1
