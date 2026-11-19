@@ -20,14 +20,14 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/novo/sorteio-admin.jsx` | 588 | 37 |
 | `src/novo/sorteio-palco.jsx` | 137 | 10 |
 | `src/novo/componentes.jsx` | 189 | 11 |
-| `src/novo/cotacao-admin.jsx` | 282 | 19 |
+| `src/novo/cotacao-admin.jsx` | 307 | 21 |
 | `src/novo/loja.jsx` | 668 | 44 |
 | `src/app/logica/01-estado-rotas.part.jsx` | 339 | 24 |
 | `src/app/logica/02-notificacoes-status.part.jsx` | 160 | 9 |
 | `src/app/logica/03-melhor-envios-cambio.part.jsx` | 277 | 17 |
 | `src/app/logica/04-supabase-sync.part.jsx` | 376 | 20 |
 | `src/app/logica/05-checkout.part.jsx` | 199 | 10 |
-| `src/app/logica/06-pedido-manual.part.jsx` | 267 | 13 |
+| `src/app/logica/06-pedido-manual.part.jsx` | 315 | 17 |
 | `src/app/logica/07-precos-pontos-preorders.part.jsx` | 328 | 15 |
 | `src/app/logica/08-carrinho-admin.part.jsx` | 526 | 27 |
 | `src/app/render/00-casca-portal-manual.part.jsx` | 631 | 48 |
@@ -50,7 +50,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/03-calculadora.part.jsx` | 13 | 1 |
 | `src/app/render/04-modais/00-reserva-senha.part.jsx` | 63 | 4 |
 | `src/app/render/04-modais/01-pedido-detalhe.part.jsx` | 275 | 27 |
-| `src/app/render/04-modais/02-pedido-manual.part.jsx` | 163 | 16 |
+| `src/app/render/04-modais/02-pedido-manual.part.jsx` | 181 | 18 |
 | `src/app/render/04-modais/03-rastreio.part.jsx` | 82 | 7 |
 | `src/app/render/04-modais/04-legal.part.jsx` | 39 | 5 |
 | `src/app/render/04-modais/05-pix.part.jsx` | 65 | 5 |
@@ -59,7 +59,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/08-cotacao.part.jsx` | 3 | 1 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **12637** | |
+| **total** | **12728** | |
 
 ## Conteúdo (nome:linha)
 
@@ -100,7 +100,7 @@ sorteioNomePalco:5 · SORTEIO_PALCO_CSS:13 · sorteioFonte:47 · SorteioPalco:52
 nvFmt:1 · NvIcon:3 · NV_ICONS:6 · NvMarquee:21 · NvProdImg:96 · NvComboImg:110 · NvInstallBanner:122 · SORTEIO:154 · NvSorteio:161
 
 ### `src/novo/cotacao-admin.jsx`
-COTACAO_LS:7 · COTACAO_MAX:8 · cotacaoLoad:9 · cotacaoSave:12 · cotacaoNum:16 · cotacaoR2:23 · cotacaoWaPhone:26 · cotacaoCalc:32 · cotacaoMensagem:42 · cotacaoCopiar:67 · CotacaoModal:81
+COTACAO_LS:11 · COTACAO_MAX:12 · cotacaoLoad:13 · cotacaoSave:16 · cotacaoNum:20 · cotacaoR2:27 · cotacaoMarcarPedido:29 · cotacaoWaPhone:37 · cotacaoCalc:43 · cotacaoMensagem:53 · cotacaoCopiar:78 · CotacaoModal:92
 
 ### `src/novo/loja.jsx`
 NovaLoja:1
@@ -121,7 +121,7 @@ fetchOrdersFromSupabase:205 · fetchPreordersFromSupabase:250 · loadPublicSnaps
 calcFreight:3 · fetchCep:10 · validateCheckout:27 · saveCheckoutData:43 · updateCheckout:48 · sendToWhatsApp:53 · dismissNotice:180 · addNotice:183 · removeNotice:188 · generateOrderCode:193
 
 ### `src/app/logica/06-pedido-manual.part.jsx` — lógica 6/8: pedido manual, reserva de estoque, edição de itens, parser de texto colado
-pastCustomers:3 · fillManualFromCustomer:16 · releaseOrderStock:30 · reserveOrderStock:40 · itemsSavingRef:62 · stockDiffOfEdit:63 · saveOrderItemsEdit:75 · createManualOrder:116 · parseAndFillManualOrder:163
+pastCustomers:3 · fillManualFromCustomer:16 · releaseOrderStock:30 · reserveOrderStock:40 · itemsSavingRef:62 · stockDiffOfEdit:63 · saveOrderItemsEdit:75 · openManualFromQuote:121 · createManualOrder:145 · parseAndFillManualOrder:211
 
 ### `src/app/logica/07-precos-pontos-preorders.part.jsx` — lógica 7/8: preço efetivo, cupons, pontos, pré-orders, availableStock, toast/nome
 effectivePrice:2 · persistCoupons:8 · persistCustomers:9 · awardPoints:11 · _checkPointsReq:33 · checkPoints:34 · applyCouponCode:61 · generateToken:77 · savePreorder:83 · removePreorder:145 · persistPreorders:153 · availableStock:176 · inStockPublic:224 · notifyPreorder:235 · sendReminder:256 · checkPreorderExpiry:271 · cancelPreorderByToken:292 · reducePreorderQty:297 · showToast:306 · saveName:312 · handleWelcomeConfirm:314 · handleNameConfirm:322
@@ -190,7 +190,7 @@ MODAL RESERVA SIMPLES:2 · ADMIN PASSWORD MODAL:38
 ORDER DETAIL MODAL:2 · Cliente:16 · Itens:47 · EDITOR:58 · Adicionar produto:81 · Total preview:93 · Endereço:141 · Pagamento + Obs:213 · Marcar como extraviado / reverter:259
 
 ### `src/app/render/04-modais/02-pedido-manual.part.jsx` — render modais: novo pedido manual + sucesso do pedido
-NOVO PEDIDO MANUAL:2 · Copiar lista / colar resposta:20 · SUCESSO — CÓDIGO DO PEDIDO:145
+NOVO PEDIDO MANUAL:2 · Copiar lista / colar resposta:20 · SUCESSO — CÓDIGO DO PEDIDO:163
 
 ### `src/app/render/04-modais/03-rastreio.part.jsx` — render modais: rastreamento de pedido
 RASTREAMENTO DE PEDIDO:2

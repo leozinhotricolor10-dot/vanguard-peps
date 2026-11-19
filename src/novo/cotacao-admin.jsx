@@ -4,6 +4,10 @@
 // enviadas/copiadas ficam só no navegador do admin (localStorage `vg-quotes`).
 // Usado nos dois layouts do admin (botão "🧾 Gerar cotação" em 02-admin/01-pedidos.part.jsx;
 // modal em 04-modais/08-cotacao.part.jsx).
+// "✅ Cotação aceita" (no modal e no histórico) marca `acceptedAt` e chama onAccept(quote): o App abre o
+// "＋ Pedido Manual" já com os itens; ao criar, o desconto manual faz o total bater com a cotação
+// (openManualFromQuote / createManualOrder em src/app/logica/06-pedido-manual.part.jsx), e o código do
+// pedido volta para a cotação (`orderCode`) via cotacaoMarcarPedido.
 const COTACAO_LS = 'vg-quotes';
 const COTACAO_MAX = 50;
 function cotacaoLoad() {
@@ -21,6 +25,13 @@ function cotacaoNum(v) {
   return isFinite(n) && n > 0 ? n : 0;
 }
 const cotacaoR2 = n => Math.round(n * 100) / 100;
+// Liga a cotação ao pedido criado a partir dela (chamado pelo createManualOrder)
+function cotacaoMarcarPedido(id, orderCode) {
+  if (!id) return;
+  const list = cotacaoLoad();
+  if (!list.some(h => h.id === id)) return;
+  cotacaoSave(list.map(h => h.id === id ? { ...h, acceptedAt: h.acceptedAt || new Date().toISOString(), orderCode } : h));
+}
 // Mesmo critério dos links wa.me do admin (55 + dígitos); com 10–11 dígitos (DDD + número) sempre põe o 55,
 // para não confundir DDD 55 (RS) com o código do país. Devolve '' se não parece telefone.
 function cotacaoWaPhone(raw) {
@@ -78,7 +89,7 @@ async function cotacaoCopiar(text) {
   return false;
 }
 
-function CotacaoModal({ products, bundles, effectivePrice, showToast, onClose }) {
+function CotacaoModal({ products, bundles, effectivePrice, showToast, onClose, onAccept }) {
   const [name, setName] = React.useState('');
   const [phone, setPhone] = React.useState('');
   const [lines, setLines] = React.useState([]);
@@ -117,10 +128,21 @@ function CotacaoModal({ products, bundles, effectivePrice, showToast, onClose })
   const setLine = (key, patch) => setLines(ls => ls.map(l => l.key === key ? { ...l, ...patch } : l));
   const delLine = key => setLines(ls => ls.filter(l => l.key !== key));
 
-  function registrar() {
-    const q = { id: Date.now(), at: new Date().toISOString(), name: name.trim(), phone: phone.trim(), lines, discVal, discMode, showPix, pixPct, total: calc.total };
+  function registrar(extra) {
+    const q = { id: Date.now(), at: new Date().toISOString(), name: name.trim(), phone: phone.trim(), lines, discVal, discMode, showPix, pixPct, total: calc.total, ...(extra || {}) };
     const next = [q, ...hist.filter(h => h.id !== q.id)].slice(0, COTACAO_MAX);
     setHist(next); cotacaoSave(next);
+    return q;
+  }
+  // Cotação aceita: marca no histórico e abre o pedido manual com os itens (o App cuida do resto)
+  function aceitar(h) {
+    if (!onAccept) return;
+    const q = h || registrar();
+    const at = new Date().toISOString();
+    const next = cotacaoLoad().map(x => x.id === q.id ? { ...x, acceptedAt: at } : x);
+    setHist(next); cotacaoSave(next);
+    const c = cotacaoCalc(q.lines || [], q.discVal, q.discMode, q.pixPct);
+    onAccept({ id: q.id, name: q.name || '', phone: q.phone || '', lines: (q.lines || []).filter(l => l.qty > 0), total: c.total, pix: q.showPix !== false && c.pixPct > 0 ? c.pix : c.total });
   }
   function enviar() {
     if (!wa || !temItens) return;
@@ -181,9 +203,11 @@ function CotacaoModal({ products, bundles, effectivePrice, showToast, onClose })
                     <div style={{ color: 'var(--muted)', fontSize: '0.7rem' }}>
                       {new Date(h.at).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })} · {(h.lines || []).reduce((s, l) => s + (l.qty || 0), 0)} item(s){cotacaoNum(h.discVal) > 0 ? ` · desc. ${h.discMode === '%' ? h.discVal + '%' : 'R$ ' + h.discVal}` : ''}
                     </div>
+                    {h.acceptedAt && <div style={{ color: '#25d366', fontSize: '0.68rem', fontFamily: mono, marginTop: 2 }}>✅ Aceita {new Date(h.acceptedAt).toLocaleDateString('pt-BR')}{h.orderCode ? ` · pedido ${h.orderCode}` : ''}</div>}
                   </div>
                   <span style={{ fontFamily: mono, fontSize: '0.8rem', color: 'var(--accent)' }}>{nvFmt(h.total)}</span>
                   <button style={{ ...btn, padding: '7px 12px', borderColor: 'rgba(0,229,195,0.5)', color: 'var(--accent)' }} onClick={() => reabrir(h)}>Reabrir</button>
+                  {onAccept && <button style={{ ...btn, padding: '7px 12px', borderColor: 'rgba(37,211,102,0.5)', color: '#25d366' }} onClick={() => aceitar(h)} title="Abrir pedido manual com estes itens e valores">✅ Cotação aceita</button>}
                   <button style={{ ...btn, padding: '7px 10px', color: '#ff5050' }} onClick={() => apagarHist(h.id)} aria-label="Apagar do histórico">✕</button>
                 </div>
               ))}
@@ -275,6 +299,7 @@ function CotacaoModal({ products, bundles, effectivePrice, showToast, onClose })
             <button onClick={copiar} disabled={!temItens} style={{ flex: '1 1 140px', padding: '12px', borderRadius: 10, border: '1px solid var(--border)', background: 'rgba(255,255,255,0.04)', color: temItens ? 'var(--text)' : 'var(--muted)', fontWeight: 700, cursor: temItens ? 'pointer' : 'default', fontFamily: mono, fontSize: '0.78rem' }}>📋 Copiar mensagem</button>
             <button onClick={limpar} style={{ ...btn, padding: '12px 14px' }}>Limpar</button>
           </div>
+          {onAccept && <button onClick={() => aceitar()} disabled={!temItens} title="Abrir pedido manual com estes itens e valores" style={{ width: '100%', marginTop: 8, padding: '12px', borderRadius: 10, border: '1px solid rgba(0,229,195,0.5)', background: temItens ? 'rgba(0,229,195,0.1)' : 'rgba(255,255,255,0.03)', color: temItens ? 'var(--accent)' : 'var(--muted)', fontWeight: 700, cursor: temItens ? 'pointer' : 'default', fontFamily: mono, fontSize: '0.78rem' }}>✅ Cotação aceita → criar pedido</button>}
         </>}
       </div>
     </div>

@@ -113,6 +113,35 @@
     } finally { itemsSavingRef.current = false; }
   }
 
+  // "✅ Cotação aceita" (CotacaoModal, src/novo/cotacao-admin.jsx): abre o "＋ Pedido Manual" com os itens da
+  // cotação. Combo vira os produtos dele + o id do combo em `bundles` (o create-order aplica o desconto do combo).
+  // O preço não vai para o servidor (ele recalcula pela tabela): depois de criar, o createManualOrder grava a
+  // diferença como desconto manual (mesma coluna/caminho do detalhe do pedido, via admin-db com a senha do admin),
+  // para o total ficar igual ao da cotação (valor PIX se o pagamento for PIX). Nada disso vai na URL.
+  function openManualFromQuote(q) {
+    const agg = {}; const bundleIds = []; const faltou = [];
+    (q.lines || []).forEach(l => {
+      const qty = Math.max(0, parseInt(l.qty, 10) || 0); if (!qty) return;
+      if (l.kind === 'b') {
+        const b = (bundles || []).find(x => x.id === l.id);
+        if (!b || !b.items.every(id => products.some(p => p.id === id))) { faltou.push(l.name); return; }
+        b.items.forEach(id => { agg[id] = (agg[id] || 0) + qty; });
+        for (let i = 0; i < qty; i++) bundleIds.push(b.id);
+      } else {
+        if (!products.some(p => p.id === l.id)) { faltou.push(l.name); return; }
+        agg[l.id] = (agg[l.id] || 0) + qty;
+      }
+    });
+    const items = Object.entries(agg).map(([peptideId, qty]) => ({ peptideId, qty }));
+    setManualOrder({ ...MANUAL_ORDER_EMPTY, name: q.name || '', phone: q.phone || '', items,
+      quote: { id: q.id, total: q.total, pix: q.pix, bundleIds, items: items.map(it => it.peptideId + ':' + it.qty).sort().join(',') } });
+    setManualCustomerSearch(''); setManualAddItemId(''); setManualPasteOpen(false);
+    setQuoteOpen(false);
+    setManualOrderModal(true);
+    if (faltou.length) showToast('Fora do catálogo, não entrou no pedido: ' + faltou.join(', '), 'error');
+    else showToast('Cotação aceita ✓ — complete os dados do cliente', 'success');
+  }
+
   async function createManualOrder() {
     if (manualOrderSubmitting) return;
     if (!manualOrder.name.trim()) { showToast('Informe o nome do cliente','error'); return; }
@@ -140,12 +169,31 @@
           items: orderItems,
           payment: manualOrder.payment,
           notes: manualOrder.notes ? ('[PEDIDO MANUAL] ' + manualOrder.notes) : '[PEDIDO MANUAL]',
+          ...(manualOrder.quote && manualOrder.quote.bundleIds.length ? { bundles: manualOrder.quote.bundleIds } : {}),
         }),
       });
       const data = await res.json();
       if (!data.ok) { await releaseOrderStock(resv.reserved); resv = null; showToast('Erro ao criar pedido: ' + (data.error||'tente novamente'),'error'); return; }
       resv = null; // pedido gravado: a reserva fica com ele (remover o pedido devolve o estoque)
-      showToast('Pedido manual criado ✓ ' + data.code,'success');
+      const q = manualOrder.quote;
+      let aviso = null;
+      if (q) {
+        // Desconto manual = total do servidor − valor da cotação (o frete, se houver, fica dentro do valor da cotação)
+        const alvo = manualOrder.payment === 'pix' ? q.pix : q.total;
+        const dd = { coupon: Number(data.couponDiscount) || 0, bundle: Number(data.bundleDiscount) || 0, points: Number(data.pointsDiscount) || 0 };
+        const disc = Math.round(((Number(data.validatedTotal) || 0) - alvo) * 100) / 100;
+        if (disc > 0) {
+          const newTotal = orderTotalWith(data.validatedSubtotal, data.freight, dd, disc);
+          let error = null;
+          try { ({ error } = await sb.from('orders').update({ manual_discount: disc, total: newTotal }).eq('id', data.orderId)); } catch (e) { error = e; }
+          if (error) aviso = `Pedido ${data.code} criado, mas o desconto da cotação (R$ ${disc.toLocaleString('pt-BR')}) não foi salvo — aplique em "Desconto manual" no pedido`;
+        } else if (disc < 0) {
+          aviso = `Pedido ${data.code} criado com R$ ${Number(data.validatedTotal).toLocaleString('pt-BR')}: a tabela ficou abaixo da cotação (R$ ${alvo.toLocaleString('pt-BR')}), então não há desconto a aplicar`;
+        }
+        cotacaoMarcarPedido(q.id, data.code);
+      }
+      if (aviso) showToast(aviso, 'error');
+      else showToast('Pedido manual criado ✓ ' + data.code,'success');
       setManualOrderModal(false);
       setManualOrder(MANUAL_ORDER_EMPTY);
       setManualCustomerSearch('');

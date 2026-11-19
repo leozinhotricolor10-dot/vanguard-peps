@@ -133,6 +133,24 @@
               <div style={{fontSize:'0.64rem',color:'var(--muted)',marginTop:4}}>Frete e total finais são calculados no servidor ao salvar (PIX = frete grátis).</div>
             </div>
 
+            {manualOrder.quote && (()=>{
+              const q = manualOrder.quote;
+              const alvo = manualOrder.payment === 'pix' ? q.pix : q.total;
+              const mudou = manualOrder.items.map(it=>it.peptideId+':'+(it.qty||1)).sort().join(',') !== q.items;
+              return (
+                <div data-quote-box="" style={{background:'rgba(37,211,102,0.06)',border:'1px solid rgba(37,211,102,0.3)',borderRadius:8,padding:'10px 12px',marginBottom:14,fontSize:'0.8rem'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}>
+                    <span style={{fontFamily:"'Space Mono',monospace",fontSize:'0.6rem',color:'#25d366',letterSpacing:'1px'}}>🧾 VALOR DA COTAÇÃO</span>
+                    <button onClick={()=>setManualOrder(m=>{ const { quote, ...rest } = m; return rest; })} style={{background:'none',border:'none',color:'var(--muted)',fontSize:'0.62rem',cursor:'pointer',padding:0}}>✕ não usar</button>
+                  </div>
+                  <div style={{display:'flex',justifyContent:'space-between',fontWeight:700,marginTop:6}}><span>Total do pedido ({manualOrder.payment==='pix'?'PIX':'cartão'})</span><span data-quote-target="" style={{fontFamily:"'Space Mono',monospace",color:'#25d366'}}>R$ {alvo.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}</span></div>
+                  {q.pix !== q.total && <div style={{fontSize:'0.66rem',color:'var(--muted)',marginTop:2}}>Cotação: R$ {q.total.toLocaleString('pt-BR',{minimumFractionDigits:2})} · no PIX R$ {q.pix.toLocaleString('pt-BR',{minimumFractionDigits:2})}</div>}
+                  <div style={{fontSize:'0.64rem',color:'var(--muted)',marginTop:4}}>Ao criar, a diferença para a tabela entra como "Desconto manual" (frete incluso neste valor).</div>
+                  {mudou && <div style={{fontSize:'0.66rem',color:'#ffaa00',marginTop:4}}>⚠️ Itens diferentes da cotação — o total ainda será ajustado para o valor acima.</div>}
+                </div>
+              );
+            })()}
+
             <button onClick={createManualOrder} disabled={manualOrderSubmitting} style={{width:'100%',padding:'12px',background:'var(--accent)',border:'none',borderRadius:10,color:'#000',fontWeight:700,fontSize:'0.85rem',cursor:manualOrderSubmitting?'wait':'pointer',fontFamily:"'Space Mono',monospace",marginBottom:8,opacity:manualOrderSubmitting?0.6:1}}>
               {manualOrderSubmitting ? 'CRIANDO...' : '✓ CRIAR PEDIDO'}
             </button>
