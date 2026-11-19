@@ -1,0 +1,223 @@
+{
+  "_leia": "preco = preco cheio em reais (tabela products, campo price). POR = preco x (100 - percentual) / 100, arredondado para o real. 'percentual' dentro de um produto vale so para ele (usado quando a promo atual do site ja e maior que a da campanha). 'promo_atual' = promo % que o site ja aplica hoje (conferencia). 'estoque' = quantidade na tabela stock em 17/11/2026 (so produtos com estoque entram). Para tirar um produto: \"fora\": true e \"motivo\". As fotos tz15/tz40 sao Tirzepatide 15mg/40mg (SKU no banco: TR15/TR40). colunas: 2 (cards horizontais, vial grande) ou 3 (cards verticais).",
+  "titulo": "BLACK FRIDAY",
+  "percentual": 40,
+  "subtitulo": "Preços por ampola",
+  "site": "vanguardpep.com",
+  "contato": "Dúvidas? É só chamar!",
+  "colunas": 2,
+  "por_imagem": 12,
+  "produtos": [
+    {
+      "sku": "CU50",
+      "nome": "GHK-Cu",
+      "mg": "50 mg",
+      "foto": "cu50-v2.webp",
+      "preco": 299,
+      "promo_atual": 0,
+      "estoque": 46
+    },
+    {
+      "sku": "RT60",
+      "nome": "Retatrutide",
+      "mg": "60 mg",
+      "foto": "rt60-v2.webp",
+      "preco": 730,
+      "promo_atual": 0,
+      "estoque": 14
+    },
+    {
+      "sku": "RT30",
+      "nome": "Retatrutide",
+      "mg": "30 mg",
+      "foto": "rt30-v2.webp",
+      "preco": 450,
+      "estoque": 13
+    },
+    {
+      "sku": "CP10",
+      "nome": "CJC-1295 + Ipa",
+      "mg": "no DAC · 10 mg",
+      "foto": "cp10-v2.webp",
+      "preco": 399,
+      "estoque": 12
+    },
+    {
+      "sku": "CU100",
+      "nome": "GHK-Cu",
+      "mg": "100 mg",
+      "foto": "cu100-v2.webp",
+      "preco": 340,
+      "estoque": 9
+    },
+    {
+      "sku": "BBG70",
+      "nome": "GLOW Blend",
+      "mg": "70 mg",
+      "foto": "bbg70-v2.webp",
+      "preco": 699,
+      "promo_atual": 0,
+      "estoque": 7
+    },
+    {
+      "sku": "2S50",
+      "nome": "SS-31",
+      "mg": "50 mg",
+      "foto": "2s50-v2.webp",
+      "preco": 478,
+      "estoque": 7
+    },
+    {
+      "sku": "DS10",
+      "nome": "DSIP",
+      "mg": "10 mg",
+      "foto": "ds10-v2.webp",
+      "preco": 220,
+      "estoque": 7
+    },
+    {
+      "sku": "KL80",
+      "nome": "KLOW Blend",
+      "mg": "80 mg",
+      "foto": "kl80-v2.webp",
+      "preco": 750,
+      "estoque": 5
+    },
+    {
+      "sku": "MS40",
+      "nome": "MOTS-c",
+      "mg": "40 mg",
+      "foto": "ms40-v2.webp",
+      "preco": 520,
+      "estoque": 5
+    },
+    {
+      "sku": "TR60",
+      "nome": "Tirzepatide",
+      "mg": "60 mg",
+      "foto": "tr60-v2.webp",
+      "preco": 600,
+      "promo_atual": 0,
+      "estoque": 5,
+      "esgotado": true
+    },
+    {
+      "sku": "P41",
+      "nome": "PT-141",
+      "mg": "10 mg",
+      "foto": "p41-v2.webp",
+      "preco": 280,
+      "estoque": 2
+    },
+    {
+      "sku": "TR15",
+      "nome": "Tirzepatide",
+      "mg": "15 mg",
+      "foto": "tz15-v2.webp",
+      "preco": 299,
+      "estoque": 0,
+      "fora": true,
+      "motivo": "sem estoque"
+    },
+    {
+      "sku": "TR40",
+      "nome": "Tirzepatide",
+      "mg": "40 mg",
+      "foto": "tz40-v2.webp",
+      "preco": 450,
+      "estoque": 0,
+      "fora": true,
+      "motivo": "sem estoque"
+    },
+    {
+      "sku": "RT15",
+      "nome": "Retatrutide",
+      "mg": "15 mg",
+      "foto": "rt15-v2.webp",
+      "preco": 399,
+      "estoque": 0,
+      "fora": true,
+      "motivo": "sem estoque"
+    },
+    {
+      "sku": "RT20",
+      "nome": "Retatrutide",
+      "mg": "20 mg",
+      "foto": "rt20-v2.webp",
+      "preco": 475,
+      "estoque": 0,
+      "fora": true,
+      "motivo": "sem estoque"
+    },
+    {
+      "sku": "RT50",
+      "nome": "Retatrutide",
+      "mg": "50 mg",
+      "foto": "rt50-v2.webp",
+      "preco": 800,
+      "estoque": 0,
+      "fora": true,
+      "motivo": "sem estoque"
+    },
+    {
+      "sku": "SNAP10",
+      "nome": "SNAP-8",
+      "mg": "10 mg",
+      "foto": "snap10-v2.webp",
+      "preco": 290,
+      "estoque": 0,
+      "fora": true,
+      "motivo": "sem estoque"
+    },
+    {
+      "sku": "TSM5",
+      "nome": "Tesamorelin",
+      "mg": "5 mg",
+      "foto": "tsm5-v2.webp",
+      "preco": 299,
+      "estoque": 0,
+      "fora": true,
+      "motivo": "sem estoque"
+    },
+    {
+      "sku": "EPT10",
+      "nome": "Epithalon",
+      "mg": "10 mg",
+      "foto": "ept10-v2.webp",
+      "preco": 249,
+      "estoque": 0,
+      "fora": true,
+      "motivo": "sem estoque"
+    },
+    {
+      "sku": "SLK5",
+      "nome": "Selank",
+      "mg": "5 mg",
+      "foto": "slk5-v2.webp",
+      "preco": 199,
+      "estoque": 0,
+      "fora": true,
+      "motivo": "sem estoque"
+    },
+    {
+      "sku": "BB20",
+      "nome": "BPC-157 + TB-500",
+      "mg": "20 mg",
+      "foto": "bb20-v2.webp",
+      "preco": 430,
+      "estoque": 0,
+      "fora": true,
+      "motivo": "sem estoque"
+    },
+    {
+      "sku": "KP30",
+      "nome": "KPV",
+      "mg": "30 mg",
+      "foto": "kp30-v2.webp",
+      "preco": 300,
+      "estoque": 0,
+      "fora": true,
+      "motivo": "sem estoque"
+    }
+  ]
+}
