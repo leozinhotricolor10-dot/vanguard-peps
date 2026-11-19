@@ -38,12 +38,21 @@ const json = (body: unknown, status = 200) =>
 const fail = (message: string, status = 400) => json({ data: null, error: { message } }, status);
 const isRow = (v: unknown) => !!v && typeof v === "object" && !Array.isArray(v);
 
+// Storage: só o bucket de fotos, só nomes simples de imagem na raiz (sem pastas, sem "..")
+const STORAGE_BUCKET = "product-images";
+const IMAGE_PATH_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,119}\.(jpe?g|png|webp|gif|avif)$/i;
+const isImagePath = (p: unknown): p is string =>
+  typeof p === "string" && IMAGE_PATH_RE.test(p) && !p.includes("..");
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
   if (req.method !== "POST") return fail("Method not allowed", 405);
   if (!ADMIN_PASSWORD) return fail("Not configured", 500);
 
-  let body: { password?: string; action?: string; table?: string; value?: unknown; patch?: unknown; rows?: unknown };
+  let body: {
+    password?: string; action?: string; table?: string; value?: unknown; patch?: unknown; rows?: unknown;
+    path?: unknown; paths?: unknown;
+  };
   try { body = await req.json(); } catch { return fail("Invalid JSON"); }
 
   // Sem senha = página antiga/em cache, não um chute: recusa sem contar tentativa
@@ -70,6 +79,28 @@ Deno.serve(async (req: Request) => {
   }
 
   const { action, table } = body;
+
+  // Fotos de produto: o bucket product-images não aceita escrita da chave pública.
+  // O admin pede aqui uma URL assinada de upload (ou a remoção), feita com a service role.
+  if (action === "storage_sign_upload" || action === "storage_remove") {
+    try {
+      const bucket = supabase.storage.from(STORAGE_BUCKET);
+      if (action === "storage_sign_upload") {
+        const path = body.path;
+        if (!isImagePath(path)) return fail("Invalid path");
+        const { data, error } = await bucket.createSignedUploadUrl(path, { upsert: true });
+        if (error || !data) return fail(error?.message || "Sign failed", 500);
+        return json({ data: { signedUrl: data.signedUrl, token: data.token, path: data.path }, error: null });
+      }
+      const paths = body.paths;
+      if (!Array.isArray(paths) || !paths.length || paths.length > 20 || !paths.every(isImagePath)) return fail("Invalid paths");
+      const { data, error } = await bucket.remove(paths as string[]);
+      return json({ data: data ?? null, error: error ? { message: error.message } : null });
+    } catch (err) {
+      return fail((err as Error).message, 500);
+    }
+  }
+
   const def = table ? TABLES[table] : undefined;
   if (!table || !def) return fail("Table not allowed", 403);
   const [key, orderCol] = def;

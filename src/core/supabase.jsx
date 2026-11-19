@@ -49,6 +49,19 @@ async function callAdminDb(payload) {
   } catch (e) { return { data: null, error: { message: e.message } }; }
 }
 
+// Envio de foto de produto: o bucket product-images não aceita escrita da chave pública;
+// a admin-db (com a senha) devolve uma URL assinada e o arquivo sobe direto para ela.
+// Enquanto a admin-db publicada ainda não conhece a ação (versão antiga), cai no envio direto.
+async function uploadProductImage(path, file) {
+  const r = await callAdminDb({ action: 'storage_sign_upload', path });
+  const msg = r?.error?.message;
+  if (msg === 'Table not allowed' || msg === 'Unknown action') {
+    return sb.storage.from('product-images').upload(path, file, { upsert: true, contentType: file.type });
+  }
+  if (r?.error || !r?.data?.token) return { data: null, error: r?.error || { message: 'Falha ao assinar envio' } };
+  return sb.storage.from('product-images').uploadToSignedUrl(r.data.path || path, r.data.token, file, { upsert: true, contentType: file.type });
+}
+
 // Imita o encadeamento do supabase-js (from().select().eq()...) e traduz para as ações fixas da admin-db
 function adminQuery(table) {
   const key = ADMIN_TABLE_KEYS[table];

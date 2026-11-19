@@ -8,7 +8,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/styles/antigo-2.css` | 510 | 37 |
 | `src/blobs/product-images.js` | 13 | 1361 |
 | `src/core/catalogo.jsx` | 192 | 18 |
-| `src/core/supabase.jsx` | 141 | 7 |
+| `src/core/supabase.jsx` | 154 | 7 |
 | `src/core/conteudo.jsx` | 413 | 27 |
 | `src/blobs/banner-bg.js` | 1 | 128 |
 | `src/core/faq.jsx` | 35 | 2 |
@@ -59,7 +59,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 | `src/app/render/04-modais/08-cotacao.part.jsx` | 3 | 1 |
 | `src/app/render/05-rodape-fim.part.jsx` | 100 | 6 |
 | `src/main.jsx` | 3 | 0 |
-| **total** | **12741** | |
+| **total** | **12754** | |
 
 ## Conteúdo (nome:linha)
 
@@ -67,7 +67,7 @@ Ordem = `src/manifest.json` (é a ordem de montagem). `.part.jsx` = pedaço do c
 ADINA_CATALOG:4 · DEFAULT_ME_POOL:56 · TEST_ME_POOL:59 · isTestSender:64 · BLOCKED_SENDER_DOCS:65 · CATEGORIES:67 · DEFAULT_PEPTIDES:78 · DEFAULT_BUNDLES:94 · parseBundlesCfg:100 · orderDiscounts:108 · orderItemsSubtotal:117 · orderTotalWith:124 · loadBundlesCache:129 · BESTSELLERS_DEFAULT:135 · BESTSELLERS_MAX:136 · parseBestsellersCfg:137 · loadBestsellersCache:144 · resolveBestsellers:147 · validarCPF:158 · loadProducts:171 · saveProducts:174
 
 ### `src/core/supabase.jsx`
-DATA_RESET_ID:7 · DATA_RESET_KEYS:8 · SUPABASE_URL:18 · SUPABASE_KEY:19 · sb:20 · ADMIN_PW:34 · ADMIN_TABLE_KEYS:36 · callAdminDb:41 · adminQuery:53 · publicApi:99 · DEFAULT_STOCK:110 · loadStock:115 · saveStock:124 · loadOrders:135 · saveOrders:138
+DATA_RESET_ID:7 · DATA_RESET_KEYS:8 · SUPABASE_URL:18 · SUPABASE_KEY:19 · sb:20 · ADMIN_PW:34 · ADMIN_TABLE_KEYS:36 · callAdminDb:41 · uploadProductImage:55 · adminQuery:66 · publicApi:112 · DEFAULT_STOCK:123 · loadStock:128 · saveStock:137 · loadOrders:148 · saveOrders:151
 
 ### `src/core/conteudo.jsx`
 CALC_PEP_DB:2 · CALC_DOSES:25 · PROTOCOLS:49 · PRODUCT_GUIDES:173 · ALERTS:240 · DEFAULT_ARTICLES:344

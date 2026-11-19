@@ -94,7 +94,7 @@
                                 setProdForm(f=>({...f,_imgUploading:true}));
                                 const ext = file.name.split('.').pop();
                                 const path = `${form.id || ('new-' + Date.now())}.${ext}`;
-                                const { error } = await sb.storage.from('product-images').upload(path, file, { upsert: true, contentType: file.type });
+                                const { error } = await uploadProductImage(path, file);
                                 if (error) { showToast('Erro no upload: ' + error.message, 'error'); setProdForm(f=>({...f,_imgUploading:false})); return; }
                                 const { data: { publicUrl } } = sb.storage.from('product-images').getPublicUrl(path);
                                 setProdForm(f=>({...f, image_url: publicUrl, _imgUploading:false}));
